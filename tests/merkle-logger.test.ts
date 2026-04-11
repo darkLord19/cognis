@@ -3,16 +3,15 @@ import { db } from "../server/persistence/database";
 import { MerkleLogger } from "../server/persistence/merkle-logger";
 
 beforeAll(() => {
-  // Use a test db by replacing db via some means or just running in normal db but clearing
-  // Actually, db is a singleton that connects to database.sqlite.
-  // We can just wipe audit_log for testing.
+  db.db.exec("PRAGMA foreign_keys = OFF;");
   db.db.exec("DELETE FROM audit_log");
   db.db.exec("DELETE FROM branches");
   db.db.exec("INSERT INTO branches (id, tick, name) VALUES ('main', 0, 'main')");
+  db.db.exec("PRAGMA foreign_keys = ON;");
 });
 
 afterAll(() => {
-  db.close();
+  // Do not close the db singleton because other tests might run in the same process
 });
 
 test("MerkleLogger: chains entries correctly and verifyChain passes", () => {
