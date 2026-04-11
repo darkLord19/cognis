@@ -613,16 +613,16 @@ export type ActionDecision = {
 };
 
 export type FilteredPercept = {
-  primaryAttention: unknown[];
+  primaryAttention: AgentState[];
   peripheralAwareness: { count: number; aggregateEmotionalField: number };
-  focusedVoxels: unknown[];
+  focusedVoxels: Voxel[];
   ownBody: BodyState;
 };
 
 export type RawPercept = {
-  visibleAgents: unknown[];
-  audibleAgents: unknown[];
-  smellableAgents: unknown[];
+  visibleAgents: AgentState[];
+  audibleAgents: AgentState[];
+  smellableAgents: AgentState[];
   nearbyVoxels: Voxel[];
   localTemperature: number;
   lightLevel: number;
