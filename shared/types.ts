@@ -174,6 +174,15 @@ export type ElementConfig = {
   windStrength: number;
 };
 
+export type SeasonType = "spring" | "summer" | "autumn" | "winter";
+
+export type CircadianState = {
+  lightLevel: number;
+  surfaceTemperatureDelta: number;
+  cycleHormoneValue: number;
+  season: SeasonType;
+};
+
 export type WorldConfig = {
   meta: {
     name: string;
