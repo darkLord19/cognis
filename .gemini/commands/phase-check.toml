@@ -1,0 +1,12 @@
+description = 'Validate all tasks in current phase.'
+prompt = """
+Validate all tasks in current phase.
+
+1. Read cognis-implementation.md — find current phase
+2. Check git log for each task's commit
+3. Run bun test, biome check ., bunx tsc --noEmit
+4. Run Veil check: grep -r "simulation|AI|data|code|tick|_id|coordinate" server/agents/qualia-processor.ts
+5. Report: pass/fail per task, Veil status, Merkle chain status
+6. If all pass: confirm phase complete, name next phase
+7. If any fail: identify which tasks need rework
+"""

@@ -1,0 +1,11 @@
+description = 'Retry a blocked task with a fresh approach.'
+prompt = """
+Retry a blocked task with a fresh approach.
+
+1. Read BLOCKERS.md — find the specified task's entry
+2. Read cognis-prd.md sections for the task
+3. Analyse the previous error — try a different implementation approach
+4. Implement, validate, commit
+5. If passes: remove from BLOCKERS.md
+6. If fails again after 5 attempts: update BLOCKERS.md entry with new information
+"""

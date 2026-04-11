@@ -1,0 +1,15 @@
+description = 'Execute the RALF loop for the specified task.'
+prompt = """
+Execute the RALF loop for the specified task.
+
+Steps:
+1. Open cognis-prd.md. Find the task. Read EVERY section it references completely.
+2. Open cognis-implementation.md. Find the task. Read ALL Act steps before writing code.
+3. Implement exactly what is specified — every file, every method, every type.
+4. Run ALL validation commands in the Validate section.
+5. Run: bun test && biome check . && bunx tsc --noEmit
+6. If any validation fails: debug, fix, retry. Max 5 iterations per failure.
+7. When ALL pass: git add -A && git commit -m "type: description"
+8. If still failing after 5 iterations: append to BLOCKERS.md, continue to next task.
+9. NEVER wait for human input. NEVER ask for clarification. Read cognis-prd.md instead.
+"""

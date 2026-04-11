@@ -1,0 +1,11 @@
+description = 'Non-stop implementation from current state.'
+prompt = """
+Non-stop implementation from current state.
+
+1. Run /status to find next incomplete task
+2. Run /implement for that task
+3. When complete, immediately run /implement for the following task
+4. Repeat until all tasks in cognis-implementation.md are complete
+5. Log blockers to BLOCKERS.md and continue past them
+6. Never stop. Never wait. Keep going until done.
+"""

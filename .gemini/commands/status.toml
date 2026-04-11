@@ -1,0 +1,12 @@
+description = 'Report current Cognis build state.'
+prompt = """
+Report current Cognis build state.
+
+1. Run: git log --oneline -20
+2. Run: bun test (report pass/fail)
+3. Run: biome check . (report issues)
+4. Run: bunx tsc --noEmit (report errors)
+5. Read BLOCKERS.md
+6. Read cognis-implementation.md — find last completed task and next task
+7. Report: completed phases, next task, blocker count, estimated remaining tasks
+"""
