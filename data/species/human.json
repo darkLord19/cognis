@@ -1,0 +1,43 @@
+{
+  "id": "human",
+  "name": "Human",
+  "cognitiveTier": "full_llm",
+  "senseProfile": { "sight": 30, "sound": 50, "smell": 15, "empath": 10 },
+  "emotionalFieldEnabled": true,
+  "socialCapacity": "full",
+  "canLearnLanguage": true,
+  "canBedomesticated": false,
+  "baseStats": {
+    "maxHealth": 100,
+    "speed": 10,
+    "strength": 10,
+    "metabolism": 1.0,
+    "lifespanTicks": 50000,
+    "reproductionAge": 10000,
+    "gestationTicks": 2000
+  },
+  "muscleStatRanges": { "strength": [0.3, 0.8], "speed": [0.3, 0.8], "endurance": [0.4, 0.9] },
+  "dnaTraits": [],
+  "threatLevel": 0.5,
+  "ecologicalRole": "neutral",
+  "sleepConfig": {
+    "mode": "natural_sleep",
+    "fatigueEnabled": true,
+    "fatigueRate": 0.05,
+    "recoveryRate": 0.1,
+    "minRestDuration": 50,
+    "maxWakeDuration": 400,
+    "cognitivePenaltyNoSleep": 0.3,
+    "emotionalPenaltyNoSleep": 0.2,
+    "healthPenaltyNoSleep": 0.1,
+    "consolidationDuringSleep": true,
+    "consolidationWhileAwake": false,
+    "consolidationIntervalTicks": 0,
+    "dreamsEnabled": true,
+    "nightmaresEnabled": true,
+    "sleepSchedule": "individual"
+  },
+  "memoryConfig": {},
+  "survivalDriveWeight": 0.6,
+  "circadianSensitivity": 0.8
+}

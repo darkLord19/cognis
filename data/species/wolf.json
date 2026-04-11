@@ -1,0 +1,47 @@
+{
+  "id": "wolf",
+  "name": "Wolf",
+  "cognitiveTier": "behavior_tree",
+  "senseProfile": { "sight": 40, "sound": 80, "smell": 200, "empath": 3 },
+  "emotionalFieldEnabled": true,
+  "socialCapacity": "limited",
+  "canLearnLanguage": false,
+  "canBedomesticated": true,
+  "domesticationConfig": {
+    "canLearnLanguage": false,
+    "bondingThreshold": 0.8
+  },
+  "baseStats": {
+    "maxHealth": 80,
+    "speed": 15,
+    "strength": 12,
+    "metabolism": 1.2,
+    "lifespanTicks": 20000,
+    "reproductionAge": 5000,
+    "gestationTicks": 1000
+  },
+  "muscleStatRanges": { "strength": [0.6, 0.95], "speed": [0.7, 0.95], "endurance": [0.6, 0.9] },
+  "dnaTraits": [],
+  "threatLevel": 0.7,
+  "ecologicalRole": "predator",
+  "sleepConfig": {
+    "mode": "natural_sleep",
+    "fatigueEnabled": true,
+    "fatigueRate": 0.05,
+    "recoveryRate": 0.1,
+    "minRestDuration": 50,
+    "maxWakeDuration": 400,
+    "cognitivePenaltyNoSleep": 0.3,
+    "emotionalPenaltyNoSleep": 0.2,
+    "healthPenaltyNoSleep": 0.1,
+    "consolidationDuringSleep": true,
+    "consolidationWhileAwake": false,
+    "consolidationIntervalTicks": 0,
+    "dreamsEnabled": true,
+    "nightmaresEnabled": true,
+    "sleepSchedule": "individual"
+  },
+  "memoryConfig": {},
+  "survivalDriveWeight": 0.85,
+  "circadianSensitivity": 0.9
+}

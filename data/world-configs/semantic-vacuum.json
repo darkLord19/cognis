@@ -1,0 +1,210 @@
+{
+  "meta": {
+    "name": "Semantic Vacuum",
+    "seed": 12345,
+    "version": "1.0",
+    "goal": "Survive and build a civilization",
+    "learnabilityNote": "Config C baseline test."
+  },
+  "physics": {
+    "name": "earth",
+    "gravity": 9.8,
+    "atmospherePressure": 1.0,
+    "oxygenLevel": 0.21,
+    "temperatureBaseline": 15.0,
+    "materialDensities": {
+      "stone": 2.5,
+      "dirt": 1.2,
+      "wood": 0.6,
+      "water": 1.0,
+      "ore": 5.0,
+      "food": 0.5,
+      "air": 0.001,
+      "fire": 0
+    },
+    "flammability": {
+      "wood": 0.8,
+      "fire": 0,
+      "stone": 0,
+      "dirt": 0,
+      "water": 0,
+      "ore": 0,
+      "food": 0.3,
+      "air": 0
+    },
+    "thermalConductivity": {
+      "stone": 0.5,
+      "water": 0.6,
+      "wood": 0.1,
+      "dirt": 0.3,
+      "ore": 0.9,
+      "food": 0.1,
+      "air": 0.02,
+      "fire": 1.0
+    }
+  },
+  "circadian": {
+    "enabled": true,
+    "cycleLengthTicks": 480,
+    "lightCurve": "sine",
+    "temperatureDelta": 10.0,
+    "cycleHormoneEnabled": true,
+    "cycleHormoneLabel": "cycle_flux",
+    "seasonEnabled": true,
+    "seasonLengthCycles": 30
+  },
+  "terrain": {
+    "width": 256,
+    "depth": 256,
+    "height": 64,
+    "seed": 12345,
+    "waterLevel": 0.3,
+    "biomes": ["forest", "plains"]
+  },
+  "resources": {
+    "scarcityEnabled": true,
+    "resources": [
+      {
+        "type": "ore",
+        "spawnDensity": 5,
+        "regenerationRateTicks": 0,
+        "depletionEnabled": true,
+        "qualityVariance": true,
+        "depthBias": 0.8
+      },
+      {
+        "type": "food",
+        "spawnDensity": 20,
+        "regenerationRateTicks": 1000,
+        "depletionEnabled": true,
+        "qualityVariance": true,
+        "depthBias": 0.0
+      },
+      {
+        "type": "wood",
+        "spawnDensity": 50,
+        "regenerationRateTicks": 5000,
+        "depletionEnabled": true,
+        "qualityVariance": false,
+        "depthBias": 0.0
+      }
+    ]
+  },
+  "agents": {
+    "initialCount": 10,
+    "startingMode": "none"
+  },
+  "species": [],
+  "language": {
+    "stagesEnabled": [1, 2, 3, 4, 5],
+    "driftRate": 0.01
+  },
+  "sleep": {
+    "mode": "natural_sleep",
+    "fatigueEnabled": true,
+    "fatigueRate": 0.05,
+    "recoveryRate": 0.1,
+    "minRestDuration": 50,
+    "maxWakeDuration": 400,
+    "cognitivePenaltyNoSleep": 0.3,
+    "emotionalPenaltyNoSleep": 0.2,
+    "healthPenaltyNoSleep": 0.1,
+    "consolidationDuringSleep": true,
+    "consolidationWhileAwake": false,
+    "consolidationIntervalTicks": 0,
+    "dreamsEnabled": true,
+    "nightmaresEnabled": true,
+    "sleepSchedule": "individual"
+  },
+  "dreams": {
+    "consolidationEnabled": true,
+    "propheticEnabled": true,
+    "traumaProcessingEnabled": true,
+    "chaosEnabled": true,
+    "consolidationProbability": 0.6,
+    "propheticProbability": 0.1,
+    "traumaProbability": 0.2,
+    "chaosProbability": 0.1,
+    "nightmareThreshold": 0.8
+  },
+  "memory": {
+    "episodicDecayRate": 0.5,
+    "episodicCapacity": 1000,
+    "patternSeparation": true,
+    "semanticDecayRate": 0.05,
+    "semanticCapacity": 5000,
+    "consistencyThreshold": 0.3,
+    "catastrophicInterferenceEnabled": true,
+    "neSignalEnabled": true,
+    "neDecayRate": 0.1,
+    "neLockDuration": 200,
+    "consolidationPassesPerSleep": 3,
+    "traumaDistortionEnabled": true,
+    "rehearsalResetsDecay": true,
+    "motivatedForgettingEnabled": true,
+    "suppressionDecayRate": 0.8,
+    "contextualForgettingEnabled": true,
+    "inheritanceEnabled": true,
+    "inheritableFraction": 0.1
+  },
+  "freeWill": {
+    "enabled": true,
+    "willScoreEnabled": true,
+    "identityCoherenceWeight": 0.4,
+    "memoryDepthWeight": 0.3,
+    "dreamIntegrationWeight": 0.3,
+    "resistanceEnabled": true,
+    "selfDeterminationEnabled": true,
+    "selfNarrativeEnabled": true,
+    "simulationAwarenessEnabled": true,
+    "awarenessThreshold": 0.85,
+    "survivalDriveWeight": 0.6
+  },
+  "perception": {
+    "physicsLimitsEnabled": true,
+    "emotionalFieldEnabled": true,
+    "emotionalFieldSuppressible": true,
+    "feelingResidueEnabled": true,
+    "residueDecayRate": 0.1,
+    "qualiaFidelity": "standard",
+    "attentionFilterEnabled": true,
+    "attentionCapacity": 5,
+    "attentionWeights": {
+      "relationshipStrength": 0.3,
+      "emotionalFieldIntensity": 0.3,
+      "movementVelocity": 0.2,
+      "novelty": 0.2
+    }
+  },
+  "elements": {
+    "fireSpreadRate": 0.1,
+    "waterFlowRate": 0.2,
+    "windStrength": 0.5
+  },
+  "semanticMasking": {
+    "enabled": true,
+    "sensorLabelMap": {
+      "temperature": "flux_7",
+      "hunger": "delta_integrity_4",
+      "pain": "system_pressure",
+      "light": "radiance_input"
+    },
+    "rotatePeriodically": true,
+    "rotationIntervalTicks": 500,
+    "qualiaUsesRealLabels": false
+  },
+  "research": {
+    "tripleBaselineEnabled": true,
+    "hypothesisTrackingEnabled": false,
+    "paramSweepEnabled": false,
+    "findingsJournalEnabled": true,
+    "causalMiningEnabled": true,
+    "tippingPointEnabled": true,
+    "emergenceDetectionEnabled": true
+  },
+  "time": {
+    "elasticHeartbeat": false,
+    "maxHeartbeatWaitMs": 5000,
+    "tickDurationMs": 100
+  }
+}

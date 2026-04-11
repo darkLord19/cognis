@@ -1,0 +1,47 @@
+{
+  "id": "deer",
+  "name": "Deer",
+  "cognitiveTier": "behavior_tree",
+  "senseProfile": { "sight": 50, "sound": 90, "smell": 80, "empath": 2 },
+  "emotionalFieldEnabled": false,
+  "socialCapacity": "limited",
+  "canLearnLanguage": false,
+  "canBedomesticated": true,
+  "domesticationConfig": {
+    "canLearnLanguage": false,
+    "bondingThreshold": 0.7
+  },
+  "baseStats": {
+    "maxHealth": 60,
+    "speed": 18,
+    "strength": 8,
+    "metabolism": 0.8,
+    "lifespanTicks": 25000,
+    "reproductionAge": 4000,
+    "gestationTicks": 1000
+  },
+  "muscleStatRanges": { "strength": [0.2, 0.6], "speed": [0.8, 1.0], "endurance": [0.7, 0.95] },
+  "dnaTraits": [],
+  "threatLevel": 0.1,
+  "ecologicalRole": "prey",
+  "sleepConfig": {
+    "mode": "natural_sleep",
+    "fatigueEnabled": true,
+    "fatigueRate": 0.05,
+    "recoveryRate": 0.1,
+    "minRestDuration": 50,
+    "maxWakeDuration": 400,
+    "cognitivePenaltyNoSleep": 0.3,
+    "emotionalPenaltyNoSleep": 0.2,
+    "healthPenaltyNoSleep": 0.1,
+    "consolidationDuringSleep": true,
+    "consolidationWhileAwake": false,
+    "consolidationIntervalTicks": 0,
+    "dreamsEnabled": true,
+    "nightmaresEnabled": true,
+    "sleepSchedule": "individual"
+  },
+  "memoryConfig": {},
+  "survivalDriveWeight": 0.9,
+  "circadianSensitivity": 0.8
+}

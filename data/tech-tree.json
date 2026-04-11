@@ -1,0 +1,106 @@
+[
+  {
+    "id": "fire_making",
+    "name": "Fire Making",
+    "prerequisites": [],
+    "discoveryConditions": [],
+    "effects": [],
+    "canBeTeaching": true,
+    "teachingRequiresLexicon": ["fire", "wood"],
+    "isDeathConcept": false
+  },
+  {
+    "id": "stone_tools",
+    "name": "Stone Tools",
+    "prerequisites": [],
+    "discoveryConditions": [],
+    "effects": [],
+    "canBeTeaching": true,
+    "teachingRequiresLexicon": ["stone", "sharp"],
+    "isDeathConcept": false
+  },
+  {
+    "id": "shelter_building",
+    "name": "Shelter Building",
+    "prerequisites": ["stone_tools", "wood_gathering"],
+    "discoveryConditions": [],
+    "effects": [],
+    "canBeTeaching": true,
+    "teachingRequiresLexicon": ["shelter", "safe"],
+    "isDeathConcept": false
+  },
+  {
+    "id": "food_preservation",
+    "name": "Food Preservation",
+    "prerequisites": ["fire_making"],
+    "discoveryConditions": [],
+    "effects": [],
+    "canBeTeaching": true,
+    "teachingRequiresLexicon": ["food", "smoke"],
+    "isDeathConcept": false
+  },
+  {
+    "id": "animal_domestication",
+    "name": "Animal Domestication",
+    "prerequisites": ["food_preservation"],
+    "discoveryConditions": [],
+    "effects": [],
+    "canBeTeaching": true,
+    "teachingRequiresLexicon": ["animal", "friend"],
+    "isDeathConcept": false
+  },
+  {
+    "id": "voxel_marking",
+    "name": "Voxel Marking",
+    "prerequisites": ["stone_tools"],
+    "discoveryConditions": [],
+    "effects": [],
+    "canBeTeaching": true,
+    "teachingRequiresLexicon": ["stone", "mark"],
+    "isDeathConcept": false
+  },
+  {
+    "id": "rope_making",
+    "name": "Rope Making",
+    "prerequisites": [],
+    "discoveryConditions": [],
+    "effects": [],
+    "canBeTeaching": true,
+    "teachingRequiresLexicon": ["vine", "tie"],
+    "isDeathConcept": false
+  },
+  {
+    "id": "farming",
+    "name": "Farming",
+    "prerequisites": ["stone_tools", "water_carrying"],
+    "discoveryConditions": [],
+    "effects": [],
+    "canBeTeaching": true,
+    "teachingRequiresLexicon": ["seed", "grow"],
+    "isDeathConcept": false
+  },
+  {
+    "id": "pottery",
+    "name": "Pottery",
+    "prerequisites": ["fire_making"],
+    "discoveryConditions": [],
+    "effects": [],
+    "canBeTeaching": true,
+    "teachingRequiresLexicon": ["clay", "fire"],
+    "isDeathConcept": false
+  },
+  {
+    "id": "death_concept",
+    "name": "Concept of Death",
+    "prerequisites": [],
+    "discoveryConditions": [
+      { "type": "observation", "target": "agent_stillness", "count": 5 },
+      { "type": "observation", "target": "absent_emotional_field", "count": 5 },
+      { "type": "observation", "target": "cold_body", "count": 5 }
+    ],
+    "effects": [],
+    "canBeTeaching": true,
+    "teachingRequiresLexicon": ["gone", "forever"],
+    "isDeathConcept": true
+  }
+]
