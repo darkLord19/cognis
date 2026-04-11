@@ -1,0 +1,30 @@
+{
+  "name": "cognis",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.11",
+    "@types/bun": "latest",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.183.1",
+    "@vitejs/plugin-react": "^6.0.1",
+    "bun-types": "^1.3.12",
+    "lefthook": "^2.1.5",
+    "tailwindcss": "^4.2.2",
+    "vite": "^8.0.8"
+  },
+  "peerDependencies": {
+    "typescript": "^6.0.2"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.5.0",
+    "react": "^19.2.5",
+    "react-dom": "^19.2.5",
+    "simplex-noise": "^4.0.3",
+    "three": "^0.183.2",
+    "zustand": "^5.0.12"
+  }
+}

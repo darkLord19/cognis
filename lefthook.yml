@@ -1,0 +1,13 @@
+pre-commit:
+  parallel: false
+  commands:
+    biome:
+      run: bunx biome check --write --no-errors-on-unmatched .
+    typecheck:
+      run: bunx tsc --noEmit
+    test:
+      run: bun test
+    veil:
+      run: >
+        [ -f server/agents/qualia-processor.ts ] || exit 0;
+        grep -r "simulation\|\" AI\|' AI\|\bdata\b\|\bcode\b\|\btick\b\|_id\b\|coordinate" server/agents/qualia-processor.ts && echo "VEIL BROKEN" && exit 1 || exit 0
