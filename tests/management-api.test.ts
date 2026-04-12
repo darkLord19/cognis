@@ -198,3 +198,35 @@ test("management api returns config templates, metrics, findings, and audit veri
   expect(verifyResponse.status).toBe(200);
   expect(verify.valid).toBe(true);
 });
+
+test("management api creates branches and exposes a watcher stream", async () => {
+  const created = service.createRun({ config: "earth-default", seed: 81 });
+  service.startRun(created.id);
+
+  const branchResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/branch`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: "Fork A" }),
+    }),
+  );
+  const branch = await readJson(branchResponse);
+  expect(branchResponse.status).toBe(201);
+  expect(branch.parentId).toBe("main");
+  expect(branch.name).toBe("Fork A");
+  expect(String(branch.id)).toContain(`${created.id}-branch-`);
+
+  const watchResponse = await handler(new Request(`http://localhost/runs/${created.id}/watch`));
+  expect(watchResponse.status).toBe(200);
+  expect(watchResponse.headers.get("Content-Type")).toContain("text/event-stream");
+
+  const reader = watchResponse.body?.getReader();
+  expect(reader).toBeDefined();
+
+  const chunk = await reader?.read();
+  const payload = new TextDecoder().decode(chunk?.value);
+  expect(payload).toContain("event: snapshot");
+  expect(payload).toContain(`"runId":"${created.id}"`);
+
+  await reader?.cancel();
+});

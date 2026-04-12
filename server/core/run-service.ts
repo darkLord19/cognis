@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { WorldConfig } from "../../shared/types";
+import type { BranchNode, WorldConfig } from "../../shared/types";
 import type { LLMGateway } from "../llm/gateway";
 import type { Database } from "../persistence/database";
 import { MerkleLogger } from "../persistence/merkle-logger";
@@ -172,6 +172,28 @@ export class RunService {
       throw new Error(`Run not found: ${runId}`);
     }
     return FindingsJournal.getFindings(branchId);
+  }
+
+  public createBranch(runId: string, name?: string): BranchNode {
+    const run = RunManager.getRun(runId);
+    if (!run) {
+      throw new Error(`Run not found: ${runId}`);
+    }
+
+    const runtime = this.deps.runSupervisor.getRuntime(runId);
+    const parentId = runtime?.branchId ?? "main";
+    const tick = runtime?.clock.getTick() ?? RunStateStore.getLatest(runId)?.tick ?? 0;
+    const branchId = `${runId}-branch-${crypto.randomUUID().slice(0, 8)}`;
+    const branchName = name?.trim() || branchId;
+
+    BranchManager.createBranch(branchId, branchName, tick, parentId);
+
+    return {
+      id: branchId,
+      parentId,
+      tick,
+      name: branchName,
+    };
   }
 
   public startRun(runId: string): { status: "running"; currentTick: number } {

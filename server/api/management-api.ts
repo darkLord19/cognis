@@ -23,6 +23,16 @@ function jsonResponse(data: unknown, status = 200): Response {
   });
 }
 
+function eventStreamResponse(stream: ReadableStream<Uint8Array>): Response {
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+    },
+  });
+}
+
 function getApiDependencies(): ApiDependencies {
   if (!apiDeps) {
     throw new Error("Management API dependencies are not configured.");
@@ -55,6 +65,7 @@ export function setApiDependencies(deps: ApiDependencies): void {
 
 export function createManagementApiHandler(deps: ApiDependencies) {
   const interventionPipeline = new InterventionPipeline(deps.runSupervisor);
+  const encoder = new TextEncoder();
 
   return async function handleManagementApi(req: Request): Promise<Response> {
     const url = new URL(req.url);
@@ -257,6 +268,98 @@ export function createManagementApiHandler(deps: ApiDependencies) {
           404,
         );
       }
+    }
+
+    const branchMatch = path.match(/^\/runs\/([^/]+)\/branch$/);
+    if (branchMatch && method === "POST") {
+      const runId = requirePathParam(branchMatch[1]);
+      const body = await parseRequestBody<Record<string, unknown>>(req);
+
+      try {
+        const branch = deps.runService.createBranch(
+          runId,
+          body && typeof body.name === "string" ? body.name : undefined,
+        );
+        return jsonResponse(branch, 201);
+      } catch (error) {
+        return jsonResponse(
+          { error: error instanceof Error ? error.message : "Failed to create branch" },
+          404,
+        );
+      }
+    }
+
+    const watchMatch = path.match(/^\/runs\/([^/]+)\/watch$/);
+    if (watchMatch && method === "GET") {
+      const runId = requirePathParam(watchMatch[1]);
+      const summary = deps.runService.getRunSummary(runId);
+      if (!summary) {
+        return jsonResponse({ error: "Run not found" }, 404);
+      }
+
+      const runtime = deps.runService.getRuntime(runId);
+      let cleanup = () => {};
+
+      const stream = new ReadableStream<Uint8Array>({
+        cancel() {
+          cleanup();
+        },
+        start(controller) {
+          const writeEvent = (event: string, payload: unknown) => {
+            controller.enqueue(
+              encoder.encode(`event: ${event}\ndata: ${JSON.stringify(payload)}\n\n`),
+            );
+          };
+
+          writeEvent("snapshot", {
+            runId,
+            status: summary.status,
+            tick: summary.currentTick,
+            agents: deps.runService.getAgents(runId),
+          });
+
+          if (!runtime) {
+            controller.close();
+            return;
+          }
+
+          const eventHandler = (event: unknown) => {
+            writeEvent("event", event);
+            if (
+              typeof event === "object" &&
+              event !== null &&
+              "type" in event &&
+              event.type === EventType.TICK
+            ) {
+              writeEvent("tick", {
+                runId,
+                tick: runtime.clock.getTick(),
+                status: runtime.status,
+              });
+            }
+          };
+
+          runtime.eventBus.onAny(eventHandler);
+
+          cleanup = () => {
+            runtime.eventBus.offAny(eventHandler);
+            unsubscribe();
+          };
+
+          const unsubscribe = deps.runSupervisor.onRuntimeEvent((event) => {
+            if (event.type === "stopped" && event.runId === runId) {
+              cleanup();
+              controller.close();
+            }
+            if (event.type === "shutdown") {
+              cleanup();
+              controller.close();
+            }
+          });
+        },
+      });
+
+      return eventStreamResponse(stream);
     }
 
     const interventionMatch = path.match(/^\/runs\/([^/]+)\/interventions$/);
