@@ -1,6 +1,5 @@
 import { EventType } from "../../shared/events";
 import type { EventBus } from "../core/event-bus";
-import { RunContext } from "../core/run-context";
 
 export interface WatcherOptions {
   verbosity: "quiet" | "normal" | "verbose";
@@ -25,10 +24,16 @@ const defaultOptions: WatcherOptions = {
 export class Watcher {
   private eventBus: EventBus;
   private options: WatcherOptions;
+  private getAgentCount: () => number;
 
-  constructor(eventBus: EventBus, options: Partial<WatcherOptions> = {}) {
+  constructor(
+    eventBus: EventBus,
+    options: Partial<WatcherOptions> = {},
+    getAgentCount: () => number = () => 0,
+  ) {
     this.eventBus = eventBus;
     this.options = { ...defaultOptions, ...options };
+    this.getAgentCount = getAgentCount;
     this.attach();
   }
 
@@ -38,8 +43,7 @@ export class Watcher {
 
   private handleEvent(event: import("../../shared/events").SimEvent): void {
     const tick = event.tick;
-    const ctx = RunContext.get();
-    const agentCount = ctx?.agents.length ?? 0;
+    const agentCount = this.getAgentCount();
 
     // Log all events in verbose mode except tick
     if (this.options.verbosity === "verbose") {

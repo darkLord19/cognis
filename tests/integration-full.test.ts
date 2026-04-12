@@ -133,7 +133,16 @@ test("Orchestrator: Full Integration test (5 agents, 500 ticks)", async () => {
   const gateway = new LLMGateway(new MockLLMGateway());
   const system2 = new System2(gateway);
 
-  const orchestrator = new Orchestrator(mockConfig, world, clock, eventBus, physics, system2);
+  const orchestrator = new Orchestrator(
+    "run1",
+    "main",
+    mockConfig,
+    world,
+    clock,
+    eventBus,
+    physics,
+    system2,
+  );
 
   for (let i = 0; i < 5; i++) {
     orchestrator.addAgent(createAgent(`a${i}`));

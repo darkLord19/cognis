@@ -66,6 +66,10 @@ export class SimClock {
     return this.tick;
   }
 
+  public setTick(tick: number): void {
+    this.tick = Math.max(0, tick);
+  }
+
   public getCircadianPhase(): number {
     if (this.cycleLengthTicks === 0) return 0;
     return (this.tick % this.cycleLengthTicks) / this.cycleLengthTicks;

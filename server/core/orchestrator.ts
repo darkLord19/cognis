@@ -31,13 +31,18 @@ import type { EventBus } from "./event-bus";
 import type { SimClock } from "./sim-clock";
 
 export class Orchestrator {
-  private agents: AgentState[] = [];
+  public agents: AgentState[] = [];
+  public getAgents(): AgentState[] {
+    return this.agents;
+  }
   private spatialIndex: SpatialIndex = new SpatialIndex();
   private techTree: TechTree;
   private system2: System2;
   private vocalActuations: VocalActuation[] = [];
 
   constructor(
+    private runId: string,
+    private branchId: string,
     private config: WorldConfig,
     private world: VoxelGrid,
     private clock: SimClock,
@@ -85,7 +90,6 @@ export class Orchestrator {
 
   public async tick(): Promise<void> {
     const tick = this.clock.getTick();
-    const branchId = "main";
     let positionsChanged = false;
 
     let totalDecisions = 0;
@@ -117,7 +121,7 @@ export class Orchestrator {
       if (bodyDelta.integrityDrive !== undefined) {
         MerkleLogger.log(
           tick,
-          branchId,
+          this.branchId,
           agent.id,
           "System1",
           "integrityDrive",
@@ -132,8 +136,8 @@ export class Orchestrator {
       if (reaction) {
         this.eventBus.emit({
           event_id: crypto.randomUUID(),
-          branch_id: branchId,
-          run_id: "default",
+          branch_id: this.branchId,
+          run_id: this.runId,
           tick,
           type: EventType.DECISION_MADE,
           agent_id: agent.id,
@@ -165,7 +169,7 @@ export class Orchestrator {
         agent,
         filteredPercept.primaryAttention,
         tick,
-        branchId,
+        this.branchId,
       );
 
       // 4e. Mood Tint
@@ -182,13 +186,13 @@ export class Orchestrator {
       );
 
       // 4g. Episodic retrieval (for System2 context)
-      const _recentMemories = EpisodicStore.retrieve(agent.id, branchId, 5);
+      const _recentMemories = EpisodicStore.retrieve(agent.id, this.branchId, 5);
 
       // 4h. Salience
       const event: SimEvent = {
         event_id: crypto.randomUUID(),
-        branch_id: branchId,
-        run_id: "default",
+        branch_id: this.branchId,
+        run_id: this.runId,
         tick,
         type: EventType.TICK,
         payload: { qualia: qualiaText },
@@ -206,8 +210,8 @@ export class Orchestrator {
             }) || positionsChanged;
           this.eventBus.emit({
             event_id: crypto.randomUUID(),
-            branch_id: branchId,
-            run_id: "default",
+            branch_id: this.branchId,
+            run_id: this.runId,
             tick,
             type: EventType.DECISION_MADE,
             agent_id: agent.id,
@@ -231,7 +235,7 @@ export class Orchestrator {
         totalDecisions++;
         pendingSystem2.push(
           this.system2
-            .think(agent, qualiaText, filteredPercept, this.config, tick, branchId)
+            .think(agent, qualiaText, filteredPercept, this.config, tick, this.branchId)
             .then((output) => {
               this.clock.resolvePendingMind();
 
@@ -244,8 +248,8 @@ export class Orchestrator {
                   }) || positionsChanged;
                 this.eventBus.emit({
                   event_id: crypto.randomUUID(),
-                  branch_id: branchId,
-                  run_id: "default",
+                  branch_id: this.branchId,
+                  run_id: this.runId,
                   tick,
                   type: EventType.DECISION_MADE,
                   agent_id: agent.id,
@@ -280,23 +284,30 @@ export class Orchestrator {
 
       // 4m. Episodic encode
       if (salience > SALIENCE_ENCODE_THRESHOLD) {
-        EpisodicStore.encode(agent.id, branchId, qualiaText, event, salience, this.config.memory);
+        EpisodicStore.encode(
+          agent.id,
+          this.branchId,
+          qualiaText,
+          event,
+          salience,
+          this.config.memory,
+        );
       }
 
       // 4n. Death observation tracking
       for (const other of filteredPercept.primaryAttention) {
         // Check for dead agents (no emotional field, low body temp, no movement)
         if (other.body.valence === 0 && other.body.arousal === 0 && other.body.fatigue >= 1.0) {
-          SemanticStore.trackDeathObservation(agent.id, branchId, "observed_agent_stillness");
+          SemanticStore.trackDeathObservation(agent.id, this.branchId, "observed_agent_stillness");
           SemanticStore.trackDeathObservation(
             agent.id,
-            branchId,
+            this.branchId,
             "observed_absent_emotional_field",
           );
           // Check body temperature for coldness
           const headTemp = other.body.bodyMap?.head?.temperature ?? 15;
           if (headTemp < 10) {
-            SemanticStore.trackDeathObservation(agent.id, branchId, "observed_cold_body");
+            SemanticStore.trackDeathObservation(agent.id, this.branchId, "observed_cold_body");
           }
         }
       }
@@ -334,7 +345,13 @@ export class Orchestrator {
             [],
           ).nearbyVoxels
         : [];
-      LanguageEmergence.processVocalActuation(va, listeners, nearbyVoxels, branchId, this.eventBus);
+      LanguageEmergence.processVocalActuation(
+        va,
+        listeners,
+        nearbyVoxels,
+        this.branchId,
+        this.eventBus,
+      );
     }
     this.vocalActuations = [];
 
@@ -344,12 +361,12 @@ export class Orchestrator {
     }
 
     // 10. Delta stream
-    DeltaStream.flushTick(branchId, tick, this.world.getDirtyVoxels());
+    DeltaStream.flushTick(this.branchId, tick, this.world.getDirtyVoxels());
     this.world.clearDirty();
 
     // 11. Decay
     if (tick % DECAY_ENGINE_INTERVAL_TICKS === 0) {
-      DecayEngine.tickAll(this.agents, branchId, this.config.memory, tick);
+      DecayEngine.tickAll(this.agents, this.branchId, this.config.memory, tick);
     }
 
     // 13. WebSocket broadcast — handled via EventBus (events are automatically dispatched)
@@ -359,7 +376,7 @@ export class Orchestrator {
       for (const agent of this.agents) {
         MerkleLogger.log(
           tick,
-          branchId,
+          this.branchId,
           agent.id,
           "Snapshot",
           "state",

@@ -1,4 +1,5 @@
 import { beforeEach, expect, test } from "bun:test";
+import type { System2 } from "../server/agents/system2";
 import { EventBus } from "../server/core/event-bus";
 import { Orchestrator } from "../server/core/orchestrator";
 import { SimClock } from "../server/core/sim-clock";
@@ -177,12 +178,14 @@ test("Orchestrator: applies MOVE decisions returned by System2", async () => {
   const world = new VoxelGrid(10, 10, 10);
   const clock = new SimClock();
   const orchestrator = new Orchestrator(
+    "run1",
+    "main",
     mockConfig,
     world,
     clock,
     new EventBus(),
     new PhysicsEngine(mockConfig.physics),
-    system2 as unknown as ConstructorParameters<typeof Orchestrator>[5],
+    system2 as unknown as System2,
   );
 
   orchestrator.addAgent(agent);
@@ -209,12 +212,14 @@ test("Orchestrator: uses behavior trees for wolf agents when System2 does not fi
   const world = new VoxelGrid(10, 10, 10);
   const clock = new SimClock();
   const orchestrator = new Orchestrator(
+    "run1",
+    "main",
     mockConfig,
     world,
     clock,
     new EventBus(),
     new PhysicsEngine(mockConfig.physics),
-    system2 as unknown as ConstructorParameters<typeof Orchestrator>[5],
+    system2 as unknown as System2,
   );
 
   orchestrator.addAgent(agent);

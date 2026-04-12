@@ -12,7 +12,7 @@ export class InterventionPipeline {
     intensity: number,
   ): { success: boolean; message: string } {
     const runtime = this.runSupervisor.getRuntime(runId);
-    if (!runtime || !runtime.orchestrator) {
+    if (!runtime?.orchestrator) {
       return { success: false, message: "Runtime not found" };
     }
 

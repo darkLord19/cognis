@@ -54,7 +54,13 @@ test("System2: shouldFire on integrity drive jump", () => {
 
   const percept = {} as FilteredPercept;
 
-  expect(system2.shouldFire(agent, bodyDelta, percept, mockWorldConfig)).toBe(true);
+  const originalRandom = Math.random;
+  Math.random = () => 1;
+  try {
+    expect(system2.shouldFire(agent, bodyDelta, percept, mockWorldConfig)).toBe(true);
+  } finally {
+    Math.random = originalRandom;
+  }
 });
 
 test("System2: shouldFire does not double-count absolute integrity values", () => {
@@ -70,5 +76,11 @@ test("System2: shouldFire does not double-count absolute integrity values", () =
 
   const percept = {} as FilteredPercept;
 
-  expect(system2.shouldFire(agent, bodyDelta, percept, mockWorldConfig)).toBe(false);
+  const originalRandom = Math.random;
+  Math.random = () => 1;
+  try {
+    expect(system2.shouldFire(agent, bodyDelta, percept, mockWorldConfig)).toBe(false);
+  } finally {
+    Math.random = originalRandom;
+  }
 });

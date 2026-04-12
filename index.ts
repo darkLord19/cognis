@@ -2,11 +2,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { setApiDependencies, startManagementApi } from "./server/api/management-api";
 import { Watcher } from "./server/api/watcher";
-import { bootstrapSimulation } from "./server/core/bootstrap";
-import { EventBus } from "./server/core/event-bus";
-import { RunContext } from "./server/core/run-context";
 import { RunManager } from "./server/core/run-manager";
-import { SimClock } from "./server/core/sim-clock";
+import { RunService } from "./server/core/run-service";
+import { RunSupervisor } from "./server/core/run-supervisor";
 import { LLMGateway } from "./server/llm/gateway";
 import { db } from "./server/persistence/database";
 import { SpeciesRegistry } from "./server/species/registry";
@@ -88,18 +86,11 @@ function loadConfig(nameOrPath: string): WorldConfig | null {
 }
 
 let watcher: Watcher | null = null;
+const runSupervisor = new RunSupervisor();
 
 async function shutdown() {
   console.log("\nShutting down...");
-
-  const ctx = RunContext.get();
-  if (ctx && ctx.status === "running") {
-    console.log("Pausing simulation...");
-    ctx.clock.pause();
-    const tick = ctx.clock.getTick();
-    RunManager.stopRun(ctx.runId, tick);
-    RunContext.updateStatus("stopped");
-  }
+  runSupervisor.shutdownAll();
 
   if (watcher) {
     watcher.stop();
@@ -119,15 +110,6 @@ const flags = parseArgs();
 
 console.log("=== Cognis Server ===\n");
 
-const eventBus = new EventBus();
-const clock = new SimClock(async (_tick) => {
-  const ctx = RunContext.get();
-  if (ctx) {
-    await ctx.orchestrator.tick();
-    const currentTick = ctx.clock.getTick();
-    RunManager.updateCurrentTick(ctx.runId, currentTick);
-  }
-});
 const gateway = new LLMGateway();
 
 const speciesRegistry = new SpeciesRegistry();
@@ -137,11 +119,18 @@ try {
   console.warn("No species data found — using defaults.");
 }
 
-const ws = new WebSocketServer(eventBus);
+const runService = new RunService({
+  runSupervisor,
+  gateway,
+  speciesRegistry,
+  database: db,
+});
+
+const ws = new WebSocketServer(runSupervisor);
 ws.start(flags.wsPort);
 
+setApiDependencies({ runService, runSupervisor });
 startManagementApi(flags.port);
-setApiDependencies({ eventBus, clock, gateway, speciesRegistry });
 
 if (flags.resume) {
   const run = RunManager.getRun(flags.resume);
@@ -151,39 +140,13 @@ if (flags.resume) {
   }
 
   console.log(`Resuming run: ${flags.resume}`);
-
-  const config = loadConfig("earth-default");
-  if (!config) {
-    console.error("Failed to load default config for resume");
-    process.exit(1);
+  const started = runService.startRun(flags.resume);
+  const runtime = runService.getRuntime(flags.resume);
+  if (flags.watch && runtime) {
+    watcher = new Watcher(runtime.eventBus, {}, () => runtime.agents.length);
+    console.log("Watcher mode enabled.");
   }
-
-  const { orchestrator, agents, world } = bootstrapSimulation(config, {
-    eventBus,
-    clock,
-    gateway,
-    speciesRegistry,
-    database: db,
-  });
-
-  RunContext.set({
-    runId: flags.resume,
-    branchId: "main",
-    config,
-    world,
-    orchestrator,
-    clock,
-    eventBus,
-    agents,
-    status: "running",
-  });
-
-  clock.start(
-    config.time || { elasticHeartbeat: false, maxHeartbeatWaitMs: 5000, tickDurationMs: 100 },
-  );
-  RunManager.updateRunStatus(flags.resume, "running");
-
-  console.log(`Simulation running. Tick: ${clock.getTick()}`);
+  console.log(`Simulation running. Tick: ${started.currentTick}`);
 } else if (flags.config || flags.configName) {
   const configSource = flags.config || flags.configName || "earth-default";
   console.log(`Loading config: ${configSource}`);
@@ -201,45 +164,23 @@ if (flags.resume) {
   if (existing) {
     console.log(`Run already exists: ${runId}`);
   } else {
-    RunManager.createRun(runId, config.meta.name, 0, config);
+    runService.createRun({
+      inlineConfig: config,
+      name: config.meta.name,
+      seed: config.meta.seed,
+    });
     console.log(`Created run: ${runId}`);
   }
 
-  const { orchestrator, agents, world } = bootstrapSimulation(config, {
-    eventBus,
-    clock,
-    gateway,
-    speciesRegistry,
-    database: db,
-  });
+  runService.startRun(runId);
+  const runtime = runService.getRuntime(runId);
 
-  RunContext.set({
-    runId,
-    branchId: "main",
-    config,
-    world,
-    orchestrator,
-    clock,
-    eventBus,
-    agents,
-    status: "running",
-  });
-
-  if (flags.watch) {
-    watcher = new Watcher(eventBus);
-  }
-
-  clock.start(
-    config.time || { elasticHeartbeat: false, maxHeartbeatWaitMs: 5000, tickDurationMs: 100 },
-  );
-  RunManager.updateRunStatus(runId, "running");
-
-  if (flags.watch) {
-    watcher = new Watcher(eventBus);
+  if (flags.watch && runtime) {
+    watcher = new Watcher(runtime.eventBus, {}, () => runtime.agents.length);
     console.log("Watcher mode enabled.");
   }
 
-  console.log(`Simulation running with ${agents.length} agents.`);
+  console.log(`Simulation running with ${runtime?.agents.length ?? 0} agents.`);
 } else {
   console.log("Server started in neutral state.");
   console.log("Use the Management API to create and start a run:");

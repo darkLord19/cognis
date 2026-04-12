@@ -11,11 +11,12 @@ import type { EventBus } from "./event-bus";
 import { Orchestrator } from "./orchestrator";
 import { RunManager } from "./run-manager";
 import type { RunSupervisor } from "./run-supervisor";
-import { RunStateStore } from "./run-state-store";
 import type { SimClock } from "./sim-clock";
 import { WorldConfigManager } from "./world-config-manager";
 
 type BootstrapDependencies = {
+  runId?: string;
+  branchId?: string;
   eventBus: EventBus;
   clock: SimClock;
   gateway: LLMGateway;
@@ -119,8 +120,8 @@ export function bootstrapSimulation(
   deps: BootstrapDependencies,
 ): BootstrapResult {
   const configHash = WorldConfigManager.hashWorldConfig(template).slice(0, 12);
-  const runId = `run-${template.meta.seed}-${configHash}`;
-  const branchId = "main";
+  const runId = deps.runId ?? `run-${template.meta.seed}-${configHash}`;
+  const branchId = deps.branchId ?? "main";
 
   const existingRun = RunManager.getRun(runId);
   if (!existingRun) {
@@ -154,8 +155,6 @@ export function bootstrapSimulation(
     agents: [],
     status: "created",
   });
-  RunStateStore.record(runId, "created", 0);
-
   const speciesPool = selectSpecies(config, deps.speciesRegistry);
   const agents = Array.from({ length: config.agents.initialCount }, (_, index) =>
     createAgent(speciesPool[index % speciesPool.length] as SpeciesConfig, index, branchId),

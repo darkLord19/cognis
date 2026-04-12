@@ -33,7 +33,7 @@ export class WebSocketServer {
           if (data.type === "subscribe") {
             ws.data.subscriptions.add(data.runId);
             const runtime = this.runSupervisor.getRuntime(data.runId);
-            if (runtime && runtime.orchestrator) {
+            if (runtime?.orchestrator) {
               ws.send(
                 JSON.stringify({
                   type: "snapshot",
