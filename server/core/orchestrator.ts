@@ -19,6 +19,7 @@ import { EmotionalField } from "../perception/emotional-field";
 import { FeelingResidueSystem } from "../perception/feeling-residue";
 import { SenseComputer } from "../perception/sense-computer";
 import { MerkleLogger } from "../persistence/merkle-logger";
+import { BehaviorTree } from "../species/behavior-tree";
 import { CircadianEngine } from "../world/circadian-engine";
 import { DeltaStream } from "../world/delta-stream";
 import { ElementEngine } from "../world/element-engine";
@@ -53,9 +54,39 @@ export class Orchestrator {
     this.spatialIndex.rebuildIndex(this.agents);
   }
 
+  private usesBehaviorTree(agent: AgentState): boolean {
+    return agent.speciesId === "wolf" || agent.speciesId === "deer";
+  }
+
+  private applyDecision(
+    agent: AgentState,
+    decision: { type: string; position: AgentState["position"] | undefined },
+  ): boolean {
+    agent.currentAction = decision.type as AgentState["currentAction"];
+
+    if (decision.type === "MOVE" && decision.position) {
+      agent.position = { ...decision.position };
+      return true;
+    }
+
+    if (decision.type === "MOVE") {
+      const goal = typeof agent.currentAction === "string" ? agent.currentAction : "MOVE";
+      const deltaX = goal === "MOVE" && agent.speciesId === "deer" ? -1 : 1;
+      agent.position = {
+        x: agent.position.x + deltaX,
+        y: agent.position.y,
+        z: agent.position.z,
+      };
+      return true;
+    }
+
+    return false;
+  }
+
   public async tick(): Promise<void> {
     const tick = this.clock.getTick();
     const branchId = "main";
+    let positionsChanged = false;
 
     // 1. Circadian
     const circadianState = CircadianEngine.tick(tick, this.world, this.config.circadian);
@@ -160,8 +191,26 @@ export class Orchestrator {
       };
       const salience = SalienceGate.computeSalience(event, agent, this.config.memory);
 
-      // 4i. System2
-      if (
+      // 4i. System2 / behaviour tree
+      if (this.usesBehaviorTree(agent)) {
+        const decision = BehaviorTree.tick(agent);
+        if (decision.type !== "IDLE") {
+          positionsChanged =
+            this.applyDecision(agent, {
+              type: decision.type,
+              position: decision.position,
+            }) || positionsChanged;
+          this.eventBus.emit({
+            event_id: crypto.randomUUID(),
+            branch_id: branchId,
+            run_id: "default",
+            tick,
+            type: EventType.DECISION_MADE,
+            agent_id: agent.id,
+            payload: { decision },
+          });
+        }
+      } else if (
         this.system2.shouldFire(
           agent,
           bodyDelta as Record<string, unknown>,
@@ -178,6 +227,11 @@ export class Orchestrator {
 
               // 4l. Apply decision / update position
               if (output.decision && output.decision.type !== "IDLE") {
+                positionsChanged =
+                  this.applyDecision(agent, {
+                    type: output.decision.type,
+                    position: output.decision.position,
+                  }) || positionsChanged;
                 this.eventBus.emit({
                   event_id: crypto.randomUUID(),
                   branch_id: branchId,
@@ -247,6 +301,10 @@ export class Orchestrator {
       if (vocal) {
         this.vocalActuations.push(vocal);
       }
+    }
+
+    if (positionsChanged) {
+      this.spatialIndex.rebuildIndex(this.agents);
     }
 
     // 5. Language
