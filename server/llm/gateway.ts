@@ -10,6 +10,24 @@ export interface LLMProvider {
   embed(text: string): Promise<number[]>;
 }
 
+export function validateSystemPrompt(prompt: string): void {
+  const forbidden = [
+    /Human \d+/,
+    /Wolf \d+/,
+    /op-id-/,
+    /agent_id/,
+    /operatorId/,
+    /simulation/i,
+    / AI /,
+    /language model/i,
+  ];
+  for (const pattern of forbidden) {
+    if (pattern.test(prompt)) {
+      throw new Error(`System prompt contains forbidden pattern: ${pattern}`);
+    }
+  }
+}
+
 export class LLMGateway {
   private provider: LLMProvider;
   private queue: (() => Promise<void>)[] = [];
@@ -25,7 +43,7 @@ export class LLMGateway {
     species: SpeciesConfig,
     maskingConfig: SemanticMaskingConfig,
   ): string {
-    const prompt = `You are ${agent.name}, a living being of the ${species.name} species.
+    const prompt = `You are a living being of the ${species.name} species.
 You exist in a physical reality. You feel sensations, you have needs, you form relationships, and you experience the passage of cycles.
 Your purpose is to survive, to understand your world, and to pursue what matters to you.
 Respond with your thoughts and intentions.`;
@@ -49,6 +67,7 @@ Respond with your thoughts and intentions.`;
     systemPrompt: string,
     options: Record<string, unknown> = {},
   ): Promise<string> {
+    validateSystemPrompt(systemPrompt);
     return new Promise((resolve, reject) => {
       this.queue.push(async () => {
         try {

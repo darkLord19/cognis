@@ -34,7 +34,6 @@ test("LLMGateway: system prompt generation uses masked labels", () => {
     maskingConfig,
   );
 
-  expect(prompt).toContain("Bob");
   expect(prompt).toContain("Human");
   expect(prompt).toContain("vital_deltas");
   expect(prompt).toContain("flux_inputs");
@@ -91,4 +90,11 @@ test("LLMGateway: queue concurrency is respected", async () => {
 
   // Max concurrent should be 5 per implementation
   expect(maxActiveCalls).toBeLessThanOrEqual(5);
+});
+
+test("LLMGateway: rejects forbidden system prompt patterns", async () => {
+  const gateway = new LLMGateway(new MockLLMGateway());
+  await expect(gateway.complete("agent_1", "Hello world", "You are Human 4")).rejects.toThrow(
+    /forbidden pattern/i,
+  );
 });

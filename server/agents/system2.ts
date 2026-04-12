@@ -13,6 +13,7 @@ import type {
 import type { LLMGateway } from "../llm/gateway";
 import { MerkleLogger } from "../persistence/merkle-logger";
 import type { SpeciesRegistry } from "../species/registry";
+import { resolveAgentReference } from "./qualia-processor";
 
 export class System2 {
   constructor(
@@ -60,7 +61,7 @@ export class System2 {
       tomContext = "\nOthers in your immediate attention:\n";
       for (const other of filteredPercept.primaryAttention) {
         const rel = agent.relationships.find((r) => r.targetAgentId === other.id);
-        const relLabel = rel && rel.affinity > 0.5 ? "familiar" : "stranger";
+        const reference = resolveAgentReference(other.id, agent);
 
         // Include behavioural patterns from relationship history
         let behaviourNote = "";
@@ -81,7 +82,7 @@ export class System2 {
                 ? " They seem distressed."
                 : " Their state is unclear.";
 
-        tomContext += `- ${other.name} (${relLabel}).${emotionNote}${behaviourNote}\n`;
+        tomContext += `- ${reference}.${emotionNote}${behaviourNote}\n`;
       }
     }
 

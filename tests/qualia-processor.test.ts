@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { QualiaProcessor } from "../server/agents/qualia-processor";
+import { QualiaProcessor, resolveAgentReference } from "../server/agents/qualia-processor";
 import type {
   AgentState,
   CircadianState,
@@ -227,4 +227,21 @@ test("QualiaProcessor: hunger rendering at mild and strong", () => {
       strongLower.includes("ravenous") ||
       strongLower.includes("claws"),
   ).toBe(true);
+});
+
+test("QualiaProcessor: resolveAgentReference uses relationship context, not names", () => {
+  const observingAgent = {
+    relationships: [
+      {
+        targetAgentId: "target-1",
+        affinity: 0.8,
+        trust: 0.7,
+        fear: 0.1,
+        significantEvents: ["shared food"],
+      },
+    ],
+  } as unknown as AgentState;
+
+  expect(resolveAgentReference("target-1", observingAgent)).toBe("someone you trust");
+  expect(resolveAgentReference("missing-target", observingAgent)).toBe("an unknown presence");
 });

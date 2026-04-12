@@ -11,7 +11,6 @@ import {
   LIGHT_LEVEL_LOW,
   MOOD_NEGATIVE_THRESHOLD,
   MOOD_POSITIVE_THRESHOLD,
-  RELATIONSHIP_TRUST_THRESHOLD,
   THIRST_MILD_THRESHOLD,
   THIRST_STRONG_THRESHOLD,
 } from "../../shared/constants";
@@ -266,6 +265,25 @@ function pickTemplate(category: TemplateCategory, tier: LexiconTier): string {
   return templates[Math.floor(Math.random() * templates.length)] ?? templates[0] ?? "";
 }
 
+export function resolveAgentReference(targetAgentId: string, observingAgent: AgentState): string {
+  const relationship = observingAgent.relationships?.find((r) => r.targetAgentId === targetAgentId);
+
+  if (!relationship) {
+    return "an unknown presence";
+  }
+
+  const affinity = relationship.affinity ?? 0;
+  const trust = relationship.trust ?? 0;
+  const interactionCount = relationship.significantEvents?.length ?? 0;
+
+  if (interactionCount === 0) return "a stranger";
+  if (affinity > 0.7 && trust > 0.6) return "someone you trust";
+  if (affinity > 0.4) return "a familiar presence";
+  if (affinity < -0.3) return "someone whose presence unsettles you";
+  if ((relationship.fear ?? 0) > 0.5) return "someone you fear";
+  return "a known presence nearby";
+}
+
 export const QualiaProcessor = {
   qualiaFor(
     agent: AgentState,
@@ -348,13 +366,7 @@ export const QualiaProcessor = {
     // Perception processing
     if (filteredPercept.primaryAttention.length > 0) {
       for (const a of filteredPercept.primaryAttention) {
-        // 2. Agent IDs -> relationship labels
-        const rel = agent.relationships.find((r) => r.targetAgentId === a.id);
-        if (rel && rel.affinity > RELATIONSHIP_TRUST_THRESHOLD) {
-          parts.push(pickTemplate("other_familiar", tier));
-        } else {
-          parts.push(pickTemplate("other_stranger", tier));
-        }
+        parts.push(`${resolveAgentReference(a.id, agent)} is nearby`);
       }
     }
 

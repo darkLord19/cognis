@@ -84,3 +84,49 @@ test("System2: shouldFire does not double-count absolute integrity values", () =
     Math.random = originalRandom;
   }
 });
+
+test("System2: think prompt does not leak other agent names or IDs", async () => {
+  let capturedPrompt = "";
+  const capturingProvider = {
+    completion: async (prompt: string) => {
+      capturedPrompt = prompt;
+      return `{"innerMonologue":"ok","decision":{"type":"IDLE"}}`;
+    },
+    embed: async () => [],
+  };
+  const gateway = new LLMGateway(capturingProvider);
+  const system2 = new System2(gateway);
+
+  const agent = {
+    id: "a1",
+    name: "Observer",
+    relationships: [
+      {
+        targetAgentId: "a2",
+        affinity: 0.5,
+        trust: 0.3,
+        fear: 0.1,
+        significantEvents: ["saw near river"],
+      },
+    ],
+    body: { integrityDrive: 0.1 },
+  } as unknown as AgentState;
+
+  const percept = {
+    primaryAttention: [
+      {
+        id: "a2",
+        name: "Human 4",
+        body: { arousal: 0.2, valence: 0.2 },
+      },
+    ],
+    peripheralAwareness: { count: 0 },
+    focusedVoxels: [],
+    ownBody: {},
+  } as unknown as FilteredPercept;
+
+  await system2.think(agent, "A familiar presence is nearby.", percept, mockWorldConfig, 10, "main");
+
+  expect(capturedPrompt).not.toContain("Human 4");
+  expect(capturedPrompt).not.toContain("a2");
+});
