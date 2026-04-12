@@ -7,8 +7,9 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitReturns": true,
     "exactOptionalPropertyTypes": true,
-    "lib": ["ESNext"],
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": ["bun-types"],
+    "jsx": "react-jsx",
     "paths": { "@shared/*": ["./shared/*"], "@server/*": ["./server/*"] }
   },
   "include": ["**/*.ts", "**/*.tsx"],

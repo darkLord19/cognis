@@ -1,7 +1,7 @@
 import { DEFAULT_CYCLE_LENGTH_TICKS, MAX_HEARTBEAT_WAIT_MS } from "../../shared/constants";
 import type { TimeConfig } from "../../shared/types";
 
-export type TickCallback = (tick: number) => void;
+export type TickCallback = (tick: number) => Promise<void> | void;
 
 export class SimClock {
   private tick = 0;
@@ -84,7 +84,7 @@ export class SimClock {
 
     this.tick++;
     if (this.onTick) {
-      this.onTick(this.tick);
+      await this.onTick(this.tick);
     }
   }
 
