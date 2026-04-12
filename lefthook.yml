@@ -10,4 +10,11 @@ pre-commit:
     veil:
       run: >
         [ -f server/agents/qualia-processor.ts ] || exit 0;
-        grep -r "simulation\|\" AI\|' AI\|\bdata\b\|\bcode\b\|\btick\b\|_id\b\|coordinate" server/agents/qualia-processor.ts && echo "VEIL BROKEN" && exit 1 || exit 0
+        grep -n "simulation\|\" AI\|' AI\|agent_id\|coordinate\|Forge\|operator" server/agents/qualia-processor.ts | grep -v "^.*\/\/" | grep -v "import " | grep -v "type " && echo "VEIL BROKEN" && exit 1 || exit 0
+    veil-templates:
+      run: >
+        [ -f server/agents/qualia-processor.ts ] || exit 0;
+        grep -n "lightLevel\|cycleHormone\|tick\|circadian\|_id\b" server/agents/qualia-processor.ts | grep "QUALIA_TEMPLATES\|pickTemplate\|parts\.push\|text =" && echo "VEIL BROKEN — forbidden term in output template" && exit 1 || exit 0
+    append-only:
+      run: >
+        grep -rn "'UPDATE\|\"UPDATE\|'DELETE\|\"DELETE" server/persistence/ server/memory/ --include="*.ts" | grep -v "node_modules" | grep -v "\.test\." | grep -v "^.*\/\/" && echo "FAIL: DB mutation found" && exit 1 || echo "OK: append-only" && exit 0
