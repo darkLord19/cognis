@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AgentState, AuditLogEntry, Finding, RunState } from "../shared/types";
 import { BodyMapViewer } from "./forge/BodyMapViewer";
-import { MerkleAuditInspector } from "./forge/MerkleAuditInspector";
+import { CreateRunList, RunControl } from "./forge/RunControl";
 import { type RunSummary, useStore } from "./store";
 
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
@@ -21,47 +21,6 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   return payload as T;
 }
 
-function Section({
-  title,
-  subtitle,
-  children,
-  className = "",
-}: {
-  title: string;
-  subtitle?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section className={`rounded-3xl border border-white/10 bg-slate-950/80 p-5 ${className}`}>
-      <div className="mb-4 flex items-end justify-between gap-4">
-        <div>
-          <h2 className="text-[11px] font-medium uppercase tracking-[0.3em] text-slate-400">
-            {title}
-          </h2>
-          {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
-        </div>
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="min-w-0 rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3">
-      <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">{label}</div>
-      <div className="mt-2 truncate font-mono text-sm text-slate-100">{value}</div>
-    </div>
-  );
-}
-
-function pillClass(active: boolean): string {
-  return active
-    ? "border-cyan-400/40 bg-cyan-400/10 text-cyan-100"
-    : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:bg-white/[0.06]";
-}
-
 export default function App() {
   const runs = useStore((state) => state.runs);
   const selectedRunId = useStore((state) => state.selectedRunId);
@@ -69,11 +28,8 @@ export default function App() {
   const agents = useStore((state) => state.agents);
   const auditEntries = useStore((state) => state.auditEntries);
   const findings = useStore((state) => state.findings);
-  const metrics = useStore((state) => state.metrics);
   const configs = useStore((state) => state.configs);
   const events = useStore((state) => state.events);
-  const glassRoomSession = useStore((state) => state.glassRoomSession);
-  const tripleBaseline = useStore((state) => state.tripleBaseline);
   const connectionStatus = useStore((state) => state.connectionStatus);
   const operatorMode = useStore((state) => state.operatorMode);
   const {
@@ -87,7 +43,6 @@ export default function App() {
     setConfigs,
     addEvent,
     setGlassRoomSession,
-    setTripleBaseline,
     setConnectionStatus,
     setOperatorMode,
   } = useStore();
@@ -102,14 +57,122 @@ export default function App() {
   } | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentState | null>(null);
   const [interventionType, setInterventionType] = useState("integrity_drive");
-  const [interventionIntensity, setInterventionIntensity] = useState(0.5);
-  const [interventionStatus, setInterventionStatus] = useState<string | null>(null);
+  const [interventionIntensity] = useState(0.5);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedRun = useMemo(
     () => runs.find((run) => run.id === selectedRunId) ?? null,
     [runs, selectedRunId],
   );
+
+  const feedItems = useMemo(() => {
+    const items: Array<{
+      id: string;
+      tick: number;
+      type: "event" | "finding" | "audit";
+      label: string;
+      content: string;
+      meta?: string | undefined;
+    }> = [];
+
+    const formatEventLabel = (type: string) => {
+      return type.replace(/_/g, " ").toUpperCase();
+    };
+
+    const formatEventContent = (type: string, payload: Record<string, unknown> | undefined) => {
+      if (!payload) return "";
+
+      const p = payload as Record<string, string | number | undefined>;
+
+      switch (type) {
+        case "utterance":
+          return `"${p.text}"`;
+        case "tech_discovered":
+          return `Invention of ${(p.techId as string)?.replace(/_/g, " ")}`;
+        case "agent_born":
+          return `New life detected: ${p.name || "Unnamed"}`;
+        case "agent_died":
+          return `Host expiration: ${p.reason || "Unknown causes"}`;
+        case "memory_encoded":
+          return `New cognitive imprint: ${(p.qualia as string)?.substring(0, 50)}...`;
+        case "proto_word_coined":
+          return `Linguistic emergence: "${p.word}" for ${p.meaning}`;
+        case "intervention_applied":
+          return `External influence: ${p.type} at ${Math.round((p.intensity as number) * 100)}%`;
+        case "glass_room_entered":
+          return "Diagnostic isolation initiated";
+        case "glass_room_exited":
+          return "Diagnostic isolation terminated";
+        default:
+          return JSON.stringify(payload).substring(0, 100);
+      }
+    };
+
+    for (const rawEvent of events) {
+      if (typeof rawEvent !== "object" || rawEvent === null) continue;
+
+      const wrapper = rawEvent as {
+        type: string;
+        event?: {
+          type: string;
+          event_id?: string;
+          tick?: number;
+          agent_id?: string;
+          payload?: Record<string, unknown>;
+        };
+        agent?: unknown;
+      };
+
+      // Handle wrapped simulation events
+      if (wrapper.type === "event" && wrapper.event) {
+        const e = wrapper.event;
+        const noisyTypes = ["tick", "voxel_changed", "element_spread", "circadian_phase_changed"];
+        if (noisyTypes.includes(e.type)) continue;
+
+        // Filter by selected agent if applicable
+        if (selectedAgentId && e.agent_id !== selectedAgentId) continue;
+
+        items.push({
+          id: e.event_id || Math.random().toString(),
+          tick: e.tick || 0,
+          type: "event",
+          label: formatEventLabel(e.type),
+          content: formatEventContent(e.type, e.payload),
+          meta: e.agent_id,
+        });
+      }
+    }
+
+    // Findings are global, but we filter them if an agent is selected to keep the feed clean
+    if (!selectedAgentId) {
+      for (const finding of findings) {
+        items.push({
+          id: finding.id,
+          tick: finding.tick,
+          type: "finding",
+          label: "EMERGENCE",
+          content: finding.description,
+          meta: finding.phenomenon,
+        });
+      }
+    }
+
+    for (const entry of auditEntries.slice(-50)) {
+      // Filter by selected agent if applicable
+      if (selectedAgentId && entry.agent_id !== selectedAgentId) continue;
+
+      items.push({
+        id: String(entry.id),
+        tick: entry.tick,
+        type: "audit",
+        label: "AUDIT",
+        content: `${entry.field}: ${entry.old_value || "null"} -> ${entry.new_value || "null"}`,
+        meta: entry.agent_id || "System",
+      });
+    }
+
+    return items.sort((a, b) => b.tick - a.tick || 0).slice(0, 100);
+  }, [events, findings, auditEntries, selectedAgentId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -256,24 +319,6 @@ export default function App() {
     setSelectedAgent(agents.find((agent) => agent.id === selectedAgentId) ?? agents[0] ?? null);
   }, [agents, selectedAgentId]);
 
-  async function createTripleBaseline() {
-    if (!selectedRun) return;
-
-    try {
-      const result = await fetchJson<{
-        seed: number;
-        runs: Array<{ baseline: "A" | "B" | "C"; id: string }>;
-      }>("/triple-baseline", {
-        method: "POST",
-        body: JSON.stringify({ config: selectedRun.name, seed: selectedRun.startTick }),
-      });
-      setTripleBaseline(result);
-      setErrorMessage(null);
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Failed to create triple baseline");
-    }
-  }
-
   async function toggleGlassRoom(enable: boolean) {
     if (!selectedRunId || !selectedAgent) return;
 
@@ -300,411 +345,335 @@ export default function App() {
     if (!selectedRunId || !selectedAgent) return;
 
     try {
-      const result = await fetchJson<Record<string, unknown>>(
-        `/runs/${selectedRunId}/interventions`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            agentId: selectedAgent.id,
-            type: interventionType,
-            intensity: interventionIntensity,
-          }),
-        },
-      );
-      setInterventionStatus(JSON.stringify(result));
+      await fetchJson<Record<string, unknown>>(`/runs/${selectedRunId}/interventions`, {
+        method: "POST",
+        body: JSON.stringify({
+          agentId: selectedAgent.id,
+          type: interventionType,
+          intensity: interventionIntensity,
+        }),
+      });
       setErrorMessage(null);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "Intervention failed");
     }
   }
 
+  async function handleStart(runId: string) {
+    try {
+      await fetchJson(`/runs/${runId}/start`, { method: "POST" });
+      const runsPayload = await fetchJson<{ runs: RunSummary[] }>("/runs");
+      setRuns(runsPayload.runs);
+      setErrorMessage(null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to start run");
+    }
+  }
+
+  async function handlePause(runId: string) {
+    try {
+      await fetchJson(`/runs/${runId}/pause`, { method: "POST" });
+      const runsPayload = await fetchJson<{ runs: RunSummary[] }>("/runs");
+      setRuns(runsPayload.runs);
+      setErrorMessage(null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to pause run");
+    }
+  }
+
+  async function handleStop(runId: string) {
+    try {
+      await fetchJson(`/runs/${runId}/stop`, { method: "POST" });
+      const runsPayload = await fetchJson<{ runs: RunSummary[] }>("/runs");
+      setRuns(runsPayload.runs);
+      setErrorMessage(null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to stop run");
+    }
+  }
+
+  async function handleCreate(config: string) {
+    try {
+      const run = await fetchJson<{ id: string }>("/runs", {
+        method: "POST",
+        body: JSON.stringify({ config }),
+      });
+      const runsPayload = await fetchJson<{ runs: RunSummary[] }>("/runs");
+      setRuns(runsPayload.runs);
+      selectRun(run.id);
+      setErrorMessage(null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Failed to create run");
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(14,165,233,0.14),_transparent_28%),linear-gradient(180deg,#020617_0%,#0f172a_55%,#020617_100%)] text-slate-100">
-      <div className="mx-auto flex min-h-screen max-w-[1800px] flex-col gap-4 px-4 py-4 md:px-6">
-        <header className="rounded-3xl border border-white/10 bg-slate-950/70 px-5 py-4 backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.45em] text-cyan-200/70">
-                Cognis Forge
-              </div>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                Operator console for runs, audits, and Glass Room sessions
-              </h1>
-              <p className="mt-2 max-w-3xl text-sm text-slate-400">
-                A live control surface for the current run, derived metrics, research findings, and
-                intervention workflows.
-              </p>
+    <div className="flex h-screen flex-col bg-[#02040a] text-slate-200 selection:bg-amber-500/30 font-light">
+      {/* GLOBAL HEADER: DELOS STYLE */}
+      <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/[0.03] bg-black/40 px-8 backdrop-blur-2xl">
+        <div className="flex items-center gap-8">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-amber-200/70">
+              Cognis Project
+            </span>
+            <span className="text-[9px] font-medium tracking-[0.2em] text-slate-500 uppercase">
+              Host Supervision Console
+            </span>
+          </div>
+          <div className="h-4 w-px bg-white/10" />
+          <div className="flex items-center gap-6 text-[11px] tracking-wider">
+            <div className="flex items-center gap-2">
+              <div
+                className={`h-1 w-1 rounded-full ${connectionStatus === "live" ? "bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.4)]" : "bg-slate-700"}`}
+              />
+              <span className="font-medium text-slate-400 uppercase tracking-widest">
+                {connectionStatus}
+              </span>
             </div>
-            <div className="grid gap-2 text-sm md:grid-cols-3">
-              <Stat label="Connection" value={connectionStatus} />
-              <Stat label="Selected run" value={selectedRun?.name ?? "None"} />
-              <Stat label="Selected agent" value={selectedAgent?.name ?? "None"} />
+            {selectedRunSummary && (
+              <div className="flex items-center gap-6 border-l border-white/5 pl-6">
+                <span className="text-slate-500 uppercase tracking-widest">
+                  Sector: <span className="text-slate-200">{selectedRunSummary.name}</span>
+                </span>
+                <span className="text-slate-500 uppercase tracking-widest">
+                  Cycle:{" "}
+                  <span className="font-mono text-amber-200/80">
+                    {selectedRunSummary.currentTick}
+                  </span>
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center gap-6">
+          <RunControl
+            selectedRun={selectedRun}
+            onStart={handleStart}
+            onPause={handlePause}
+            onStop={handleStop}
+          />
+          <button
+            type="button"
+            className={`flex h-8 items-center gap-2 rounded-full border border-white/10 px-5 text-[10px] font-bold uppercase tracking-[0.2em] transition-all ${operatorMode ? "bg-amber-400/10 text-amber-200 border-amber-400/30" : "bg-white/5 text-slate-500"}`}
+            onClick={() => setOperatorMode(!operatorMode)}
+          >
+            {operatorMode ? "Admin Access" : "Restricted"}
+          </button>
+        </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* LEFT SIDEBAR: THE MAP */}
+        <aside className="flex w-72 flex-col border-r border-white/[0.03] bg-black/20">
+          <div className="flex-1 overflow-y-auto p-6 space-y-10">
+            <div>
+              <h3 className="mb-4 px-2 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">
+                Simulations
+              </h3>
+              <div className="space-y-1">
+                {runs.map((run) => (
+                  <button
+                    key={run.id}
+                    type="button"
+                    onClick={() => selectRun(run.id)}
+                    className={`flex w-full flex-col gap-1 rounded-xl px-3 py-3 text-left transition-all ${run.id === selectedRunId ? "bg-white/5 text-white ring-1 ring-white/10" : "text-slate-500 hover:text-slate-300"}`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-[11px] tracking-wide truncate">
+                        {run.name}
+                      </span>
+                      <span className="font-mono text-[8px] opacity-40 uppercase">
+                        {run.status}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <h3 className="mb-4 px-2 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">
+                Initialize
+              </h3>
+              <CreateRunList configs={configs} onCreate={handleCreate} />
+            </div>
+
+            <div>
+              <h3 className="mb-4 px-2 text-[9px] font-bold uppercase tracking-[0.3em] text-slate-600">
+                Active Hosts ({agents.length})
+              </h3>
+              <div className="space-y-1">
+                {agents.map((agent) => (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    onClick={() => selectAgent(agent.id)}
+                    className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left transition-all ${agent.id === selectedAgentId ? "bg-amber-400/5 text-amber-100 ring-1 ring-amber-400/20" : "text-slate-500 hover:text-slate-300"}`}
+                  >
+                    <span className="text-[11px] tracking-wide truncate">{agent.name}</span>
+                    <span className="text-[9px] font-mono opacity-30 uppercase">
+                      {agent.currentAction}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-          {errorMessage ? (
-            <div className="mt-4 rounded-2xl border border-rose-400/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-              {errorMessage}
+        </aside>
+
+        {/* MAIN AREA: NARRATIVE LEDGER */}
+        <main className="flex flex-1 flex-col bg-black/10">
+          <div className="flex items-center justify-between border-b border-white/[0.03] bg-white/[0.01] px-8 py-4">
+            <h2 className="text-[10px] font-bold uppercase tracking-[0.4em] text-slate-500">
+              Narrative Ledger
+            </h2>
+            <div className="flex gap-6 text-[9px] text-slate-600 uppercase tracking-[0.2em] font-medium">
+              <span>{findings.length} Emergence</span>
+              <span>{events.length} Data Points</span>
             </div>
-          ) : null}
-        </header>
+          </div>
 
-        <main className="grid flex-1 gap-4 xl:grid-cols-[280px_minmax(0,1.5fr)_420px]">
-          <aside className="flex flex-col gap-4">
-            <Section
-              title="Runs"
-              subtitle="Select a live or persisted run to inspect."
-              className="sticky top-4"
-            >
-              <div className="space-y-2">
-                {runs.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/10 px-3 py-4 text-sm text-slate-500">
-                    No runs loaded.
-                  </div>
-                ) : (
-                  runs.map((run) => (
-                    <button
-                      key={run.id}
-                      type="button"
-                      onClick={() => selectRun(run.id)}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${pillClass(
-                        run.id === selectedRunId,
-                      )}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate font-medium text-white">{run.name}</span>
-                        <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-slate-400">
-                          {run.status}
-                        </span>
-                      </div>
-                      <div className="mt-1 flex items-center justify-between text-[11px] text-slate-400">
-                        <span>{run.id}</span>
-                        <span>Tick {run.currentTick}</span>
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </Section>
-
-            <Section title="Runtime" subtitle="The currently selected run summary.">
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <Stat label="Status" value={selectedRunSummary?.status ?? "—"} />
-                <Stat label="Tick" value={selectedRunSummary?.currentTick ?? "—"} />
-                <Stat label="Started" value={selectedRunSummary?.startTick ?? "—"} />
-                <Stat label="Configs" value={configs.length} />
-              </div>
-            </Section>
-
-            <Section title="Research" subtitle="Triple-baseline orchestration and comparisons.">
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  className="w-full rounded-2xl border border-cyan-400/30 bg-cyan-400/10 px-4 py-3 text-sm text-cyan-100 transition-colors hover:bg-cyan-400/15"
-                  onClick={createTripleBaseline}
-                  disabled={!selectedRun}
-                >
-                  Launch triple baseline
-                </button>
-                {tripleBaseline ? (
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 text-sm text-slate-300">
-                    <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
-                      Latest seed
-                    </div>
-                    <div className="mt-1 font-mono">{tripleBaseline.seed}</div>
-                    <div className="mt-3 grid gap-2">
-                      {tripleBaseline.runs.map((run) => (
-                        <div key={run.baseline} className="flex items-center justify-between">
-                          <span className="text-slate-400">Config {run.baseline}</span>
-                          <span className="font-mono text-xs">{run.id}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </Section>
-          </aside>
-
-          <section className="flex flex-col gap-4">
-            <Section
-              title="World"
-              subtitle="Current run overview, live tape, and the most recent websocket events."
-            >
-              <div className="grid gap-3 md:grid-cols-4">
-                <Stat label="Run" value={selectedRunSummary?.name ?? "No run selected"} />
-                <Stat label="Agents" value={agents.length} />
-                <Stat label="Findings" value={findings.length} />
-                <Stat label="Audit" value={auditEntries.length} />
-              </div>
-              <div className="mt-4 rounded-3xl border border-white/8 bg-gradient-to-br from-cyan-400/10 via-transparent to-transparent p-5">
-                <div className="text-[11px] uppercase tracking-[0.28em] text-slate-500">
-                  Live tape
-                </div>
-                <div className="mt-3 space-y-2 font-mono text-[12px] text-slate-200">
-                  {events.slice(-8).map((event, index) => (
-                    <div
-                      key={
-                        typeof event === "object" && event && "event_id" in event
-                          ? String((event as { event_id?: string }).event_id)
-                          : JSON.stringify(event)
-                      }
-                      className="flex items-center justify-between border-b border-white/5 pb-1"
-                    >
-                      <span className="truncate">
-                        {typeof event === "object" && event && "type" in event
-                          ? String((event as { type?: string }).type)
-                          : "event"}
-                      </span>
-                      <span className="text-slate-500">{index + 1}</span>
-                    </div>
-                  ))}
-                  {events.length === 0 ? (
-                    <div className="text-slate-500">No websocket events yet.</div>
-                  ) : null}
-                </div>
-              </div>
-            </Section>
-
-            <div className="grid gap-4 lg:grid-cols-2">
-              <Section
-                title="Agent Inspector"
-                subtitle="Inspect the selected agent and Glass Room status."
-              >
-                {selectedAgent ? (
-                  <div className="space-y-4">
-                    <div className="grid gap-2 sm:grid-cols-2">
-                      <Stat label="Agent" value={selectedAgent.name} />
-                      <Stat label="Species" value={selectedAgent.speciesId} />
-                      <Stat label="Action" value={selectedAgent.currentAction} />
-                      <Stat label="Will score" value={selectedAgent.willScore.toFixed(2)} />
-                    </div>
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 text-sm text-slate-300">
-                      <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
-                        Inner monologue
-                      </div>
-                      <p className="mt-2 leading-6">{selectedAgent.innerMonologue}</p>
-                    </div>
-                    <BodyMapViewer bodyMap={selectedAgent.body.bodyMap} />
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-white/10 px-4 py-8 text-sm text-slate-500">
-                    Select an agent to inspect body state and monologue.
-                  </div>
-                )}
-              </Section>
-
-              <Section
-                title="Glass Room"
-                subtitle="Enter or exit the selected agent from the Glass Room."
-              >
-                <div className="space-y-3">
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <Stat label="Session" value={glassRoomSession ? "Active" : "Idle"} />
-                    <Stat label="Selected" value={selectedAgent?.id ?? "None"} />
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-100 transition-colors hover:bg-emerald-400/15 disabled:opacity-50"
-                      onClick={() => toggleGlassRoom(true)}
-                      disabled={!selectedAgent}
-                    >
-                      Enter Glass Room
-                    </button>
-                    <button
-                      type="button"
-                      className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-200 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
-                      onClick={() => toggleGlassRoom(false)}
-                      disabled={!selectedAgent}
-                    >
-                      Exit Glass Room
-                    </button>
-                    <button
-                      type="button"
-                      className={`rounded-full border px-4 py-2 text-sm transition-colors ${pillClass(operatorMode)}`}
-                      onClick={() => setOperatorMode(!operatorMode)}
-                    >
-                      Operator mode {operatorMode ? "on" : "off"}
-                    </button>
-                  </div>
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 text-sm text-slate-300">
-                    <div className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
-                      Current session
-                    </div>
-                    <div className="mt-2 font-mono text-xs">
-                      {glassRoomSession
-                        ? `${glassRoomSession.runId} / ${glassRoomSession.agentId} @ ${glassRoomSession.startTick}`
-                        : "No active session"}
-                    </div>
-                  </div>
-                </div>
-              </Section>
-            </div>
-
-            <div className="grid gap-4 xl:grid-cols-2">
-              <Section
-                title="Findings"
-                subtitle="Persisted research observations for the selected branch."
-              >
-                <div className="space-y-2">
-                  {findings.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-white/10 px-4 py-6 text-sm text-slate-500">
-                      No findings recorded for this run.
-                    </div>
-                  ) : (
-                    findings.map((finding) => (
-                      <div
-                        key={finding.id}
-                        className="rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="font-medium text-slate-100">{finding.phenomenon}</span>
-                          <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-slate-500">
-                            tick {finding.tick}
-                          </span>
-                        </div>
-                        <p className="mt-2 text-sm leading-6 text-slate-300">
-                          {finding.description}
-                        </p>
-                        {finding.interpretation ? (
-                          <div className="mt-2 text-[10px] uppercase tracking-[0.28em] text-cyan-200">
-                            {finding.interpretation}
-                          </div>
-                        ) : null}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </Section>
-
-              <Section
-                title="Interventions"
-                subtitle="Apply a targeted intervention to the selected agent."
-              >
-                <div className="grid gap-3">
-                  <label className="grid gap-1 text-sm text-slate-300">
-                    <span className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
-                      Type
-                    </span>
-                    <input
-                      value={interventionType}
-                      onChange={(event) => setInterventionType(event.target.value)}
-                      className="rounded-2xl border border-white/10 bg-slate-900/80 px-4 py-3 text-slate-100 outline-none ring-0 placeholder:text-slate-600"
-                      placeholder="integrity_drive"
-                    />
-                  </label>
-                  <label className="grid gap-1 text-sm text-slate-300">
-                    <span className="text-[10px] uppercase tracking-[0.28em] text-slate-500">
-                      Intensity
-                    </span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={interventionIntensity}
-                      onChange={(event) => setInterventionIntensity(Number(event.target.value))}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    className="rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-100 transition-colors hover:bg-rose-400/15 disabled:opacity-50"
-                    onClick={applyIntervention}
-                    disabled={!selectedAgent}
+          <div className="flex-1 overflow-y-auto scroll-smooth">
+            <div className="mx-auto max-w-3xl space-y-px p-8">
+              {feedItems.map((item) => (
+                <div key={item.id} className="group relative flex gap-8 pb-8 last:pb-0">
+                  <div className="absolute left-3 top-0 h-full w-px bg-white/[0.03] group-last:h-4" />
+                  <div
+                    className={`relative z-10 flex h-6 w-6 shrink-0 items-center justify-center rounded-sm border border-white/10 bg-slate-950 text-[9px] font-mono ${item.type === "finding" ? "border-amber-400/50 text-amber-200" : item.type === "audit" ? "border-slate-400/50 text-slate-300" : "text-slate-600"}`}
                   >
-                    Apply intervention
-                  </button>
-                  {interventionStatus ? (
-                    <pre className="overflow-x-auto rounded-2xl border border-white/8 bg-slate-900/80 p-3 text-[11px] leading-5 text-slate-300">
-                      {interventionStatus}
-                    </pre>
-                  ) : null}
-                </div>
-              </Section>
-            </div>
-          </section>
-
-          <aside className="flex flex-col gap-4">
-            <Section
-              title="Audit"
-              subtitle="Latest Merkle entries for the selected run."
-              className="sticky top-4"
-            >
-              <MerkleAuditInspector
-                entries={auditEntries}
-                onVerify={async () => {
-                  if (!selectedRunId) return;
-                  try {
-                    await fetchJson(`/runs/${selectedRunId}/audit/verify`, { method: "POST" });
-                    setErrorMessage(null);
-                  } catch (error) {
-                    setErrorMessage(error instanceof Error ? error.message : "Audit verify failed");
-                  }
-                }}
-              />
-            </Section>
-
-            <Section title="Agents" subtitle="Switch the focused agent.">
-              <div className="space-y-2">
-                {agents.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/10 px-3 py-4 text-sm text-slate-500">
-                    No agents loaded.
+                    {item.tick}
                   </div>
-                ) : (
-                  agents.map((agent) => (
-                    <button
-                      key={agent.id}
-                      type="button"
-                      onClick={() => selectAgent(agent.id)}
-                      className={`w-full rounded-2xl border px-4 py-3 text-left transition-colors ${pillClass(
-                        agent.id === selectedAgentId,
-                      )}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate font-medium text-white">{agent.name}</span>
-                        <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-slate-400">
-                          {agent.currentAction}
+                  <div className="flex-1 pt-0.5">
+                    <div className="flex items-center gap-4">
+                      <span
+                        className={`text-[9px] font-bold uppercase tracking-[0.3em] ${item.type === "finding" ? "text-amber-200/70" : item.type === "audit" ? "text-slate-400" : "text-slate-600"}`}
+                      >
+                        {item.label}
+                      </span>
+                      {item.meta && (
+                        <span className="text-[9px] text-slate-700 font-mono tracking-wider truncate uppercase">
+                          {item.meta}
                         </span>
-                      </div>
-                      <div className="mt-1 text-[11px] text-slate-400">
-                        {agent.speciesId} · will {agent.willScore.toFixed(2)}
-                      </div>
-                    </button>
-                  ))
-                )}
-              </div>
-            </Section>
-
-            <Section title="Metrics" subtitle="Live run metrics from the management API.">
-              <div className="space-y-2">
-                {metrics.length === 0 ? (
-                  <div className="rounded-2xl border border-dashed border-white/10 px-3 py-4 text-sm text-slate-500">
-                    No metrics loaded.
-                  </div>
-                ) : (
-                  metrics.map((metric) => (
-                    <div
-                      key={metric.runId}
-                      className="rounded-2xl border border-white/8 bg-white/[0.02] px-4 py-3 text-sm"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-slate-100">{metric.runId}</span>
-                        <span className="font-mono text-[10px] uppercase tracking-[0.24em] text-slate-500">
-                          {metric.status}
-                        </span>
-                      </div>
-                      <div className="mt-2 grid grid-cols-2 gap-2 text-slate-400">
-                        <span>Tick {metric.tick}</span>
-                        <span>{metric.agentCount} agents</span>
-                      </div>
+                      )}
                     </div>
-                  ))
-                )}
-              </div>
-            </Section>
-          </aside>
+                    <p
+                      className={`mt-3 text-[13px] leading-relaxed tracking-wide ${item.type === "finding" ? "text-slate-200 font-normal" : "text-slate-500"}`}
+                    >
+                      {item.content}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {feedItems.length === 0 && (
+                <div className="flex h-64 items-center justify-center text-slate-700 uppercase tracking-[0.3em] text-[10px]">
+                  Awaiting Host Activity...
+                </div>
+              )}
+            </div>
+          </div>
         </main>
+
+        {/* RIGHT SIDEBAR: THE SUBJECT */}
+        <aside className="flex w-[400px] flex-col border-l border-white/[0.03] bg-black/20">
+          {selectedAgent ? (
+            <div className="flex-1 overflow-y-auto p-8 space-y-12">
+              <header>
+                <div className="text-[9px] font-bold uppercase tracking-[0.4em] text-amber-200/60">
+                  Host Profile
+                </div>
+                <h2 className="mt-3 text-3xl font-light text-white tracking-tight">
+                  {selectedAgent.name}
+                </h2>
+                <div className="mt-4 flex gap-4 text-[10px] text-slate-500 uppercase tracking-[0.2em] font-medium">
+                  <span>{selectedAgent.speciesId}</span>
+                  <span className="opacity-20">|</span>
+                  <span>Integrity: {selectedAgent.willScore.toFixed(2)}</span>
+                </div>
+              </header>
+
+              <div className="space-y-5">
+                <div className="text-[9px] font-bold uppercase tracking-[0.4em] text-slate-600">
+                  Cognitive Stream
+                </div>
+                <div className="rounded-2xl border border-white/[0.03] bg-white/[0.02] p-6 text-[14px] leading-relaxed text-slate-400 font-light italic">
+                  "{selectedAgent.innerMonologue}"
+                </div>
+              </div>
+
+              <div className="space-y-5">
+                <div className="text-[9px] font-bold uppercase tracking-[0.4em] text-slate-600">
+                  Biometric Map
+                </div>
+                <div className="rounded-3xl border border-white/[0.03] bg-white/[0.01] p-2">
+                  <BodyMapViewer bodyMap={selectedAgent.body.bodyMap} />
+                </div>
+              </div>
+
+              {operatorMode && (
+                <div className="space-y-10 pt-8 border-t border-white/[0.05]">
+                  <div className="space-y-4">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.4em] text-rose-500/70">
+                      Subconscious Intervention
+                    </div>
+                    <div className="grid gap-3">
+                      <input
+                        value={interventionType}
+                        onChange={(e) => setInterventionType(e.target.value)}
+                        className="rounded-xl border border-white/5 bg-white/[0.02] px-4 py-2.5 text-[11px] outline-none focus:border-amber-400/30 transition-colors"
+                        placeholder="Incept Concept..."
+                      />
+                      <button
+                        type="button"
+                        onClick={applyIntervention}
+                        className="rounded-xl bg-rose-500/5 border border-rose-500/20 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] text-rose-400 hover:bg-rose-500/10 transition-colors"
+                      >
+                        Adjust Drive
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="text-[9px] font-bold uppercase tracking-[0.4em] text-emerald-500/70">
+                      Diagnostic Environment
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleGlassRoom(true)}
+                        className="flex-1 rounded-xl bg-emerald-500/5 border border-emerald-500/20 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                      >
+                        Enter
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => toggleGlassRoom(false)}
+                        className="flex-1 rounded-xl border border-white/5 px-4 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500 hover:bg-white/5 transition-colors"
+                      >
+                        Exit
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center p-12 text-center">
+              <div className="text-[10px] uppercase tracking-[0.5em] text-slate-700 font-bold">
+                Select Subject
+              </div>
+              <div className="mt-4 h-px w-8 bg-slate-800" />
+            </div>
+          )}
+        </aside>
       </div>
+
+      {/* SYSTEM NOTIFICATIONS */}
+      {errorMessage && (
+        <div className="fixed bottom-8 left-1/2 z-50 -translate-x-1/2 rounded-full border border-rose-500/30 bg-[#1a0505] px-8 py-3 text-[10px] font-bold uppercase tracking-[0.2em] text-rose-300 shadow-2xl backdrop-blur-xl ring-1 ring-rose-500/20">
+          Alert: {errorMessage}
+        </div>
+      )}
     </div>
   );
 }

@@ -3,8 +3,17 @@
   "module": "index.ts",
   "type": "module",
   "private": true,
+  "scripts": {
+    "dev": "bunx concurrently \"bun run web\" \"bun run server\"",
+    "web": "vite",
+    "server": "bun run index.ts",
+    "test": "bun test",
+    "lint": "biome check .",
+    "typecheck": "bunx tsc --noEmit"
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.4.11",
+    "@tailwindcss/vite": "4.2.2",
     "@types/bun": "latest",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
