@@ -444,6 +444,8 @@ export class Orchestrator {
         nearbyVoxels,
         this.branchId,
         this.eventBus,
+        this.runId,
+        tick,
       );
     }
     this.vocalActuations = [];

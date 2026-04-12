@@ -286,7 +286,9 @@ export class RunService {
       latest?.status === "paused" || latest?.status === "stopped" ? "resuming" : "starting";
     RunStateStore.record(runId, initialStatus, resumeTick);
 
-    const eventBus = new EventBus();
+    const eventBus = new EventBus((events) => {
+      this.deps.database.insertEvents(events);
+    });
     const clock = new SimClock(async () => {
       const activeRuntime = this.deps.runSupervisor.getRuntime(runId);
       if (activeRuntime?.orchestrator) {

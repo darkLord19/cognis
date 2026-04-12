@@ -26,6 +26,8 @@ function recordCoOccurrence(
   referent: string,
   branchId: string,
   eventBus: EventBus,
+  runId: string,
+  tick: number,
 ): void {
   const key = `${agentId}:${token}`;
   let map = coOccurrences.get(key);
@@ -41,8 +43,8 @@ function recordCoOccurrence(
     eventBus.emit({
       event_id: crypto.randomUUID(),
       branch_id: branchId,
-      run_id: "default",
-      tick: Date.now(),
+      run_id: runId,
+      tick,
       type: EventType.PROTO_WORD_COINED,
       agent_id: agentId,
       payload: { token, referent, count },
@@ -64,8 +66,8 @@ function recordCoOccurrence(
       eventBus.emit({
         event_id: crypto.randomUUID(),
         branch_id: branchId,
-        run_id: "default",
-        tick: Date.now(),
+        run_id: runId,
+        tick,
         type: EventType.WORD_ENTERED_LEXICON,
         payload: {
           token,
@@ -85,6 +87,8 @@ export const LanguageEmergence = {
     nearbyVoxels: Voxel[],
     branchId: string,
     eventBus: EventBus,
+    runId = "default",
+    tick = actuation.tick,
   ): void {
     for (const listener of listeners) {
       const referents = nearbyVoxels
@@ -92,7 +96,15 @@ export const LanguageEmergence = {
         .map((v) => v.material);
 
       for (const referent of referents) {
-        recordCoOccurrence(listener.id, actuation.soundToken, referent, branchId, eventBus);
+        recordCoOccurrence(
+          listener.id,
+          actuation.soundToken,
+          referent,
+          branchId,
+          eventBus,
+          runId,
+          tick,
+        );
       }
     }
   },
@@ -109,6 +121,8 @@ export const LanguageEmergence = {
     referent: string,
     branchId: string,
     eventBus: EventBus,
+    runId = "default",
+    tick = Date.now(),
   ): boolean {
     const consensusKey = `${token}:${referent}`;
     const agentSet = protoWordAgents.get(consensusKey);
@@ -128,8 +142,8 @@ export const LanguageEmergence = {
       eventBus.emit({
         event_id: crypto.randomUUID(),
         branch_id: branchId,
-        run_id: "default",
-        tick: Date.now(),
+        run_id: runId,
+        tick,
         type: EventType.WORD_ENTERED_LEXICON,
         agent_id: agent.id,
         payload: { token, referent, consensusCount: agentSet.size },

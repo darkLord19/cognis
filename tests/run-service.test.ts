@@ -13,6 +13,7 @@ let service: RunService;
 
 beforeEach(() => {
   db.db.exec("PRAGMA foreign_keys = OFF;");
+  db.db.exec("DELETE FROM events");
   db.db.exec("DELETE FROM run_state_events");
   db.db.exec("DELETE FROM config_mutations");
   db.db.exec("DELETE FROM audit_log");
@@ -79,4 +80,18 @@ test("RunService rejects configs with deprecated schema fields", () => {
       inlineConfig: invalid as never,
     }),
   ).toThrow(/agents\.count|stagesEnabled|fireSpreadRate|species/i);
+});
+
+test("RunService persists emitted events to the events table", async () => {
+  const created = service.createRun({ config: "earth-default", seed: 7777 });
+  service.startRun(created.id);
+
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  service.stopRun(created.id);
+
+  const count = db.db
+    .query<{ count: number }, [string]>("SELECT COUNT(*) AS count FROM events WHERE run_id = ?")
+    .get(created.id)?.count;
+
+  expect(count ?? 0).toBeGreaterThan(0);
 });

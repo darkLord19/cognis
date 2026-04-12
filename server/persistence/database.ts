@@ -1,6 +1,7 @@
 import { Database as BunDatabase } from "bun:sqlite";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import type { SimEvent } from "../../shared/events";
 import type { AuditLogEntry } from "../../shared/types";
 
 export class Database {
@@ -116,6 +117,40 @@ export class Database {
     }
     sql += " ORDER BY tick ASC, id ASC";
     return this.db.query(sql).all(...params) as AuditLogEntry[];
+  }
+
+  public insertEvents(events: SimEvent[]): void {
+    if (events.length === 0) {
+      return;
+    }
+
+    const insert = this.db.query(`
+      INSERT OR IGNORE INTO events (
+        event_id, branch_id, run_id, tick, type, agent_id, target_id, payload, importance, baseline_config
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    const hasRun = this.db.query<{ ok: number }, [string]>("SELECT 1 AS ok FROM runs WHERE id = ?");
+    const hasBranch = this.db.query<{ ok: number }, [string]>(
+      "SELECT 1 AS ok FROM branches WHERE id = ?",
+    );
+
+    for (const event of events) {
+      if (!hasRun.get(event.run_id) || !hasBranch.get(event.branch_id)) {
+        continue;
+      }
+      insert.run(
+        event.event_id,
+        event.branch_id,
+        event.run_id,
+        event.tick,
+        event.type,
+        event.agent_id ?? null,
+        event.target_id ?? null,
+        JSON.stringify(event.payload ?? {}),
+        event.importance ?? null,
+        event.baseline_config ? JSON.stringify(event.baseline_config) : null,
+      );
+    }
   }
 
   public close() {
