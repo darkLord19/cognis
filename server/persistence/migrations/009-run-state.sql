@@ -1,0 +1,8 @@
+CREATE TABLE run_state_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  run_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  tick INTEGER NOT NULL,
+  recorded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  metadata TEXT
+);

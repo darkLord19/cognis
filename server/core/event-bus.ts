@@ -1,84 +1,68 @@
-import type { EventType, SimEvent } from "../../shared/events";
+import type { SimEvent } from "../../shared/events";
 
-export type EventHandler = (event: SimEvent) => void;
+export type EventCallback = (event: SimEvent) => void;
 
 export class EventBus {
-  private handlers: Map<EventType, Set<EventHandler>> = new Map();
-  private anyHandlers: Set<EventHandler> = new Set();
-  private dbBuffer: SimEvent[] = [];
-  private flushTimeout: ReturnType<typeof setTimeout> | null = null;
-  private maxBufferSize = 50;
-  private flushIntervalMs = 100;
+  private listeners: Map<string, EventCallback[]> = new Map();
+  private anyListeners: EventCallback[] = [];
+  private buffer: SimEvent[] = [];
+  private flushCallback: ((events: SimEvent[]) => void) | undefined;
+  private timer: Timer | null = null;
+  private readonly BUFFER_SIZE = 50;
+  private readonly FLUSH_TIMEOUT_MS = 100;
 
-  constructor(private dbFlushCallback?: (events: SimEvent[]) => Promise<void> | void) {}
+  constructor(flushCallback?: (events: SimEvent[]) => void) {
+    this.flushCallback = flushCallback;
+  }
 
-  public emit(event: SimEvent): void {
-    // Sync dispatch
-    const specificHandlers = this.handlers.get(event.type);
-    if (specificHandlers) {
-      for (const handler of specificHandlers) {
-        try {
-          handler(event);
-        } catch (e) {
-          console.error(`Error in event handler for ${event.type}:`, e);
-        }
-      }
+  emit(event: SimEvent): void {
+    const type = event.type;
+    const callbacks = this.listeners.get(type) || [];
+    for (const cb of callbacks) {
+      cb(event);
+    }
+    for (const cb of this.anyListeners) {
+      cb(event);
     }
 
-    for (const handler of this.anyHandlers) {
-      try {
-        handler(event);
-      } catch (e) {
-        console.error(`Error in onAny handler for ${event.type}:`, e);
-      }
-    }
-
-    // Async DB persist
-    if (this.dbFlushCallback) {
-      this.dbBuffer.push(event);
-      if (this.dbBuffer.length >= this.maxBufferSize) {
+    if (this.flushCallback) {
+      this.buffer.push(event);
+      if (this.buffer.length >= this.BUFFER_SIZE) {
         this.flush();
-      } else if (!this.flushTimeout) {
-        this.flushTimeout = setTimeout(() => this.flush(), this.flushIntervalMs);
+      } else if (!this.timer) {
+        this.timer = setTimeout(() => this.flush(), this.FLUSH_TIMEOUT_MS);
       }
     }
   }
 
-  public on(type: EventType, handler: EventHandler): void {
-    let set = this.handlers.get(type);
-    if (!set) {
-      set = new Set();
-      this.handlers.set(type, set);
+  private flush(): void {
+    if (this.buffer.length > 0 && this.flushCallback) {
+      this.flushCallback([...this.buffer]);
+      this.buffer = [];
     }
-    set.add(handler);
-  }
-
-  public off(type: EventType, handler: EventHandler): void {
-    const set = this.handlers.get(type);
-    if (set) {
-      set.delete(handler);
+    if (this.timer) {
+      clearTimeout(this.timer);
+      this.timer = null;
     }
   }
 
-  public onAny(handler: EventHandler): void {
-    this.anyHandlers.add(handler);
+  on(type: string, callback: EventCallback): void {
+    const callbacks = this.listeners.get(type) || [];
+    callbacks.push(callback);
+    this.listeners.set(type, callbacks);
   }
 
-  public offAny(handler: EventHandler): void {
-    this.anyHandlers.delete(handler);
+  off(type: string, callback: EventCallback): void {
+    const callbacks = this.listeners.get(type);
+    if (callbacks) {
+      this.listeners.set(
+        type,
+        callbacks.filter((cb) => cb !== callback),
+      );
+    }
   }
 
-  public flush(): void {
-    if (this.flushTimeout) {
-      clearTimeout(this.flushTimeout);
-      this.flushTimeout = null;
-    }
-
-    if (this.dbBuffer.length > 0 && this.dbFlushCallback) {
-      const events = [...this.dbBuffer];
-      this.dbBuffer = [];
-      // Fire and forget
-      void this.dbFlushCallback(events);
-    }
+  onAny(callback: EventCallback): void {
+    this.anyListeners.push(callback);
   }
 }
