@@ -4,6 +4,7 @@ import { EventType } from "../../shared/events";
 import type { EventBus } from "../core/event-bus";
 import { MerkleLogger } from "../persistence/merkle-logger";
 import { TripleBaseline } from "../research/triple-baseline";
+import { authenticateOperator } from "./auth";
 
 interface WSData {
   isOperator: boolean;
@@ -31,8 +32,10 @@ function sanitizeEventForPublic(event: SimEvent): SimEvent {
 
 export class WebSocketServer {
   private sockets: Set<ServerWebSocket<WSData>> = new Set();
+  private operatorToken: string | undefined;
 
   constructor(private eventBus: EventBus) {
+    this.operatorToken = process.env.OPERATOR_TOKEN;
     this.eventBus.onAny((event) => {
       for (const ws of this.sockets) {
         if (ws.data.isOperator) {
@@ -65,8 +68,9 @@ export class WebSocketServer {
           try {
             const data = JSON.parse(String(message));
             if (data.type === "AUTH_OPERATOR") {
-              ws.data.isOperator = true;
-              ws.send(JSON.stringify({ type: "AUTH_RESULT", payload: { authenticated: true } }));
+              const authenticated = authenticateOperator(data.token, self.operatorToken);
+              ws.data.isOperator = authenticated;
+              ws.send(JSON.stringify({ type: "AUTH_RESULT", payload: { authenticated } }));
               return;
             }
 
