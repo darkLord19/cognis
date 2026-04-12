@@ -5,6 +5,7 @@ import type { LLMGateway } from "../llm/gateway";
 import type { Database } from "../persistence/database";
 import { MerkleLogger } from "../persistence/merkle-logger";
 import { FindingsJournal } from "../research/findings-journal";
+import { TripleBaseline } from "../research/triple-baseline";
 import type { SpeciesRegistry } from "../species/registry";
 import { bootstrapSimulation } from "./bootstrap";
 import { BranchManager } from "./branch-manager";
@@ -98,35 +99,10 @@ export class RunService {
     if (request.name) {
       baseConfig.meta.name = request.name;
     }
-
-    const speciesPool =
-      baseConfig.species.length > 0
-        ? baseConfig.species.map((species) => structuredClone(species))
-        : this.deps.speciesRegistry.getAll().map((species) => structuredClone(species));
-
-    if (speciesPool.length === 0) {
-      throw new Error("No species definitions available for triple baseline runs");
-    }
-
-    const configA = structuredClone(baseConfig);
-    configA.meta.name = `${baseConfig.meta.name} A`;
-    configA.species = structuredClone(speciesPool);
-
-    const configB = structuredClone(baseConfig);
-    configB.meta.name = `${baseConfig.meta.name} B`;
-    configB.species = speciesPool.map((species) => ({
-      ...species,
-      cognitiveTier: "pure_reflex",
-    }));
-
-    const configC = structuredClone(baseConfig);
-    configC.meta.name = `${baseConfig.meta.name} C`;
-    configC.species = structuredClone(speciesPool);
-    configC.semanticMasking = {
-      ...configC.semanticMasking,
-      enabled: true,
-      qualiaUsesRealLabels: false,
-    };
+    const { configA, configB, configC } = TripleBaseline.spawn(
+      baseConfig,
+      this.deps.speciesRegistry.getAll(),
+    );
 
     const runA = this.createRun({ inlineConfig: configA });
     const runB = this.createRun({ inlineConfig: configB });

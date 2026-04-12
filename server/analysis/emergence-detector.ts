@@ -9,7 +9,18 @@ export class EmergenceDetector {
     "social_grooming",
   ]);
 
+  private normalize(name: string): string {
+    return name
+      .trim()
+      .toLowerCase()
+      .replace(/[\s-]+/g, "_");
+  }
+
+  public registerKnownBehaviour(behaviourName: string): void {
+    this.knownBehaviours.add(this.normalize(behaviourName));
+  }
+
   public detectNovelty(behaviourName: string): boolean {
-    return !this.knownBehaviours.has(behaviourName);
+    return !this.knownBehaviours.has(this.normalize(behaviourName));
   }
 }
