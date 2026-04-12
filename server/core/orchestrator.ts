@@ -11,6 +11,7 @@ import { QualiaProcessor } from "../agents/qualia-processor";
 import { System1 } from "../agents/system1";
 import type { System2 } from "../agents/system2";
 import { LanguageEmergence } from "../language/emergence";
+import { EmergenceDetector } from "../analysis/emergence-detector";
 import { DecayEngine } from "../memory/decay-engine";
 import { EpisodicStore } from "../memory/episodic-store";
 import { SalienceGate } from "../memory/salience-gate";
@@ -40,6 +41,8 @@ export class Orchestrator {
   private system2: System2;
   private vocalActuations: VocalActuation[] = [];
   private recentDecisions = new Map<string, string[]>();
+  private emergenceDetector = new EmergenceDetector();
+  private recentEventsWindow: SimEvent[] = [];
 
   constructor(
     private runId: string,
@@ -116,6 +119,14 @@ export class Orchestrator {
     };
   }
 
+  private emitAndTrack(event: SimEvent): void {
+    this.recentEventsWindow.push(event);
+    if (this.recentEventsWindow.length > 500) {
+      this.recentEventsWindow.shift();
+    }
+    this.eventBus.emit(event);
+  }
+
   public async tick(): Promise<void> {
     const tick = this.clock.getTick();
     let positionsChanged = false;
@@ -162,7 +173,7 @@ export class Orchestrator {
       // 4j. Check immediate reactions (RECOIL, FLEE, COLLAPSE)
       const reaction = System1.checkImmediateReaction(agent);
       if (reaction) {
-        this.eventBus.emit({
+        this.emitAndTrack({
           event_id: crypto.randomUUID(),
           branch_id: this.branchId,
           run_id: this.runId,
@@ -235,11 +246,11 @@ export class Orchestrator {
         }
         if (decision.type !== "IDLE") {
           positionsChanged =
-            this.applyDecision(agent, {
+          this.applyDecision(agent, {
               type: decision.type,
               position: decision.position,
             }) || positionsChanged;
-          this.eventBus.emit({
+          this.emitAndTrack({
             event_id: crypto.randomUUID(),
             branch_id: this.branchId,
             run_id: this.runId,
@@ -272,7 +283,7 @@ export class Orchestrator {
 
               if (output.innerMonologue) {
                 agent.innerMonologue = output.innerMonologue;
-                this.eventBus.emit({
+                this.emitAndTrack({
                   event_id: crypto.randomUUID(),
                   branch_id: this.branchId,
                   run_id: this.runId,
@@ -293,7 +304,7 @@ export class Orchestrator {
                     type: output.decision.type,
                     position: output.decision.position,
                   }) || positionsChanged;
-                this.eventBus.emit({
+                this.emitAndTrack({
                   event_id: crypto.randomUUID(),
                   branch_id: this.branchId,
                   run_id: this.runId,
@@ -405,6 +416,24 @@ export class Orchestrator {
     // 6. TechTree check discoveries
     for (const agent of this.agents) {
       this.techTree.checkDeathConceptDiscovery(agent);
+    }
+
+    const emergenceFindings = this.emergenceDetector.analyzeEventBatch(
+      this.recentEventsWindow.slice(-200),
+    );
+    for (const finding of emergenceFindings) {
+      this.emitAndTrack({
+        event_id: crypto.randomUUID(),
+        branch_id: this.branchId,
+        run_id: this.runId,
+        tick,
+        type: EventType.EMERGENCE_DETECTED,
+        payload: {
+          name: finding.name,
+          description: finding.description,
+          confidence: finding.confidence,
+        },
+      });
     }
 
     // 10. Delta stream

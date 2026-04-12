@@ -133,3 +133,30 @@ test("EmergenceDetector normalizes behaviour names before novelty checks", () =>
   expect(detector.detectNovelty("collective-tool-use")).toBe(false);
   expect(detector.detectNovelty("unseen_social_pattern")).toBe(true);
 });
+
+test("EmergenceDetector finds soft emergence patterns in event batches", () => {
+  const detector = new EmergenceDetector();
+  const events = Array.from({ length: 12 }, (_, index) => ({
+    event_id: `evt-${index}`,
+    branch_id: "analysis-emergence",
+    run_id: "analysis-emergence",
+    tick: index + 1,
+    type: EventType.DECISION_MADE,
+    agent_id: `agent-${index % 2}`,
+    payload: {
+      decision: {
+        type: "MOVE",
+        params: {
+          goal: "toward_agent",
+          targetId: `agent-${(index + 1) % 2}`,
+        },
+      },
+    },
+  }));
+
+  const findings = detector.analyzeEventBatch(events);
+  const names = findings.map((finding) => finding.name);
+
+  expect(names).toContain("social_clustering");
+  expect(names).toContain("repeated_proximity");
+});
