@@ -194,6 +194,7 @@ test("Orchestrator: applies MOVE decisions returned by System2", async () => {
 
   expect(agent.currentAction).toBe("MOVE");
   expect(agent.position).toEqual({ x: 3, y: 5, z: 0 });
+  expect(agent.innerMonologue).toBe("move");
 });
 
 test("Orchestrator: uses behavior trees for wolf agents when System2 does not fire", async () => {

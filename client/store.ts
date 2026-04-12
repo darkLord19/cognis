@@ -38,6 +38,7 @@ interface StoreState {
   tripleBaseline: TripleBaselineView | null;
   connectionStatus: ForgeConnectionStatus;
   operatorMode: boolean;
+  monologuesByAgent: Record<string, Array<{ tick: number; text: string }>>;
   setRuns: (runs: RunSummary[]) => void;
   selectRun: (runId: string | null) => void;
   selectAgent: (agentId: string | null) => void;
@@ -53,6 +54,7 @@ interface StoreState {
   setTripleBaseline: (view: TripleBaselineView | null) => void;
   setConnectionStatus: (status: ForgeConnectionStatus) => void;
   setOperatorMode: (enabled: boolean) => void;
+  appendMonologue: (agentId: string, tick: number, text: string) => void;
 }
 
 export const useStore = create<StoreState>((set) => ({
@@ -69,6 +71,7 @@ export const useStore = create<StoreState>((set) => ({
   tripleBaseline: null,
   connectionStatus: "idle",
   operatorMode: false,
+  monologuesByAgent: {},
   setRuns: (runs) =>
     set((state) => ({
       runs,
@@ -78,6 +81,7 @@ export const useStore = create<StoreState>((set) => ({
     set(() => ({
       selectedRunId: runId,
       selectedAgentId: null,
+      monologuesByAgent: {},
     })),
   selectAgent: (agentId) => set(() => ({ selectedAgentId: agentId })),
   setAgents: (agents) =>
@@ -103,4 +107,18 @@ export const useStore = create<StoreState>((set) => ({
   setTripleBaseline: (tripleBaseline) => set({ tripleBaseline }),
   setConnectionStatus: (connectionStatus) => set({ connectionStatus }),
   setOperatorMode: (operatorMode) => set({ operatorMode }),
+  appendMonologue: (agentId, tick, text) =>
+    set((state) => {
+      const current = state.monologuesByAgent[agentId] ?? [];
+      const last = current[current.length - 1];
+      if (last && last.text === text) {
+        return state;
+      }
+      return {
+        monologuesByAgent: {
+          ...state.monologuesByAgent,
+          [agentId]: [...current.slice(-49), { tick, text }],
+        },
+      };
+    }),
 }));

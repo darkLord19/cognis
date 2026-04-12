@@ -32,6 +32,7 @@ export default function App() {
   const events = useStore((state) => state.events);
   const connectionStatus = useStore((state) => state.connectionStatus);
   const operatorMode = useStore((state) => state.operatorMode);
+  const monologuesByAgent = useStore((state) => state.monologuesByAgent);
   const {
     setRuns,
     selectRun,
@@ -45,6 +46,7 @@ export default function App() {
     setGlassRoomSession,
     setConnectionStatus,
     setOperatorMode,
+    appendMonologue,
   } = useStore();
 
   const [selectedRunSummary, setSelectedRunSummary] = useState<{
@@ -161,12 +163,17 @@ export default function App() {
       // Filter by selected agent if applicable
       if (selectedAgentId && entry.agent_id !== selectedAgentId) continue;
 
+      const auditContent =
+        entry.field === "innerMonologue"
+          ? (entry.new_value || "null")
+          : `${entry.field}: ${entry.old_value || "null"} -> ${entry.new_value || "null"}`;
+
       items.push({
         id: String(entry.id),
         tick: entry.tick,
         type: "audit",
         label: "AUDIT",
-        content: `${entry.field}: ${entry.old_value || "null"} -> ${entry.new_value || "null"}`,
+        content: auditContent,
         meta: entry.agent_id || "System",
       });
     }
@@ -292,11 +299,22 @@ export default function App() {
         addEvent(payload);
         if (payload.type === "agent_update" && payload.agent && typeof payload.agent === "object") {
           const agent = payload.agent as AgentState;
+          if (agent.innerMonologue) {
+            appendMonologue(agent.id, Number(payload.tick) || Date.now(), agent.innerMonologue);
+          }
           setAgents((current) => {
             const merged = current.filter((entry) => entry.id !== agent.id);
             return [...merged, agent].sort((left, right) => left.name.localeCompare(right.name));
           });
           setSelectedAgent((current) => (current?.id === agent.id ? agent : current));
+        }
+        if (payload.type === "inner_monologue") {
+          const agentId = String(payload.agentId || "");
+          const text = String(payload.innerMonologue || "");
+          const tick = Number(payload.tick) || Date.now();
+          if (agentId && text) {
+            appendMonologue(agentId, tick, text);
+          }
         }
         if (payload.type === "audit_entry" && payload.entry) {
           const entry = payload.entry as AuditLogEntry;
@@ -313,7 +331,15 @@ export default function App() {
     return () => {
       socket.close();
     };
-  }, [addEvent, operatorMode, selectedRunId, setAgents, setAuditEntries, setConnectionStatus]);
+  }, [
+    addEvent,
+    appendMonologue,
+    operatorMode,
+    selectedRunId,
+    setAgents,
+    setAuditEntries,
+    setConnectionStatus,
+  ]);
 
   useEffect(() => {
     setSelectedAgent(agents.find((agent) => agent.id === selectedAgentId) ?? agents[0] ?? null);
@@ -340,6 +366,10 @@ export default function App() {
       setErrorMessage(error instanceof Error ? error.message : "Glass Room request failed");
     }
   }
+
+  const selectedMonologues = selectedAgent ? monologuesByAgent[selectedAgent.id] ?? [] : [];
+  const latestMonologue =
+    selectedMonologues[selectedMonologues.length - 1]?.text || selectedAgent?.innerMonologue || "";
 
   async function applyIntervention() {
     if (!selectedRunId || !selectedAgent) return;
@@ -597,7 +627,7 @@ export default function App() {
                   Cognitive Stream
                 </div>
                 <div className="rounded-2xl border border-white/[0.03] bg-white/[0.02] p-6 text-[14px] leading-relaxed text-slate-400 font-light italic">
-                  "{selectedAgent.innerMonologue}"
+                  "{latestMonologue}"
                 </div>
               </div>
 

@@ -188,6 +188,7 @@ export class WebSocketServer {
             type: "inner_monologue",
             runId,
             agentId: agent.id,
+            tick: event.tick,
             innerMonologue: agent.innerMonologue,
           }),
         );

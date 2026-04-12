@@ -89,7 +89,10 @@ export class Orchestrator {
     return false;
   }
 
-  private checkDecisionLoop(agentId: string, decision: { type: string; params?: unknown }): boolean {
+  private checkDecisionLoop(
+    agentId: string,
+    decision: { type: string; params?: unknown },
+  ): boolean {
     const history = this.recentDecisions.get(agentId) ?? [];
     const decisionStr = JSON.stringify(decision);
     history.push(decisionStr);
@@ -266,6 +269,19 @@ export class Orchestrator {
             .think(agent, qualiaText, filteredPercept, this.config, tick, this.branchId)
             .then((output) => {
               this.clock.resolvePendingMind();
+
+              if (output.innerMonologue) {
+                agent.innerMonologue = output.innerMonologue;
+                this.eventBus.emit({
+                  event_id: crypto.randomUUID(),
+                  branch_id: this.branchId,
+                  run_id: this.runId,
+                  tick,
+                  type: EventType.SYSTEM2_THOUGHT,
+                  agent_id: agent.id,
+                  payload: { innerMonologue: output.innerMonologue },
+                });
+              }
 
               // 4l. Apply decision / update position
               if (output.decision && output.decision.type !== "IDLE") {
