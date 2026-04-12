@@ -88,6 +88,9 @@ export class Orchestrator {
     const branchId = "main";
     let positionsChanged = false;
 
+    let totalDecisions = 0;
+    let vocalizations = 0;
+
     // 1. Circadian
     const circadianState = CircadianEngine.tick(tick, this.world, this.config.circadian);
 
@@ -136,6 +139,7 @@ export class Orchestrator {
           agent_id: agent.id,
           payload: { reaction: reaction.type, intensity: reaction.intensity },
         });
+        totalDecisions++;
         // Apply immediate reaction — skip System2 for this tick
         if (reaction.type === "COLLAPSE") {
           agent.body.fatigue = 1.0;
@@ -209,6 +213,7 @@ export class Orchestrator {
             agent_id: agent.id,
             payload: { decision },
           });
+          totalDecisions++;
         }
       } else if (
         this.system2.shouldFire(
@@ -223,6 +228,7 @@ export class Orchestrator {
         )
       ) {
         this.clock.registerPendingMind();
+        totalDecisions++;
         pendingSystem2.push(
           this.system2
             .think(agent, qualiaText, filteredPercept, this.config, tick, branchId)
@@ -245,6 +251,7 @@ export class Orchestrator {
                   agent_id: agent.id,
                   payload: { decision: output.decision },
                 });
+                totalDecisions++;
               }
 
               // Update self-narrative
@@ -313,6 +320,7 @@ export class Orchestrator {
 
     // 5. Language
     for (const va of this.vocalActuations) {
+      vocalizations++;
       const emitter = this.agents.find((a) => a.id === va.emitterId);
       const emitterPos = emitter?.position ?? { x: 0, y: 0, z: 0 };
       const listeners = this.spatialIndex.getAgentsInRadius(emitterPos, 50);
@@ -366,6 +374,8 @@ export class Orchestrator {
         );
       }
     }
+
+    console.log(`[tick ${tick}] agents: ${this.agents.length}, system2_calls: ${totalDecisions}`);
 
     // Wait for async system2 if desired, but PRD says non-blocking tick.
     // However, for tests we might want to wait.

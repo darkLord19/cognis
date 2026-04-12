@@ -11,15 +11,13 @@ export const DeltaStream = {
   ): void {
     if (dirtyVoxels.length === 0) return;
 
-    // Serialize delta
     const deltaPayload = JSON.stringify(dirtyVoxels);
     const encoder = new TextEncoder();
     const voxelData = encoder.encode(deltaPayload);
 
-    // Save to world_deltas
     db.db
       .query(
-        "INSERT INTO world_deltas (branch_id, tick, voxel_data, cause_event_id) VALUES (?, ?, ?, ?)",
+        "INSERT OR REPLACE INTO world_deltas (branch_id, tick, voxel_data, cause_event_id) VALUES (?, ?, ?, ?)",
       )
       .run(branchId, tick, voxelData, causeEventId);
   },

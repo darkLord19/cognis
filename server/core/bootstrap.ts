@@ -119,7 +119,10 @@ export function bootstrapSimulation(
   const runId = `run-${template.meta.seed}-${configHash}`;
   const branchId = "main";
 
-  RunManager.createRun(runId, template.meta.name, 0);
+  const existingRun = RunManager.getRun(runId);
+  if (!existingRun) {
+    RunManager.createRun(runId, template.meta.name, 0, template);
+  }
   WorldConfigManager.create(template, runId, deps.database);
   BranchManager.createBranch(branchId, "main", 0);
   const config = WorldConfigManager.load(runId, branchId, 0, deps.database);

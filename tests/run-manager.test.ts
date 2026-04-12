@@ -16,7 +16,7 @@ test("RunManager: CRUD", () => {
   const run = RunManager.getRun("run1");
   expect(run).toBeTruthy();
   expect(run?.name).toBe("Test Run");
-  expect(run?.status).toBe("running");
+  expect(run?.status).toBe("created");
 
   RunManager.stopRun("run1", 100);
   const stopped = RunManager.getRun("run1");

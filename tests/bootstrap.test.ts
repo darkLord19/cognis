@@ -48,7 +48,7 @@ test("bootstrapSimulation: initializes run, branch, terrain, and agents from con
     unknown
   > | null;
 
-  expect(run?.status).toBe("running");
+  expect(run?.status).toBe("created");
   expect(run?.world_config).toBeTruthy();
   expect(run?.world_config_hash).toBeTruthy();
   expect(branch?.name).toBe("main");

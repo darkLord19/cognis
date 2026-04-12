@@ -659,7 +659,7 @@ export type WSCommand = {
   params: unknown;
 };
 
-export type RunState = "running" | "paused" | "stopped";
+export type RunState = "created" | "running" | "paused" | "stopped";
 
 export type BranchNode = {
   id: string;
