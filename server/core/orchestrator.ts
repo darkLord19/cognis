@@ -1,5 +1,10 @@
 import type { SimEvent } from "../../shared/events";
 import { EventType } from "../../shared/events";
+import {
+  DECAY_ENGINE_INTERVAL_TICKS,
+  SALIENCE_ENCODE_THRESHOLD,
+  SNAPSHOT_INTERVAL_TICKS,
+} from "../../shared/constants";
 import type { AgentState, VocalActuation, WorldConfig } from "../../shared/types";
 import { AttentionFilter } from "../agents/attention-filter";
 import { QualiaProcessor } from "../agents/qualia-processor";
@@ -9,9 +14,11 @@ import { LanguageEmergence } from "../language/emergence";
 import { DecayEngine } from "../memory/decay-engine";
 import { EpisodicStore } from "../memory/episodic-store";
 import { SalienceGate } from "../memory/salience-gate";
+import { SemanticStore } from "../memory/semantic-store";
 import { EmotionalField } from "../perception/emotional-field";
 import { FeelingResidueSystem } from "../perception/feeling-residue";
 import { SenseComputer } from "../perception/sense-computer";
+import { MerkleLogger } from "../persistence/merkle-logger";
 import { CircadianEngine } from "../world/circadian-engine";
 import { DeltaStream } from "../world/delta-stream";
 import { ElementEngine } from "../world/element-engine";
@@ -67,11 +74,45 @@ export class Orchestrator {
     const pendingSystem2: Promise<void>[] = [];
 
     for (const agent of this.agents) {
-      // a. System1
+      // 4a. System1
       const bodyDelta = System1.tick(agent, circadianState, this.config);
+      const oldBody = { ...agent.body };
       Object.assign(agent.body, bodyDelta);
 
-      // b. Sense
+      // Log significant body state changes to MerkleLogger
+      if (bodyDelta.integrityDrive !== undefined) {
+        MerkleLogger.log(
+          tick,
+          branchId,
+          agent.id,
+          "System1",
+          "integrityDrive",
+          String(oldBody.integrityDrive || 0),
+          String(bodyDelta.integrityDrive),
+          null,
+        );
+      }
+
+      // 4j. Check immediate reactions (RECOIL, FLEE, COLLAPSE)
+      const reaction = System1.checkImmediateReaction(agent);
+      if (reaction) {
+        this.eventBus.emit({
+          event_id: crypto.randomUUID(),
+          branch_id: branchId,
+          run_id: "default",
+          tick,
+          type: EventType.ACTION_PERFORMED,
+          agent_id: agent.id,
+          payload: { reaction: reaction.type, intensity: reaction.intensity },
+        });
+        // Apply immediate reaction — skip System2 for this tick
+        if (reaction.type === "COLLAPSE") {
+          agent.body.fatigue = 1.0;
+          continue; // Skip rest of agent pipeline
+        }
+      }
+
+      // 4b. Sense
       const rawPercept = SenseComputer.computePerception(
         agent,
         this.world,
@@ -81,10 +122,10 @@ export class Orchestrator {
         this.vocalActuations,
       );
 
-      // c. Attention
+      // 4c. Attention
       const filteredPercept = AttentionFilter.filter(rawPercept, agent, this.config.perception);
 
-      // d. Emotional Field
+      // 4d. Emotional Field
       const emotionalDetections = EmotionalField.detectFields(
         agent,
         filteredPercept.primaryAttention,
@@ -92,10 +133,10 @@ export class Orchestrator {
         branchId,
       );
 
-      // e. Mood Tint
+      // 4e. Mood Tint
       const moodTint = FeelingResidueSystem.getMoodTint(agent.feelingResidues);
 
-      // f. Qualia
+      // 4f. Qualia
       const qualiaText = QualiaProcessor.qualiaFor(
         agent,
         filteredPercept,
@@ -105,7 +146,10 @@ export class Orchestrator {
         this.config,
       );
 
-      // h. Salience
+      // 4g. Episodic retrieval (for System2 context)
+      const recentMemories = EpisodicStore.retrieve(agent.id, branchId, 5);
+
+      // 4h. Salience
       const event: SimEvent = {
         event_id: crypto.randomUUID(),
         branch_id: branchId,
@@ -116,7 +160,7 @@ export class Orchestrator {
       };
       const salience = SalienceGate.computeSalience(event, agent, this.config.memory);
 
-      // i. System2
+      // 4i. System2
       if (
         this.system2.shouldFire(
           agent,
@@ -129,18 +173,78 @@ export class Orchestrator {
         pendingSystem2.push(
           this.system2
             .think(agent, qualiaText, filteredPercept, this.config, tick, branchId)
-            .then((_output) => {
+            .then((output) => {
               this.clock.resolvePendingMind();
+
+              // 4l. Apply decision / update position
+              if (output.decision && output.decision.type !== "IDLE") {
+                this.eventBus.emit({
+                  event_id: crypto.randomUUID(),
+                  branch_id: branchId,
+                  run_id: "default",
+                  tick,
+                  type: EventType.ACTION_PERFORMED,
+                  agent_id: agent.id,
+                  payload: { decision: output.decision },
+                });
+              }
+
+              // Update self-narrative
+              if (output.selfNarrativeUpdate) {
+                agent.selfNarrative += `\n${output.selfNarrativeUpdate}`;
+              }
+
+              // Store theory of mind entries
+              if (output.theoriesAboutOthers) {
+                for (const tom of output.theoriesAboutOthers) {
+                  agent.mentalModels[tom.targetAgentId] = {
+                    inferred: true,
+                    estimatedValence: tom.estimatedValence,
+                    estimatedArousal: tom.estimatedArousal,
+                    estimatedIntent: tom.estimatedIntent,
+                    confidence: tom.confidence,
+                    lastUpdatedTick: tick,
+                  };
+                }
+              }
             }),
         );
       }
 
-      // m. Episodic encode
-      if (salience > 0.5) {
+      // 4m. Episodic encode
+      if (salience > SALIENCE_ENCODE_THRESHOLD) {
         EpisodicStore.encode(agent.id, branchId, qualiaText, event, salience, this.config.memory);
       }
 
-      // p. Vocal actuation
+      // 4n. Death observation tracking
+      for (const other of filteredPercept.primaryAttention) {
+        // Check for dead agents (no emotional field, low body temp, no movement)
+        if (
+          other.body.valence === 0 &&
+          other.body.arousal === 0 &&
+          other.body.fatigue >= 1.0
+        ) {
+          SemanticStore.trackDeathObservation(agent.id, branchId, "observed_agent_stillness");
+          SemanticStore.trackDeathObservation(
+            agent.id,
+            branchId,
+            "observed_absent_emotional_field",
+          );
+          // Check body temperature for coldness
+          const headTemp = other.body.bodyMap?.head?.temperature ?? 15;
+          if (headTemp < 10) {
+            SemanticStore.trackDeathObservation(agent.id, branchId, "observed_cold_body");
+          }
+        }
+      }
+
+      // 4o. Feeling residue tick
+      FeelingResidueSystem.tickResidues(
+        agent.feelingResidues,
+        this.config.perception.residueDecayRate,
+      );
+
+      // 4p. Vocal actuation
       const vocal = System1.checkVocalActuation(agent, tick);
       if (vocal) {
         this.vocalActuations.push(vocal);
@@ -149,18 +253,58 @@ export class Orchestrator {
 
     // 5. Language
     for (const va of this.vocalActuations) {
-      const listeners = this.spatialIndex.getAgentsInRadius({ x: 0, y: 0, z: 0 }, 50);
-      LanguageEmergence.processVocalActuation(va, listeners, [], branchId, this.eventBus);
+      const emitter = this.agents.find((a) => a.id === va.emitterId);
+      const emitterPos = emitter?.position ?? { x: 0, y: 0, z: 0 };
+      const listeners = this.spatialIndex.getAgentsInRadius(emitterPos, 50);
+      const nearbyVoxels = emitter
+        ? SenseComputer.computePerception(
+            emitter,
+            this.world,
+            this.spatialIndex,
+            this.config.perception,
+            circadianState,
+            [],
+          ).nearbyVoxels
+        : [];
+      LanguageEmergence.processVocalActuation(va, listeners, nearbyVoxels, branchId, this.eventBus);
     }
     this.vocalActuations = [];
+
+    // 6. TechTree check discoveries
+    for (const agent of this.agents) {
+      this.techTree.checkDeathConceptDiscovery(agent);
+    }
 
     // 10. Delta stream
     DeltaStream.flushTick(branchId, tick, this.world.getDirtyVoxels());
     this.world.clearDirty();
 
     // 11. Decay
-    if (tick % 10 === 0) {
+    if (tick % DECAY_ENGINE_INTERVAL_TICKS === 0) {
       DecayEngine.tickAll(this.agents, branchId, this.config.memory, tick);
+    }
+
+    // 13. WebSocket broadcast — handled via EventBus (events are automatically dispatched)
+
+    // 14. Snapshot agents periodically
+    if (tick % SNAPSHOT_INTERVAL_TICKS === 0) {
+      for (const agent of this.agents) {
+        MerkleLogger.log(
+          tick,
+          branchId,
+          agent.id,
+          "Snapshot",
+          "state",
+          null,
+          JSON.stringify({
+            hunger: agent.body.hunger,
+            thirst: agent.body.thirst,
+            fatigue: agent.body.fatigue,
+            integrityDrive: agent.body.integrityDrive,
+          }),
+          null,
+        );
+      }
     }
 
     // Wait for async system2 if desired, but PRD says non-blocking tick.

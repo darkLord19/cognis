@@ -7,6 +7,7 @@ import { LLMGateway } from "./server/llm/gateway";
 import { PhysicsEngine } from "./server/world/physics-engine";
 import { VoxelGrid } from "./server/world/voxel-grid";
 import { WebSocketServer } from "./server/ws/server";
+import { SpeciesRegistry } from "./server/species/registry";
 import type { WorldConfig } from "./shared/types";
 
 const configPath = process.env.WORLD_CONFIG || "./data/world-configs/earth-default.json";
@@ -25,7 +26,16 @@ const clock = new SimClock(async (_tick) => {
 });
 const physics = new PhysicsEngine(config.physics);
 const gateway = new LLMGateway();
-const system2 = new System2(gateway);
+
+// Load species registry
+const speciesRegistry = new SpeciesRegistry();
+try {
+  speciesRegistry.loadAll();
+} catch {
+  console.warn("No species data found — using defaults.");
+}
+
+const system2 = new System2(gateway, speciesRegistry);
 
 const ws = new WebSocketServer(eventBus);
 ws.start(3001);
