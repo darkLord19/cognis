@@ -18,8 +18,8 @@ import type {
 import type { SpatialIndex } from "../world/spatial-index";
 import type { VoxelGrid } from "../world/voxel-grid";
 
-export class SenseComputer {
-  public static computePerception(
+export const SenseComputer = {
+  computePerception(
     agent: AgentState,
     world: VoxelGrid,
     spatialIndex: SpatialIndex,
@@ -91,6 +91,5 @@ export class SenseComputer {
       weather: "clear",
       vocalActuations: heardActuations,
     };
-  }
-}
-
+  },
+};

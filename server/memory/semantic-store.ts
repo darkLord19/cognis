@@ -1,9 +1,8 @@
 import type { SemanticBelief, SemanticBeliefRow } from "../../shared/types";
 import { db } from "../persistence/database";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class SemanticStore {
-  public static addBelief(agentId: string, branchId: string, belief: SemanticBelief): void {
+export const SemanticStore = {
+  addBelief(agentId: string, branchId: string, belief: SemanticBelief): void {
     // Append-only: just insert a new record. We query the latest or aggregate at read time.
     db.db
       .query(`
@@ -19,9 +18,9 @@ export class SemanticStore {
         belief.confidence,
         belief.sourceCount,
       );
-  }
+  },
 
-  public static getBeliefs(agentId: string, branchId: string): SemanticBelief[] {
+  getBeliefs(agentId: string, branchId: string): SemanticBelief[] {
     const rows = db.db
       .query("SELECT * FROM semantic_beliefs WHERE agent_id = ? AND branch_id = ?")
       .all(agentId, branchId) as SemanticBeliefRow[];
@@ -32,13 +31,9 @@ export class SemanticStore {
       confidence: r.confidence,
       sourceCount: r.source_count,
     }));
-  }
+  },
 
-  public static trackDeathObservation(
-    agentId: string,
-    branchId: string,
-    observationType: string,
-  ): void {
+  trackDeathObservation(agentId: string, branchId: string, observationType: string): void {
     SemanticStore.addBelief(agentId, branchId, {
       id: crypto.randomUUID(),
       concept: observationType,
@@ -46,18 +41,14 @@ export class SemanticStore {
       confidence: 1.0,
       sourceCount: 1,
     });
-  }
+  },
 
-  public static getDeathObservationCount(
-    agentId: string,
-    branchId: string,
-    concept: string,
-  ): number {
+  getDeathObservationCount(agentId: string, branchId: string, concept: string): number {
     const row = db.db
       .query<{ count: number }, [string, string, string]>(
         "SELECT SUM(source_count) as count FROM semantic_beliefs WHERE agent_id = ? AND branch_id = ? AND concept = ?",
       )
       .get(agentId, branchId, concept);
     return row?.count || 0;
-  }
-}
+  },
+};

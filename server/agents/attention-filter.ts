@@ -10,13 +10,8 @@ import {
 } from "../../shared/constants";
 import type { AgentState, FilteredPercept, PerceptionConfig, RawPercept } from "../../shared/types";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class AttentionFilter {
-  public static filter(
-    percept: RawPercept,
-    agent: AgentState,
-    config: PerceptionConfig,
-  ): FilteredPercept {
+export const AttentionFilter = {
+  filter(percept: RawPercept, agent: AgentState, config: PerceptionConfig): FilteredPercept {
     const capacity = config.attentionCapacity || DEFAULT_ATTENTION_CAPACITY;
 
     // Score and sort visible agents
@@ -42,25 +37,15 @@ export class AttentionFilter {
     scoredVoxels.sort((a, b) => b.score - a.score);
     const focusedVoxels = scoredVoxels.slice(0, MAX_FOCUSED_VOXELS).map((s) => s.voxel);
 
-    // Aggregate emotional field for peripheral awareness
     const peripheralAwareness = {
       count: peripheralCount,
       aggregateEmotionalField: peripheralCount > 0 ? 0.5 : 0.0,
     };
 
-    return {
-      primaryAttention,
-      peripheralAwareness,
-      focusedVoxels,
-      ownBody: agent.body,
-    };
-  }
+    return { primaryAttention, peripheralAwareness, focusedVoxels, ownBody: agent.body };
+  },
 
-  public static scoreEntity(
-    entity: AgentState,
-    agent: AgentState,
-    config: PerceptionConfig,
-  ): number {
+  scoreEntity(entity: AgentState, agent: AgentState, config: PerceptionConfig): number {
     const w1 = config.attentionWeights.relationshipStrength;
     const w2 = config.attentionWeights.emotionalFieldIntensity;
     const w3 = config.attentionWeights.movementVelocity;
@@ -92,5 +77,8 @@ export class AttentionFilter {
       movementVelocity * w3 +
       novelty * w4
     );
-  }
-}
+  },
+};
+
+// Re-export for any code relying on VELOCITY_NORMALIZATION from this module
+export { VELOCITY_NORMALIZATION };

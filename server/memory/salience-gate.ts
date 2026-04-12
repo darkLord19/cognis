@@ -1,9 +1,8 @@
 import type { SimEvent } from "../../shared/events";
 import type { AgentState, MemoryConfig } from "../../shared/types";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class SalienceGate {
-  public static computeSalience(event: SimEvent, agent: AgentState, _config: MemoryConfig): number {
+export const SalienceGate = {
+  computeSalience(event: SimEvent, agent: AgentState, _config: MemoryConfig): number {
     const payload = event.payload || {};
     const valenceMag = Math.abs((payload.valence as number) || 0);
     const arousalMag = Math.abs((payload.arousal as number) || 0);
@@ -26,5 +25,5 @@ export class SalienceGate {
 
     const salience = valenceMag * 0.3 + arousalMag * 0.3 + painFactor * 0.3 + isNovel * 0.1;
     return Math.min(1.0, salience);
-  }
-}
+  },
+};

@@ -1,15 +1,14 @@
 import type { AuditLogEntry } from "../../shared/types";
 import { db } from "./database";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class MerkleLogger {
-  private static hash(data: string): string {
-    const hasher = new Bun.CryptoHasher("sha256");
-    hasher.update(data);
-    return hasher.digest("hex");
-  }
+function hash(data: string): string {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(data);
+  return hasher.digest("hex");
+}
 
-  public static log(
+export const MerkleLogger = {
+  log(
     tick: number,
     branchId: string,
     agentId: string | null,
@@ -21,7 +20,7 @@ export class MerkleLogger {
   ): void {
     const previousHash = db.getLastAuditHash(branchId);
     const data = `${previousHash}${tick}${agentId || ""}${field}${oldValue || ""}${newValue || ""}`;
-    const entryHash = MerkleLogger.hash(data);
+    const entryHash = hash(data);
 
     db.insertAuditLog({
       tick,
@@ -37,9 +36,9 @@ export class MerkleLogger {
       previousHash,
       entryHash,
     });
-  }
+  },
 
-  public static logSuppression(
+  logSuppression(
     agentId: string,
     branchId: string,
     field: string,
@@ -48,7 +47,7 @@ export class MerkleLogger {
   ): void {
     const previousHash = db.getLastAuditHash(branchId);
     const data = `${previousHash}${tick}${agentId}${field}${""}${suppressedValue}`;
-    const entryHash = MerkleLogger.hash(data);
+    const entryHash = hash(data);
 
     db.insertAuditLog({
       tick,
@@ -64,9 +63,9 @@ export class MerkleLogger {
       previousHash,
       entryHash,
     });
-  }
+  },
 
-  public static verifyChain(
+  verifyChain(
     branchId: string,
     fromTick?: number,
     toTick?: number,
@@ -92,7 +91,7 @@ export class MerkleLogger {
       }
 
       const data = `${entry.previous_hash}${entry.tick}${entry.agent_id || ""}${entry.field}${entry.old_value || ""}${entry.new_value || ""}`;
-      const computedHash = MerkleLogger.hash(data);
+      const computedHash = hash(data);
 
       if (entry.entry_hash !== computedHash) {
         return { valid: false, error: `Chain broken at log ID ${entry.id}: entry hash mismatch.` };
@@ -102,13 +101,9 @@ export class MerkleLogger {
     }
 
     return { valid: true };
-  }
+  },
 
-  public static getAgentHistory(
-    agentId: string,
-    fromTick?: number,
-    toTick?: number,
-  ): AuditLogEntry[] {
+  getAgentHistory(agentId: string, fromTick?: number, toTick?: number): AuditLogEntry[] {
     return db.getAgentHistory(agentId, fromTick, toTick);
-  }
-}
+  },
+};

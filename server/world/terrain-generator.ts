@@ -13,9 +13,8 @@ function mulberry32(a: number) {
   };
 }
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class TerrainGenerator {
-  public static generate(config: TerrainConfig): VoxelGrid {
+export const TerrainGenerator = {
+  generate(config: TerrainConfig): VoxelGrid {
     const grid = new VoxelGrid(config.width, config.depth, config.height);
     const rand = mulberry32(config.seed);
 
@@ -70,5 +69,5 @@ export class TerrainGenerator {
 
     grid.clearDirty();
     return grid;
-  }
-}
+  },
+};

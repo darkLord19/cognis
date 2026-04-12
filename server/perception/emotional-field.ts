@@ -1,8 +1,8 @@
 import type { AgentState, EmotionalFieldDetection } from "../../shared/types";
 import { MerkleLogger } from "../persistence/merkle-logger";
 
-export class EmotionalField {
-  public static detectFields(
+export const EmotionalField = {
+  detectFields(
     agent: AgentState,
     nearbyAgents: AgentState[],
     tick: number,
@@ -36,5 +36,5 @@ export class EmotionalField {
     }
 
     return detections;
-  }
-}
+  },
+};

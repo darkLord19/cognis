@@ -57,7 +57,7 @@ test("System1: FLEE reaction on extreme combined threat", () => {
 
   expect(reaction).not.toBeNull();
   // FLEE or RECOIL both acceptable at this extreme
-  expect(["FLEE", "RECOIL"]).toContain(reaction?.type);
+  expect(["FLEE", "RECOIL"]).toContain(reaction?.type as string);
 });
 
 test("System1: no reaction when calm and healthy", () => {

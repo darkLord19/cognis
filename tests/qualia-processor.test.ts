@@ -42,9 +42,7 @@ const neutralCircadian: CircadianState = {
   lightLevel: 0.5,
   cycleHormoneValue: 0.5,
   season: "spring",
-  dayNightPhase: "day",
   surfaceTemperatureDelta: 0,
-  yearProgress: 0,
 };
 
 const defaultConfig = {
@@ -115,7 +113,9 @@ test("QualiaProcessor: circadian body_heavy at high hormone + low light", () => 
 
   const lower = result.toLowerCase();
   // body_heavy or season change text
-  expect(lower.includes("heavy") || lower.includes("stillness") || lower.includes("different")).toBe(true);
+  expect(
+    lower.includes("heavy") || lower.includes("stillness") || lower.includes("different"),
+  ).toBe(true);
 });
 
 test("QualiaProcessor: emotional field detection produces unease text", () => {
@@ -155,7 +155,12 @@ test("QualiaProcessor: fire voxel without lexicon uses unknown template", () => 
 
   const lower = result.toLowerCase();
   // fire_unknown template: "hot" or "bright" or "heat"
-  expect(lower.includes("hot") || lower.includes("bright") || lower.includes("heat") || lower.includes("warm")).toBe(true);
+  expect(
+    lower.includes("hot") ||
+      lower.includes("bright") ||
+      lower.includes("heat") ||
+      lower.includes("warm"),
+  ).toBe(true);
 });
 
 test("QualiaProcessor: semantic masking replaces labels", () => {
@@ -193,16 +198,33 @@ test("QualiaProcessor: hunger rendering at mild and strong", () => {
   // Mild hunger
   const mildPercept = createPercept(0, 0.5, 0);
   const mildResult = QualiaProcessor.qualiaFor(
-    agent, mildPercept, [], { valence: 0, arousal: 0 }, neutralCircadian, defaultConfig,
+    agent,
+    mildPercept,
+    [],
+    { valence: 0, arousal: 0 },
+    neutralCircadian,
+    defaultConfig,
   );
   const mildLower = mildResult.toLowerCase();
-  expect(mildLower.includes("hollow") || mildLower.includes("empty") || mildLower.includes("hunger")).toBe(true);
+  expect(
+    mildLower.includes("hollow") || mildLower.includes("empty") || mildLower.includes("hunger"),
+  ).toBe(true);
 
   // Strong hunger
   const strongPercept = createPercept(0, 0.8, 0);
   const strongResult = QualiaProcessor.qualiaFor(
-    agent, strongPercept, [], { valence: 0, arousal: 0 }, neutralCircadian, defaultConfig,
+    agent,
+    strongPercept,
+    [],
+    { valence: 0, arousal: 0 },
+    neutralCircadian,
+    defaultConfig,
   );
   const strongLower = strongResult.toLowerCase();
-  expect(strongLower.includes("hunger") || strongLower.includes("desperate") || strongLower.includes("ravenous") || strongLower.includes("claws")).toBe(true);
+  expect(
+    strongLower.includes("hunger") ||
+      strongLower.includes("desperate") ||
+      strongLower.includes("ravenous") ||
+      strongLower.includes("claws"),
+  ).toBe(true);
 });

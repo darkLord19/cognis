@@ -1,10 +1,10 @@
-import type { SimEvent } from "../../shared/events";
-import { EventType } from "../../shared/events";
 import {
   DECAY_ENGINE_INTERVAL_TICKS,
   SALIENCE_ENCODE_THRESHOLD,
   SNAPSHOT_INTERVAL_TICKS,
 } from "../../shared/constants";
+import type { SimEvent } from "../../shared/events";
+import { EventType } from "../../shared/events";
 import type { AgentState, VocalActuation, WorldConfig } from "../../shared/types";
 import { AttentionFilter } from "../agents/attention-filter";
 import { QualiaProcessor } from "../agents/qualia-processor";
@@ -101,7 +101,7 @@ export class Orchestrator {
           branch_id: branchId,
           run_id: "default",
           tick,
-          type: EventType.ACTION_PERFORMED,
+          type: EventType.DECISION_MADE,
           agent_id: agent.id,
           payload: { reaction: reaction.type, intensity: reaction.intensity },
         });
@@ -147,7 +147,7 @@ export class Orchestrator {
       );
 
       // 4g. Episodic retrieval (for System2 context)
-      const recentMemories = EpisodicStore.retrieve(agent.id, branchId, 5);
+      const _recentMemories = EpisodicStore.retrieve(agent.id, branchId, 5);
 
       // 4h. Salience
       const event: SimEvent = {
@@ -183,7 +183,7 @@ export class Orchestrator {
                   branch_id: branchId,
                   run_id: "default",
                   tick,
-                  type: EventType.ACTION_PERFORMED,
+                  type: EventType.DECISION_MADE,
                   agent_id: agent.id,
                   payload: { decision: output.decision },
                 });
@@ -201,7 +201,9 @@ export class Orchestrator {
                     inferred: true,
                     estimatedValence: tom.estimatedValence,
                     estimatedArousal: tom.estimatedArousal,
-                    estimatedIntent: tom.estimatedIntent,
+                    ...(tom.estimatedIntent !== undefined
+                      ? { estimatedIntent: tom.estimatedIntent }
+                      : {}),
                     confidence: tom.confidence,
                     lastUpdatedTick: tick,
                   };
@@ -219,11 +221,7 @@ export class Orchestrator {
       // 4n. Death observation tracking
       for (const other of filteredPercept.primaryAttention) {
         // Check for dead agents (no emotional field, low body temp, no movement)
-        if (
-          other.body.valence === 0 &&
-          other.body.arousal === 0 &&
-          other.body.fatigue >= 1.0
-        ) {
+        if (other.body.valence === 0 && other.body.arousal === 0 && other.body.fatigue >= 1.0) {
           SemanticStore.trackDeathObservation(agent.id, branchId, "observed_agent_stillness");
           SemanticStore.trackDeathObservation(
             agent.id,

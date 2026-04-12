@@ -7,7 +7,7 @@ class LRUCache<K, V> {
 
   get(key: K): V | undefined {
     if (!this.cache.has(key)) return undefined;
-    const val = this.cache.get(key)!;
+    const val = this.cache.get(key) as V;
     this.cache.delete(key);
     this.cache.set(key, val);
     return val;

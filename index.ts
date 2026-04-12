@@ -4,10 +4,10 @@ import { EventBus } from "./server/core/event-bus";
 import { Orchestrator } from "./server/core/orchestrator";
 import { SimClock } from "./server/core/sim-clock";
 import { LLMGateway } from "./server/llm/gateway";
+import { SpeciesRegistry } from "./server/species/registry";
 import { PhysicsEngine } from "./server/world/physics-engine";
 import { VoxelGrid } from "./server/world/voxel-grid";
 import { WebSocketServer } from "./server/ws/server";
-import { SpeciesRegistry } from "./server/species/registry";
 import type { WorldConfig } from "./shared/types";
 
 const configPath = process.env.WORLD_CONFIG || "./data/world-configs/earth-default.json";

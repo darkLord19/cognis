@@ -93,4 +93,3 @@ export const CONFLICT_SPEED_WEIGHT = 0.3;
 export const CONFLICT_ENDURANCE_WEIGHT = 0.2;
 export const CONFLICT_BASE_DAMAGE = 10;
 export const CONFLICT_DAMAGE_MULTIPLIER = 5;
-

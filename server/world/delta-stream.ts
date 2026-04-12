@@ -2,9 +2,8 @@ import type { Voxel } from "../../shared/types";
 import { db } from "../persistence/database";
 import { VoxelGrid } from "./voxel-grid";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class DeltaStream {
-  public static flushTick(
+export const DeltaStream = {
+  flushTick(
     branchId: string,
     tick: number,
     dirtyVoxels: (Voxel & { x: number; y: number; z: number })[],
@@ -23,9 +22,9 @@ export class DeltaStream {
         "INSERT INTO world_deltas (branch_id, tick, voxel_data, cause_event_id) VALUES (?, ?, ?, ?)",
       )
       .run(branchId, tick, voxelData, causeEventId);
-  }
+  },
 
-  public static reconstruct(
+  reconstruct(
     branchId: string,
     targetTick: number,
     width: number,
@@ -54,5 +53,5 @@ export class DeltaStream {
 
     grid.clearDirty(); // Clean up state after reconstruction
     return grid;
-  }
-}
+  },
+};

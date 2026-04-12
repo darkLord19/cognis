@@ -1,6 +1,6 @@
 import { beforeEach, expect, test } from "bun:test";
-import { LanguageEmergence } from "../server/language/emergence";
 import { EventBus } from "../server/core/event-bus";
+import { LanguageEmergence } from "../server/language/emergence";
 import type { AgentState, VocalActuation, Voxel } from "../shared/types";
 
 beforeEach(() => {
@@ -17,7 +17,7 @@ const createAgent = (id: string): AgentState => {
 };
 
 const makeVoxel = (material: string): Voxel => {
-  return { position: { x: 0, y: 0, z: 0 }, material, temperature: 15 } as Voxel;
+  return { position: { x: 0, y: 0, z: 0 }, material, temperature: 15 } as unknown as Voxel;
 };
 
 const makeActuation = (emitterId: string, token: string): VocalActuation => ({

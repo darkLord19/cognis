@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { test } from "bun:test";
 import { DomesticationManager } from "../server/world/domestication";
 import type { AgentState, SpeciesConfig } from "../shared/types";
 

@@ -1,13 +1,8 @@
 import type { AgentState, MuscleStats, SpeciesConfig } from "../../shared/types";
 import { MerkleLogger } from "../persistence/merkle-logger";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class Reproduction {
-  public static crossover(
-    parentA: AgentState,
-    parentB: AgentState,
-    species: SpeciesConfig,
-  ): MuscleStats {
+export const Reproduction = {
+  crossover(parentA: AgentState, parentB: AgentState, species: SpeciesConfig): MuscleStats {
     const mutate = (val: number, range: [number, number]) => {
       const mutation = (Math.random() - 0.5) * 0.1;
       return Math.max(range[0], Math.min(range[1], val + mutation));
@@ -27,9 +22,9 @@ export class Reproduction {
         species.muscleStatRanges.endurance,
       ),
     };
-  }
+  },
 
-  public static handleDeath(agent: AgentState, branchId: string, tick: number): void {
+  handleDeath(agent: AgentState, branchId: string, tick: number): void {
     // Log semantic store to MerkleLogger (Sole Witness logic)
     for (const belief of agent.semanticStore) {
       MerkleLogger.log(
@@ -43,5 +38,5 @@ export class Reproduction {
         null,
       );
     }
-  }
-}
+  },
+};

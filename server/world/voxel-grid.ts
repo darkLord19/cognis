@@ -15,7 +15,6 @@ export const IdToMaterial: Record<number, MaterialType> = Object.fromEntries(
   Object.entries(MaterialIds).map(([k, v]) => [v, k as MaterialType]),
 );
 
-// biome-ignore lint/style/noNonNullAssertion: array accesses are safe
 export class VoxelGrid {
   public width: number;
   public depth: number;
@@ -58,16 +57,16 @@ export class VoxelGrid {
     const idx = this.getIndex(x, y, z);
     const offset = idx * 6;
 
-    const matId = this.data[offset + 1]!;
+    const matId = this.data[offset + 1] ?? 0;
     if (matId === 0) return null; // Uninitialized
 
     const voxel: Voxel = {
-      type: this.data[offset]!,
+      type: this.data[offset] ?? 0,
       material: IdToMaterial[matId] || "air",
-      temperature: this.data[offset + 2]!,
-      moisture: this.data[offset + 3]!,
-      fertility: this.data[offset + 4]!,
-      lightLevel: this.data[offset + 5]!,
+      temperature: this.data[offset + 2] ?? 0,
+      moisture: this.data[offset + 3] ?? 0,
+      fertility: this.data[offset + 4] ?? 0,
+      lightLevel: this.data[offset + 5] ?? 0,
     };
 
     if (this.metadataMap.has(idx)) {
@@ -102,7 +101,7 @@ export class VoxelGrid {
   public getLightLevel(x: number, y: number, z: number): number {
     if (!this.inBounds(x, y, z)) return 0;
     const offset = this.getIndex(x, y, z) * 6;
-    return this.data[offset + 5]!;
+    return this.data[offset + 5] ?? 0;
   }
 
   public getNeighbors(x: number, y: number, z: number): Voxel[] {

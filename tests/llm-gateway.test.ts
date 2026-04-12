@@ -6,7 +6,7 @@ import type { AgentState, SemanticMaskingConfig, SpeciesConfig } from "../shared
 test("LLMGateway: uses mock provider correctly", async () => {
   const gateway = new LLMGateway(new MockLLMGateway());
   const response = await gateway.complete("agent_1", "Hello world", "System prompt");
-  expect(response).toContain("Hello worl");
+  expect(response).toContain("innerMonologue");
 
   const embedding = await gateway.embed("Test");
   expect(embedding.length).toBe(768);

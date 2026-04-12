@@ -1,8 +1,7 @@
 import type { ActionDecision, AgentState } from "../../shared/types";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class BehaviorTree {
-  public static tick(agent: AgentState): ActionDecision {
+export const BehaviorTree = {
+  tick(agent: AgentState): ActionDecision {
     if (agent.speciesId === "wolf") {
       if (agent.body.hunger > 0.5) {
         return { type: "MOVE", params: { goal: "hunt" } };
@@ -14,5 +13,5 @@ export class BehaviorTree {
       }
     }
     return { type: "IDLE" };
-  }
-}
+  },
+};

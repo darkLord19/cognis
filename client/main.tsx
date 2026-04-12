@@ -4,8 +4,10 @@ import App from "./App";
 // @ts-expect-error
 import "./index.css";
 
-// biome-ignore lint/style/noNonNullAssertion: root is always there
-ReactDOM.createRoot(document.getElementById("root")!).render(
+const rootElement = document.getElementById("root");
+if (!rootElement) throw new Error("Root element #root not found in document.");
+
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>,

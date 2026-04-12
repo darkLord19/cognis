@@ -8,13 +8,8 @@ import type { EventBus } from "../core/event-bus";
 import { EpisodicStore } from "./episodic-store";
 import { SemanticStore } from "./semantic-store";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class Consolidation {
-  public static consolidate(
-    agent: AgentState,
-    branchId: string,
-    eventBus: EventBus,
-  ): ConsolidationResult {
+export const Consolidation = {
+  consolidate(agent: AgentState, branchId: string, eventBus: EventBus): ConsolidationResult {
     // 1. Standard CLS transfer (high salience episodic -> semantic)
     const episodes = EpisodicStore.retrieve(agent.id, branchId, 10);
     const highSalience = episodes.filter(
@@ -88,5 +83,5 @@ export class Consolidation {
       transferredCount,
       conflictFlags: [],
     };
-  }
-}
+  },
+};

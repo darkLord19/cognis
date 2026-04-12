@@ -10,7 +10,7 @@ interface WSData {
 }
 
 /** Event types that contain inner monologue or suppressed data — operator only. */
-const OPERATOR_ONLY_EVENT_TYPES: Set<string> = new Set([
+const _OPERATOR_ONLY_EVENT_TYPES: Set<string> = new Set([
   EventType.TICK, // TICK events may carry qualia in payload — filter innerMonologue
 ]);
 
@@ -19,11 +19,7 @@ const SENSITIVE_PAYLOAD_FIELDS = ["innerMonologue", "suppressed", "auditEntry"];
 
 function sanitizeEventForPublic(event: SimEvent): SimEvent {
   // If it's a System2 inner monologue log, suppress entirely for non-operators
-  if (
-    event.payload &&
-    typeof event.payload === "object" &&
-    "innerMonologue" in event.payload
-  ) {
+  if (event.payload && typeof event.payload === "object" && "innerMonologue" in event.payload) {
     const cleaned = { ...event.payload };
     for (const field of SENSITIVE_PAYLOAD_FIELDS) {
       delete (cleaned as Record<string, unknown>)[field];
@@ -76,7 +72,12 @@ export class WebSocketServer {
 
             // All commands below require operator status
             if (!ws.data.isOperator) {
-              ws.send(JSON.stringify({ type: "ERROR", payload: { message: "Operator authentication required" } }));
+              ws.send(
+                JSON.stringify({
+                  type: "ERROR",
+                  payload: { message: "Operator authentication required" },
+                }),
+              );
               return;
             }
 

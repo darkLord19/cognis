@@ -21,7 +21,12 @@ test("System2: think calls LLM and logs monologue to MerkleLogger", async () => 
   const gateway = new LLMGateway(new MockLLMGateway());
   const system2 = new System2(gateway);
 
-  const agent = { id: "a1", name: "Bob", relationships: [] } as unknown as AgentState;
+  const agent = {
+    id: "a1",
+    name: "Bob",
+    relationships: [],
+    body: { integrityDrive: 0.1 },
+  } as unknown as AgentState;
   const percept = {
     primaryAttention: [],
     peripheralAwareness: { count: 0 },

@@ -42,9 +42,8 @@ export type ImmediateReaction = {
   intensity: number;
 };
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class System1 {
-  public static tick(
+export const System1 = {
+  tick(
     agent: AgentState,
     circadianState: CircadianState,
     worldConfig: WorldConfig,
@@ -59,11 +58,11 @@ export class System1 {
     // 2. Circadian integration
     const hormoneTarget = circadianState.cycleHormoneValue;
     delta.cycleHormone =
-      (body.cycleHormone || 0) * CYCLE_HORMONE_INERTIA +
-      hormoneTarget * CYCLE_HORMONE_REACTIVITY;
+      (body.cycleHormone || 0) * CYCLE_HORMONE_INERTIA + hormoneTarget * CYCLE_HORMONE_REACTIVITY;
 
     // Fatigue accumulates faster when hormone is high
-    const fatigueRate = BASE_FATIGUE_RATE * (1 + (delta.cycleHormone ?? 0) * FATIGUE_HORMONE_MULTIPLIER);
+    const fatigueRate =
+      BASE_FATIGUE_RATE * (1 + (delta.cycleHormone ?? 0) * FATIGUE_HORMONE_MULTIPLIER);
     delta.fatigue = (body.fatigue || 0) + fatigueRate;
 
     // 3. Body schema
@@ -90,13 +89,13 @@ export class System1 {
         threat * INTEGRITY_THREAT_WEIGHT);
 
     return delta;
-  }
+  },
 
   /**
    * Check for immediate reflexive reactions that bypass System2.
    * PRD: RECOIL (high pain), FLEE (extreme danger), COLLAPSE (near-death).
    */
-  public static checkImmediateReaction(agent: AgentState): ImmediateReaction | null {
+  checkImmediateReaction(agent: AgentState): ImmediateReaction | null {
     const body = agent.body;
 
     // Find max pain across body parts
@@ -119,38 +118,30 @@ export class System1 {
     // FLEE — extreme combined threat
     const fleeScore = maxPain * 0.5 + (body.integrityDrive || 0) * 0.5;
     if (fleeScore > FLEE_THRESHOLD) {
-      return {
-        type: "FLEE",
-        agentId: agent.id,
-        intensity: fleeScore,
-      };
+      return { type: "FLEE", agentId: agent.id, intensity: fleeScore };
     }
 
     // RECOIL — sudden sharp pain
     if (maxPain > RECOIL_PAIN_THRESHOLD) {
-      return {
-        type: "RECOIL",
-        agentId: agent.id,
-        intensity: maxPain,
-      };
+      return { type: "RECOIL", agentId: agent.id, intensity: maxPain };
     }
 
     return null;
-  }
+  },
 
   /**
    * Compute emotional field emission for this agent.
    * Other agents sense this via EmotionalField.detectFields().
    */
-  public static emitEmotionalField(agent: AgentState): EmotionalFieldData {
+  emitEmotionalField(agent: AgentState): EmotionalFieldData {
     return {
       agentId: agent.id,
       valence: agent.body.valence,
       arousal: agent.body.arousal,
     };
-  }
+  },
 
-  public static checkVocalActuation(agent: AgentState, tick: number): VocalActuation | null {
+  checkVocalActuation(agent: AgentState, tick: number): VocalActuation | null {
     const body = agent.body;
 
     let maxPain = 0;
@@ -162,24 +153,12 @@ export class System1 {
 
     // Pain cry
     if (maxPain > PAIN_VOCAL_THRESHOLD) {
-      return {
-        emitterId: agent.id,
-        soundToken: "AARGH",
-        arousal: 0.9,
-        valence: -0.8,
-        tick,
-      };
+      return { emitterId: agent.id, soundToken: "AARGH", arousal: 0.9, valence: -0.8, tick };
     }
 
     // Alarm call
     if (body.arousal > ALARM_AROUSAL_THRESHOLD && body.valence < ALARM_VALENCE_THRESHOLD) {
-      return {
-        emitterId: agent.id,
-        soundToken: "EKK-EKK",
-        arousal: 0.8,
-        valence: -0.5,
-        tick,
-      };
+      return { emitterId: agent.id, soundToken: "EKK-EKK", arousal: 0.8, valence: -0.5, tick };
     }
 
     // Pleasure vocalisation
@@ -194,12 +173,9 @@ export class System1 {
     }
 
     return null;
-  }
+  },
 
-  public static computeConflictOutcome(
-    agentA: AgentState,
-    agentB: AgentState,
-  ): ConflictDelta {
+  computeConflictOutcome(agentA: AgentState, agentB: AgentState): ConflictDelta {
     const powerA =
       agentA.muscleStats.strength * CONFLICT_STRENGTH_WEIGHT +
       agentA.muscleStats.speed * CONFLICT_SPEED_WEIGHT +
@@ -214,5 +190,5 @@ export class System1 {
       damageA: Math.max(0, CONFLICT_BASE_DAMAGE - diff * CONFLICT_DAMAGE_MULTIPLIER),
       damageB: Math.max(0, CONFLICT_BASE_DAMAGE + diff * CONFLICT_DAMAGE_MULTIPLIER),
     };
-  }
-}
+  },
+};

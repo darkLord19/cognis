@@ -1,7 +1,7 @@
 import type { FeelingResidue, FeelingResidueTint } from "../../shared/types";
 
-export class FeelingResidueSystem {
-  public static getMoodTint(residues: FeelingResidue[]): FeelingResidueTint {
+export const FeelingResidueSystem = {
+  getMoodTint(residues: FeelingResidue[]): FeelingResidueTint {
     if (residues.length === 0) return { valence: 0, arousal: 0 };
 
     let totalValence = 0;
@@ -23,9 +23,9 @@ export class FeelingResidueSystem {
       valence: totalValence / weightSum,
       arousal: totalArousal / weightSum,
     };
-  }
+  },
 
-  public static addResidue(
+  addResidue(
     residues: FeelingResidue[],
     valence: number,
     arousal: number,
@@ -39,9 +39,9 @@ export class FeelingResidueSystem {
       arousal,
       sourceEventId: eventId,
     });
-  }
+  },
 
-  public static tickResidues(residues: FeelingResidue[], decayRate: number): void {
+  tickResidues(residues: FeelingResidue[], decayRate: number): void {
     // Reduce valence/arousal towards 0
     for (let i = residues.length - 1; i >= 0; i--) {
       const r = residues[i];
@@ -54,5 +54,5 @@ export class FeelingResidueSystem {
         }
       }
     }
-  }
-}
+  },
+};

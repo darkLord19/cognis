@@ -168,9 +168,7 @@ const QUALIA_TEMPLATES: Record<TemplateCategory, Record<LexiconTier, string[]>> 
   other_uneasy: {
     pre_verbal: ["Danger? Uneasy."],
     basic: ["Something in their bearing makes you uneasy."],
-    intermediate: [
-      "An undercurrent of tension radiates from them, setting your nerves on edge.",
-    ],
+    intermediate: ["An undercurrent of tension radiates from them, setting your nerves on edge."],
     advanced: [
       "You sense a disturbance in their emotional field — something dark, something unsettled.",
     ],
@@ -178,7 +176,9 @@ const QUALIA_TEMPLATES: Record<TemplateCategory, Record<LexiconTier, string[]>> 
   other_familiar: {
     pre_verbal: ["Known. Safe."],
     basic: ["A familiar, trusted presence is nearby."],
-    intermediate: ["Someone you know and trust moves within your awareness, a comforting solidity."],
+    intermediate: [
+      "Someone you know and trust moves within your awareness, a comforting solidity.",
+    ],
     advanced: [
       "A presence you have come to rely upon is near — their familiar emotional signature a quiet reassurance.",
     ],
@@ -196,9 +196,7 @@ const QUALIA_TEMPLATES: Record<TemplateCategory, Record<LexiconTier, string[]>> 
   peripheral: {
     pre_verbal: ["Others. Edge."],
     basic: ["At the edge of your awareness, others stir."],
-    intermediate: [
-      "Beyond your immediate attention, you sense the dim murmur of other presences.",
-    ],
+    intermediate: ["Beyond your immediate attention, you sense the dim murmur of other presences."],
     advanced: [
       "A penumbra of activity flickers at the margins of your consciousness — others, numerous but indistinct.",
     ],
@@ -214,10 +212,10 @@ const QUALIA_TEMPLATES: Record<TemplateCategory, Record<LexiconTier, string[]>> 
   fire_known: {
     pre_verbal: ["Fire!"],
     basic: ["You sense fire nearby."],
-    intermediate: ["Fire burns nearby, its familiar warmth and dance of light filling your senses."],
-    advanced: [
-      "The crackle and glow of fire reaches you — known, named, a force you understand.",
+    intermediate: [
+      "Fire burns nearby, its familiar warmth and dance of light filling your senses.",
     ],
+    advanced: ["The crackle and glow of fire reaches you — known, named, a force you understand."],
   },
   fire_sacred: {
     pre_verbal: ["Sacred warmth."],
@@ -254,7 +252,9 @@ const QUALIA_TEMPLATES: Record<TemplateCategory, Record<LexiconTier, string[]>> 
   pleasure: {
     pre_verbal: ["Good. Warm."],
     basic: ["A wave of warmth and contentment flows through you."],
-    intermediate: ["A deep satisfaction settles through your body, muscles releasing their tension."],
+    intermediate: [
+      "A deep satisfaction settles through your body, muscles releasing their tension.",
+    ],
     advanced: [
       "Pure, unguarded pleasure radiates through every part of you, a rare and precious ease.",
     ],
@@ -266,9 +266,8 @@ function pickTemplate(category: TemplateCategory, tier: LexiconTier): string {
   return templates[Math.floor(Math.random() * templates.length)] ?? templates[0] ?? "";
 }
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class QualiaProcessor {
-  public static qualiaFor(
+export const QualiaProcessor = {
+  qualiaFor(
     agent: AgentState,
     filteredPercept: FilteredPercept,
     emotionalDetections: EmotionalFieldDetection[],
@@ -280,8 +279,7 @@ export class QualiaProcessor {
     const tier = getLexiconTier(agent.lexicon.length);
 
     // 10. MoodTint
-    if (moodTint.valence < MOOD_NEGATIVE_THRESHOLD)
-      parts.push(pickTemplate("mood_negative", tier));
+    if (moodTint.valence < MOOD_NEGATIVE_THRESHOLD) parts.push(pickTemplate("mood_negative", tier));
     else if (moodTint.valence > MOOD_POSITIVE_THRESHOLD)
       parts.push(pickTemplate("mood_positive", tier));
 
@@ -327,9 +325,7 @@ export class QualiaProcessor {
       { name: "right arm", part: body.bodyMap.rightArm },
       { name: "left leg", part: body.bodyMap.leftLeg },
       { name: "right leg", part: body.bodyMap.rightLeg },
-    ].sort(
-      (a, b) => Math.max(b.part.pain, b.part.damage) - Math.max(a.part.pain, a.part.damage),
-    );
+    ].sort((a, b) => Math.max(b.part.pain, b.part.damage) - Math.max(a.part.pain, a.part.damage));
 
     const intensePart = partsArray[0];
     if (intensePart) {
@@ -394,10 +390,7 @@ export class QualiaProcessor {
     let text = parts.join(". ");
 
     // 7. Semantic masking
-    if (
-      worldConfig.semanticMasking.enabled &&
-      !worldConfig.semanticMasking.qualiaUsesRealLabels
-    ) {
+    if (worldConfig.semanticMasking.enabled && !worldConfig.semanticMasking.qualiaUsesRealLabels) {
       const map = worldConfig.semanticMasking.sensorLabelMap;
       for (const realLabel of Object.keys(map)) {
         const maskedToken = map[realLabel];
@@ -410,5 +403,5 @@ export class QualiaProcessor {
     }
 
     return text;
-  }
-}
+  },
+};

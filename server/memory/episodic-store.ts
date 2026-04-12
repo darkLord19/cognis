@@ -3,9 +3,8 @@ import type { EpisodicMemory, EpisodicMemoryRow, MemoryConfig } from "../../shar
 import { db } from "../persistence/database";
 import { MerkleLogger } from "../persistence/merkle-logger";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class EpisodicStore {
-  public static encode(
+export const EpisodicStore = {
+  encode(
     agentId: string,
     branchId: string,
     qualiaText: string,
@@ -44,13 +43,13 @@ export class EpisodicStore {
       );
 
     return memory;
-  }
+  },
 
   /**
    * Encode a dream-sourced memory with explicit source and emotional data.
    * Avoids the need for `as unknown as SimEvent` casts.
    */
-  public static encodeDream(
+  encodeDream(
     agentId: string,
     branchId: string,
     qualiaText: string,
@@ -91,9 +90,9 @@ export class EpisodicStore {
       );
 
     return memory;
-  }
+  },
 
-  public static retrieve(agentId: string, branchId: string, k: number): EpisodicMemory[] {
+  retrieve(agentId: string, branchId: string, k: number): EpisodicMemory[] {
     // Retrieve base memories
     const rows = db.db
       .query(
@@ -147,13 +146,13 @@ export class EpisodicStore {
     }
 
     return memories;
-  }
+  },
 
   /**
    * Append-only suppression: inserts a suppression event row instead of UPDATE.
    * The suppression is resolved at retrieval time.
    */
-  public static suppress(agentId: string, branchId: string, memoryId: string, tick: number): void {
+  suppress(agentId: string, branchId: string, memoryId: string, tick: number): void {
     db.db
       .query(
         "INSERT INTO episodic_suppression_events (id, target_memory_id, agent_id, branch_id, tick) VALUES (?, ?, ?, ?, ?)",
@@ -167,30 +166,21 @@ export class EpisodicStore {
       `Suppressed memory ${memoryId}`,
       tick,
     );
-  }
+  },
 
   /**
    * Append-only context tagging: inserts a tag event row instead of UPDATE.
    * Tags are resolved at retrieval time.
    */
-  public static contextTag(
-    agentId: string,
-    branchId: string,
-    memoryId: string,
-    tag: string,
-  ): void {
+  contextTag(agentId: string, branchId: string, memoryId: string, tag: string): void {
     db.db
       .query(
         "INSERT INTO episodic_context_tag_events (id, target_memory_id, agent_id, branch_id, tag) VALUES (?, ?, ?, ?, ?)",
       )
       .run(crypto.randomUUID(), memoryId, agentId, branchId, tag);
-  }
+  },
 
-  public static getHighSalience(
-    agentId: string,
-    branchId: string,
-    minSalience: number,
-  ): EpisodicMemory[] {
+  getHighSalience(agentId: string, branchId: string, minSalience: number): EpisodicMemory[] {
     const rows = db.db
       .query(
         "SELECT * FROM episodic_memories WHERE agent_id = ? AND branch_id = ? AND salience >= ? ORDER BY salience DESC",
@@ -208,5 +198,5 @@ export class EpisodicStore {
       contextTags: JSON.parse(r.context_tags || "[]") as string[],
       source: r.source,
     }));
-  }
-}
+  },
+};

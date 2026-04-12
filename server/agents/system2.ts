@@ -86,32 +86,56 @@ export class System2 {
     }
 
     // Look up actual species config
-    const species: SpeciesConfig = this.speciesRegistry?.get(agent.speciesId) ?? {
+    const species = (this.speciesRegistry?.get(agent.speciesId) ?? {
       id: agent.speciesId || "unknown",
       name: "being",
-      baseLifespan: 1000,
-      metabolismRate: 1.0,
+      cognitiveTier: "full_llm" as const,
+      emotionalFieldEnabled: true,
+      socialCapacity: "full" as const,
+      canLearnLanguage: true,
+      canBedomesticated: false,
+      threatLevel: 0,
+      ecologicalRole: "neutral" as const,
+      survivalDriveWeight: 1.0,
+      circadianSensitivity: 1.0,
+      sleepConfig: {
+        mode: "natural_sleep",
+        fatigueEnabled: true,
+        fatigueRate: 0.01,
+        recoveryRate: 0.05,
+        minRestDuration: 10,
+        maxWakeDuration: 100,
+        cognitivePenaltyNoSleep: 0.1,
+        emotionalPenaltyNoSleep: 0.1,
+        healthPenaltyNoSleep: 0.1,
+        consolidationDuringSleep: true,
+        consolidationWhileAwake: false,
+        consolidationIntervalTicks: 10,
+        dreamsEnabled: true,
+        nightmaresEnabled: true,
+        sleepSchedule: "synchronized",
+      },
+      memoryConfig: {},
+      dnaTraits: [],
+      baseStats: {
+        maxHealth: 100,
+        speed: 1,
+        strength: 1,
+        metabolism: 1,
+        lifespanTicks: 1000,
+        reproductionAge: 100,
+        gestationTicks: 50,
+      },
       senseProfile: { sight: 30, hearing: 50, smell: 15, touch: 5, taste: 3 },
       muscleStatRanges: {
-        strength: [0, 1],
-        speed: [0, 1],
-        endurance: [0, 1],
-      },
-      reproductionConfig: {
-        enabled: false,
-        minAge: 100,
-        gestationTicks: 50,
-        maxOffspring: 1,
-        geneticDrift: 0.1,
+        strength: [0, 1] as [number, number],
+        speed: [0, 1] as [number, number],
+        endurance: [0, 1] as [number, number],
       },
       behaviorTree: [],
-    };
+    }) as SpeciesConfig;
 
-    const systemPrompt = this.gateway.systemPromptForAgent(
-      agent,
-      species,
-      config.semanticMasking,
-    );
+    const systemPrompt = this.gateway.systemPromptForAgent(agent, species, config.semanticMasking);
     const fullPrompt = `${urgencyPrefix}${qualiaText}${tomContext}\n\nWhat are your thoughts and what will you do? Response in JSON format: { "innerMonologue": "...", "decision": { "type": "...", "targetId": "..." }, "theoriesAboutOthers": [] }`;
 
     const rawResponse = await this.gateway.complete(agent.id, fullPrompt, systemPrompt);

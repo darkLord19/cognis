@@ -1,9 +1,8 @@
 import { RESIDUE_DECAY_MULTIPLIER, RESIDUE_EXPIRY_THRESHOLD } from "../../shared/constants";
 import type { AgentState, MemoryConfig } from "../../shared/types";
 
-// biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
-export class DecayEngine {
-  public static tickAll(
+export const DecayEngine = {
+  tickAll(
     agents: AgentState[],
     _branchId: string,
     config: MemoryConfig,
@@ -31,5 +30,5 @@ export class DecayEngine {
         }
       }
     }
-  }
-}
+  },
+};
