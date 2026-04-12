@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { GlassRoomManager } from "./server/agents/glass-room";
+import { GlassModeManager } from "./server/agents/glass-mode";
 import { setApiDependencies, startManagementApi } from "./server/api/management-api";
 import { Watcher } from "./server/api/watcher";
 import { RunManager } from "./server/core/run-manager";
@@ -126,12 +126,12 @@ const runService = new RunService({
   speciesRegistry,
   database: db,
 });
-const glassRoomManager = new GlassRoomManager();
+const glassModeManager = new GlassModeManager();
 
 const ws = new WebSocketServer(runSupervisor);
 ws.start(flags.wsPort);
 
-setApiDependencies({ runService, runSupervisor, glassRoomManager });
+setApiDependencies({ runService, runSupervisor, glassModeManager });
 startManagementApi(flags.port);
 
 if (flags.resume) {

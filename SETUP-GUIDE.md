@@ -520,7 +520,7 @@ grep -r "\.run.*UPDATE" server/persistence/
 | 6 — Language | Vocal actuation → dialects | 2 hours |
 | 7 — Species/Tech | Animals, death concept | 2 hours |
 | 8 — Analysis | TripleBaseline, Merkle | 2 hours |
-| 9 — Forge UI | Dashboard, Arnold Mode | 3 hours |
+| 9 — Forge UI | Dashboard, Glass Mode | 3 hours |
 | 10 — Polish | Integration, tuning | 2 hours |
 | **Total** | | **~26 hours** |
 

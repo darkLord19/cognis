@@ -51,10 +51,8 @@ export enum EventType {
 
   INTERVENTION_APPLIED = "intervention_applied",
   INTERVENTION_RESISTED = "intervention_resisted",
-  ARNOLD_MODE_ENTERED = "arnold_mode_entered",
-  ARNOLD_MODE_EXITED = "arnold_mode_exited",
-  GLASS_ROOM_ENTERED = "glass_room_entered",
-  GLASS_ROOM_EXITED = "glass_room_exited",
+  GLASS_MODE_ENTERED = "glass_mode_entered",
+  GLASS_MODE_EXITED = "glass_mode_exited",
   MERKLE_CHAIN_VERIFIED = "merkle_chain_verified",
 }
 

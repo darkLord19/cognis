@@ -1298,7 +1298,7 @@ Standard per previous plan plus:
 - **TripleBaseline Dashboard (NEW):** Three parallel timelines side by side. Findings classified by baseline config. Divergence points highlighted.
 - **Findings Journal:** TripleBaseline classification shown per finding ("genuine emergence" vs "possible confabulation").
 
-### TASK 9.4 — Arnold Mode
+### TASK 9.4 — Glass Mode
 
 3D diagnostic room. Per PRD Section 7.2. Operator converses through Qualia Processor. No hard memory gate — experience translation preserves Veil.
 

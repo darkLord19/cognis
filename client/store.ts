@@ -34,7 +34,7 @@ interface StoreState {
   metrics: RuntimeSnapshot[];
   configs: string[];
   events: unknown[];
-  glassRoomSession: { runId: string; agentId: string; startTick: number } | null;
+  glassModeSession: { runId: string; agentId: string; startTick: number } | null;
   tripleBaseline: TripleBaselineView | null;
   connectionStatus: ForgeConnectionStatus;
   operatorMode: boolean;
@@ -49,7 +49,7 @@ interface StoreState {
   setMetrics: (metrics: RuntimeSnapshot[]) => void;
   setConfigs: (configs: string[]) => void;
   addEvent: (event: unknown) => void;
-  setGlassRoomSession: (session: StoreState["glassRoomSession"]) => void;
+  setGlassModeSession: (session: StoreState["glassModeSession"]) => void;
   setTripleBaseline: (view: TripleBaselineView | null) => void;
   setConnectionStatus: (status: ForgeConnectionStatus) => void;
   setOperatorMode: (enabled: boolean) => void;
@@ -65,7 +65,7 @@ export const useStore = create<StoreState>((set) => ({
   metrics: [],
   configs: [],
   events: [],
-  glassRoomSession: null,
+  glassModeSession: null,
   tripleBaseline: null,
   connectionStatus: "idle",
   operatorMode: false,
@@ -99,7 +99,7 @@ export const useStore = create<StoreState>((set) => ({
   setMetrics: (metrics) => set({ metrics }),
   setConfigs: (configs) => set({ configs }),
   addEvent: (event) => set((state) => ({ events: [...state.events, event] })),
-  setGlassRoomSession: (glassRoomSession) => set({ glassRoomSession }),
+  setGlassModeSession: (glassModeSession) => set({ glassModeSession }),
   setTripleBaseline: (tripleBaseline) => set({ tripleBaseline }),
   setConnectionStatus: (connectionStatus) => set({ connectionStatus }),
   setOperatorMode: (operatorMode) => set({ operatorMode }),

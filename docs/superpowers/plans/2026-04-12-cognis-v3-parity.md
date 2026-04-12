@@ -37,11 +37,11 @@
 - [ ] **Step 1: Define typed WS subscription protocol**
 - [ ] **Step 2: Implement per-run WS subscriptions**
 
-### Task 4: Operator Services (Arnold Mode & Interventions)
+### Task 4: Operator Services (Glass Mode & Interventions)
 
 **Files:**
 - Create: `server/api/intervention-pipeline.ts`
 - Modify: `server/agents/will-engine.ts`
 
-- [ ] **Step 1: Implement Arnold Mode session manager**
+- [ ] **Step 1: Implement Glass Mode session manager**
 - [ ] **Step 2: Implement intervention pipeline**
