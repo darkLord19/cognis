@@ -91,3 +91,24 @@ test("System1: alarm vocal on high arousal + negative valence", () => {
   expect(vocal).not.toBeNull();
   expect(vocal?.soundToken).toBe("EKK-EKK");
 });
+
+test("System1: integrity drive rises with health and temperature stress", () => {
+  const config = {
+    freeWill: {
+      survivalDriveWeight: 1,
+    },
+  } as never;
+
+  const healthyAgent = createAgent(0.2, 1.0, 0.1);
+  healthyAgent.body.coreTemperature = 15;
+  healthyAgent.body.bodyMap.head.temperature = 15;
+
+  const stressedAgent = createAgent(0.2, 0.2, 0.1);
+  stressedAgent.body.coreTemperature = 5;
+  stressedAgent.body.bodyMap.head.temperature = 5;
+
+  const healthyDelta = System1.tick(healthyAgent, { cycleHormoneValue: 0.5 } as never, config);
+  const stressedDelta = System1.tick(stressedAgent, { cycleHormoneValue: 0.5 } as never, config);
+
+  expect(stressedDelta.integrityDrive ?? 0).toBeGreaterThan(healthyDelta.integrityDrive ?? 0);
+});

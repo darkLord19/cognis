@@ -36,6 +36,21 @@ import type {
   WorldConfig,
 } from "../../shared/types";
 
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function averageBodyTemperatureDeviation(body: BodyMap): number {
+  const parts = Object.values(body);
+  if (parts.length === 0) return 0;
+
+  const deviation = parts.reduce(
+    (sum, part) => sum + Math.abs(part.temperature - AMBIENT_TEMPERATURE),
+    0,
+  );
+  return deviation / parts.length;
+}
+
 export type ImmediateReaction = {
   type: "RECOIL" | "FLEE" | "COLLAPSE";
   agentId: string;
@@ -81,7 +96,16 @@ export const System1 = {
 
     // 4. IntegrityDrive (ω)
     const omega = worldConfig.freeWill.survivalDriveWeight;
-    const threat = 0; // placeholder — calculated from environmental danger later
+    const healthDeficit = clamp01(1 - (body.health ?? 0));
+    const temperatureStress = clamp01(
+      Math.max(
+        Math.abs((body.coreTemperature ?? AMBIENT_TEMPERATURE) - AMBIENT_TEMPERATURE),
+        averageBodyTemperatureDeviation(newBodyMap),
+      ) / 20,
+    );
+    const fatigueStress = clamp01(delta.fatigue ?? body.fatigue ?? 0);
+    const thirstStress = clamp01(delta.thirst ?? body.thirst ?? 0);
+    const threat = clamp01((healthDeficit + temperatureStress + fatigueStress + thirstStress) / 4);
     delta.integrityDrive =
       omega *
       ((delta.hunger || 0) * INTEGRITY_HUNGER_WEIGHT +

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { GlassRoomManager } from "../server/agents/glass-room";
+import { WillEngine } from "../server/agents/will-engine";
 import { createManagementApiHandler } from "../server/api/management-api";
 import { RunService } from "../server/core/run-service";
 import { RunSupervisor } from "../server/core/run-supervisor";
@@ -114,6 +115,18 @@ test("management api reports resisted and applied interventions and manages glas
   service.startRun(created.id);
   const agentId = service.getAgents(created.id)[0]?.id;
   expect(agentId).toBeDefined();
+  const runtime = supervisor.getRuntime(created.id);
+  if (!runtime?.orchestrator) {
+    throw new Error("Runtime orchestrator missing");
+  }
+  const agent = runtime.orchestrator.getAgents()[0];
+  if (!agent) {
+    throw new Error("Agent missing");
+  }
+  const resistantIntensity = Math.max(
+    0.01,
+    WillEngine.computeWillScore(agent, runtime.worldConfig) - 0.01,
+  );
 
   const resistedResponse = await handler(
     new Request(`http://localhost/runs/${created.id}/interventions`, {
@@ -122,7 +135,7 @@ test("management api reports resisted and applied interventions and manages glas
       body: JSON.stringify({
         agentId,
         type: "integrity_drive_delta",
-        intensity: 0.1,
+        intensity: resistantIntensity,
       }),
     }),
   );

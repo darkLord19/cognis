@@ -55,28 +55,28 @@ test("InterventionPipeline emits explicit resistance and application events", ()
   const agentId = service.getAgents(created.id)[0]?.id;
   expect(agentId).toBeDefined();
 
-  const resisted = pipeline.applyIntervention(
-    created.id,
-    String(agentId),
-    "integrity_drive_delta",
-    0.1,
-  );
-  expect(resisted.resisted).toBe(true);
-  expect(seenEvents).toContain(EventType.INTERVENTION_RESISTED);
-
-  const resistedAudit = db.getAuditLogs("main").at(-1);
-  expect(resistedAudit?.field).toBe("intervention_resistance");
-
   if (!runtime?.orchestrator) {
     throw new Error("Runtime orchestrator missing");
   }
-
   const agent = runtime.orchestrator.getAgents()[0];
   if (!agent) {
     throw new Error("Agent missing");
   }
 
   const willScore = WillEngine.computeWillScore(agent, runtime.worldConfig);
+  const resistantIntensity = Math.max(0.01, willScore - 0.01);
+
+  const resisted = pipeline.applyIntervention(
+    created.id,
+    String(agentId),
+    "integrity_drive_delta",
+    resistantIntensity,
+  );
+  expect(resisted.resisted).toBe(true);
+  expect(seenEvents).toContain(EventType.INTERVENTION_RESISTED);
+
+  const resistedAudit = db.getAuditLogs("main").at(-1);
+  expect(resistedAudit?.field).toBe("intervention_resistance");
   const applied = pipeline.applyIntervention(
     created.id,
     String(agentId),

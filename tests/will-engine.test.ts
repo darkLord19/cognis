@@ -40,3 +40,39 @@ test("WillEngine: checkResistance passes when will > stimulus", () => {
   expect(WillEngine.checkResistance(agent, mockConfig, score - 0.1)).toBe(true);
   expect(WillEngine.checkResistance(agent, mockConfig, score + 0.1)).toBe(false);
 });
+
+test("WillEngine: richer identity context raises will score", () => {
+  const sparseAgent = {
+    selfNarrative: "",
+    personalProject: undefined,
+    episodicStore: new Array(20).fill({ source: "real" }),
+    semanticStore: [],
+    traumaFlags: [],
+    conflictFlags: [],
+  } as unknown as AgentState;
+
+  const richAgent = {
+    selfNarrative: "I am a maker, a caretaker, and a witness to the world.",
+    personalProject: {
+      id: "p1",
+      name: "Build shelter",
+      goal: "Keep everyone safe",
+      progress: 0.8,
+      status: "active" as const,
+    },
+    episodicStore: new Array(20).fill({
+      source: "real",
+    }),
+    semanticStore: [
+      { id: "s1", concept: "shelter", value: "safe place", confidence: 0.9, sourceCount: 4 },
+      { id: "s2", concept: "community", value: "shared care", confidence: 0.8, sourceCount: 3 },
+    ],
+    traumaFlags: [],
+    conflictFlags: [],
+  } as unknown as AgentState;
+
+  const sparseScore = WillEngine.computeWillScore(sparseAgent, mockConfig);
+  const richScore = WillEngine.computeWillScore(richAgent, mockConfig);
+
+  expect(richScore).toBeGreaterThan(sparseScore);
+});

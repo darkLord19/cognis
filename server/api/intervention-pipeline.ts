@@ -6,6 +6,7 @@ import { MerkleLogger } from "../persistence/merkle-logger";
 type InterventionResult = {
   success: boolean;
   resisted?: boolean;
+  applied?: boolean;
   message: string;
 };
 
@@ -50,7 +51,7 @@ export class InterventionPipeline {
         payload: { intervention: interventionType, intensity },
       });
 
-      return { success: false, resisted: true, message: "Intervention resisted" };
+      return { success: false, resisted: true, applied: false, message: "Intervention resisted" };
     }
 
     const supportedType = interventionType as SupportedIntervention;
@@ -111,6 +112,6 @@ export class InterventionPipeline {
       payload: { intervention: interventionType, intensity },
     });
 
-    return { success: true, message: "Intervention applied" };
+    return { success: true, resisted: false, applied: true, message: "Intervention applied" };
   }
 }
