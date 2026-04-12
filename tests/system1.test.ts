@@ -33,7 +33,7 @@ const createAgent = (id: string, pain: number): AgentState => {
 };
 
 test("System1: tick updates homeostasis and integrity drive", () => {
-  const agent = createAgent("a1", 50);
+  const agent = createAgent("a1", 0.5);
   const delta = System1.tick(agent, mockCircadian, mockWorldConfig);
 
   expect(delta.hunger).toBeGreaterThan(0.1);
@@ -42,7 +42,7 @@ test("System1: tick updates homeostasis and integrity drive", () => {
 });
 
 test("System1: vocal actuation on high pain", () => {
-  const agent = createAgent("a1", 80);
+  const agent = createAgent("a1", 0.8);
   const vocal = System1.checkVocalActuation(agent, 10);
 
   expect(vocal).toBeTruthy();

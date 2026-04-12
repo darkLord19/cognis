@@ -2,28 +2,43 @@ import { expect, test } from "bun:test";
 import { DialectTracker } from "../server/language/dialect";
 import type { LexiconEntry } from "../shared/types";
 
-test("DialectTracker: computes Jaccard distance between lexicons", () => {
+test("DialectTracker: identical lexicons have zero distance", () => {
+  const lexicon: LexiconEntry[] = [
+    { word: "grok", concept: "fire", confidence: 0.8, consensusCount: 3 },
+  ];
+
+  const distance = DialectTracker.computeDistance(lexicon, lexicon);
+  expect(distance).toBe(0);
+});
+
+test("DialectTracker: disjoint lexicons have distance 1", () => {
   const lexA: LexiconEntry[] = [
-    { word: "A", concept: "1", confidence: 1, consensusCount: 1 },
-    { word: "B", concept: "2", confidence: 1, consensusCount: 1 },
+    { word: "grok", concept: "fire", confidence: 0.8, consensusCount: 3 },
   ];
-
   const lexB: LexiconEntry[] = [
-    { word: "A", concept: "1", confidence: 1, consensusCount: 1 },
-    { word: "C", concept: "3", confidence: 1, consensusCount: 1 },
+    { word: "blit", concept: "water", confidence: 0.8, consensusCount: 3 },
   ];
 
-  // Intersection = {A:1} (size 1)
-  // Union = {A:1, B:2, C:3} (size 3)
-  // Distance = 1 - 1/3 = 0.666...
+  const distance = DialectTracker.computeDistance(lexA, lexB);
+  expect(distance).toBe(1);
+});
 
-  const dist = DialectTracker.computeDistance(lexA, lexB);
-  expect(dist).toBeCloseTo(0.666, 2);
+test("DialectTracker: partial overlap gives intermediate distance", () => {
+  const lexA: LexiconEntry[] = [
+    { word: "grok", concept: "fire", confidence: 0.8, consensusCount: 3 },
+    { word: "blit", concept: "water", confidence: 0.8, consensusCount: 3 },
+  ];
+  const lexB: LexiconEntry[] = [
+    { word: "grok", concept: "fire", confidence: 0.8, consensusCount: 3 },
+    { word: "zap", concept: "light", confidence: 0.8, consensusCount: 3 },
+  ];
 
-  // Same lexicons -> distance 0
-  expect(DialectTracker.computeDistance(lexA, lexA)).toBe(0);
+  const distance = DialectTracker.computeDistance(lexA, lexB);
+  // intersection=1, union=3, distance = 1 - 1/3 = 0.667
+  expect(distance).toBeCloseTo(0.667, 2);
+});
 
-  // Totally different -> distance 1
-  const lexC: LexiconEntry[] = [{ word: "X", concept: "9", confidence: 1, consensusCount: 1 }];
-  expect(DialectTracker.computeDistance(lexA, lexC)).toBe(1);
+test("DialectTracker: empty lexicons have zero distance", () => {
+  const distance = DialectTracker.computeDistance([], []);
+  expect(distance).toBe(0);
 });

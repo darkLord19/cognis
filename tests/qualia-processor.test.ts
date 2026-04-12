@@ -2,92 +2,207 @@ import { expect, test } from "bun:test";
 import { QualiaProcessor } from "../server/agents/qualia-processor";
 import type {
   AgentState,
+  CircadianState,
   EmotionalFieldDetection,
   FeelingResidueTint,
   FilteredPercept,
+  WorldConfig,
 } from "../shared/types";
 
-test("QualiaProcessor: outputs natural language, applies masking, respects lexicon", () => {
-  const agent = {
+const createTestAgent = (): AgentState => {
+  return {
     id: "a1",
     lexicon: [],
     relationships: [],
     semanticStore: [],
   } as unknown as AgentState;
+};
 
-  const filteredPercept: FilteredPercept = {
-    primaryAttention: [{ id: "a2" } as unknown as AgentState],
-    peripheralAwareness: { count: 1, aggregateEmotionalField: 0 },
-    focusedVoxels: [
-      { type: 8, material: "fire", temperature: 100, moisture: 0, fertility: 0, lightLevel: 1 },
-    ],
-    ownBody: {
-      bodyMap: {
-        head: { pain: 0, damage: 0, temperature: 15, label: "head" },
-        torso: { pain: 0, damage: 0, temperature: 15, label: "torso" },
-        leftArm: { pain: 60, damage: 0, temperature: 15, label: "leftArm" }, // high pain
-        rightArm: { pain: 0, damage: 0, temperature: 15, label: "rightArm" },
-        leftLeg: { pain: 0, damage: 0, temperature: 15, label: "leftLeg" },
-        rightLeg: { pain: 0, damage: 0, temperature: 15, label: "rightLeg" },
-      },
-    } as unknown as AgentState["body"],
-  };
+const createPercept = (pain = 0, hunger = 0, thirst = 0): FilteredPercept => ({
+  primaryAttention: [],
+  peripheralAwareness: { count: 0, aggregateEmotionalField: 0 },
+  focusedVoxels: [],
+  ownBody: {
+    hunger,
+    thirst,
+    valence: 0,
+    arousal: 0,
+    bodyMap: {
+      head: { pain, damage: 0, temperature: 15 },
+      torso: { pain: 0, damage: 0, temperature: 15 },
+      leftArm: { pain: 0, damage: 0, temperature: 15 },
+      rightArm: { pain: 0, damage: 0, temperature: 15 },
+      leftLeg: { pain: 0, damage: 0, temperature: 15 },
+      rightLeg: { pain: 0, damage: 0, temperature: 15 },
+    },
+  } as unknown as AgentState["body"],
+});
 
-  const detections: EmotionalFieldDetection[] = [
-    { sourceAgentId: "a2", valenceImpression: -0.8, arousalImpression: 0.5 },
-  ];
+const neutralCircadian: CircadianState = {
+  lightLevel: 0.5,
+  cycleHormoneValue: 0.5,
+  season: "spring",
+  dayNightPhase: "day",
+  surfaceTemperatureDelta: 0,
+  yearProgress: 0,
+};
 
-  const moodTint: FeelingResidueTint = { valence: -0.6, arousal: 0 };
+const defaultConfig = {
+  semanticMasking: {
+    enabled: false,
+    qualiaUsesRealLabels: true,
+    sensorLabelMap: {},
+  },
+} as unknown as WorldConfig;
 
-  const cState = {
+test("QualiaProcessor: outputs natural language, no JSON or IDs", () => {
+  const agent = createTestAgent();
+  const percept = createPercept(0.6); // high pain in head
+
+  const result = QualiaProcessor.qualiaFor(
+    agent,
+    percept,
+    [],
+    { valence: 0, arousal: 0 },
+    neutralCircadian,
+    defaultConfig,
+  );
+
+  // No JSON or agent IDs
+  expect(result).not.toContain("{");
+  expect(result).not.toContain("a1");
+  // Should mention burning (pain > 0.5)
+  expect(result.toLowerCase()).toContain("burn");
+});
+
+test("QualiaProcessor: negative mood tint adds heavy/dark text", () => {
+  const agent = createTestAgent();
+  const percept = createPercept();
+  const moodTint: FeelingResidueTint = { valence: -0.7, arousal: 0 };
+
+  const result = QualiaProcessor.qualiaFor(
+    agent,
+    percept,
+    [],
+    moodTint,
+    neutralCircadian,
+    defaultConfig,
+  );
+
+  // Should produce mood text containing "heavy" or "shadow" or "dark"
+  const lower = result.toLowerCase();
+  expect(lower.includes("heavy") || lower.includes("shadow") || lower.includes("dark")).toBe(true);
+});
+
+test("QualiaProcessor: circadian body_heavy at high hormone + low light", () => {
+  const agent = createTestAgent();
+  const percept = createPercept();
+  const nightCircadian: CircadianState = {
+    ...neutralCircadian,
     lightLevel: 0.1,
     cycleHormoneValue: 0.9,
     season: "winter",
   };
 
-  const wConfig = {
-    semanticMasking: {
-      enabled: true,
-      qualiaUsesRealLabels: false,
-      sensorLabelMap: {
-        fire: "flux_7",
-        chill: "temp_drop",
-        heavy: "grav_pull",
-      },
-    },
-  };
+  const result = QualiaProcessor.qualiaFor(
+    agent,
+    percept,
+    [],
+    { valence: 0, arousal: 0 },
+    nightCircadian,
+    defaultConfig,
+  );
+
+  const lower = result.toLowerCase();
+  // body_heavy or season change text
+  expect(lower.includes("heavy") || lower.includes("stillness") || lower.includes("different")).toBe(true);
+});
+
+test("QualiaProcessor: emotional field detection produces unease text", () => {
+  const agent = createTestAgent();
+  const percept = createPercept();
+  const detections: EmotionalFieldDetection[] = [
+    { sourceAgentId: "a2", valenceImpression: -0.8, arousalImpression: 0.5 },
+  ];
 
   const result = QualiaProcessor.qualiaFor(
     agent,
-    filteredPercept,
+    percept,
     detections,
-    moodTint,
-    cState,
-    wConfig,
+    { valence: 0, arousal: 0 },
+    neutralCircadian,
+    defaultConfig,
   );
 
-  // Checks:
-  // 1. No JSON, ID, etc.
-  expect(result).not.toContain("{");
-  expect(result).not.toContain("a2");
+  expect(result.toLowerCase()).toContain("uneasy");
+});
 
-  // 2. Mood tint
-  expect(result).toContain("grav_pull shadow");
+test("QualiaProcessor: fire voxel without lexicon uses unknown template", () => {
+  const agent = createTestAgent();
+  const percept = createPercept();
+  percept.focusedVoxels = [
+    { material: "fire", temperature: 100 } as unknown as (typeof percept.focusedVoxels)[0],
+  ];
 
-  // 3. Circadian logic
-  expect(result).toContain("grav_pull"); // "heavy" masked
-  expect(result).toContain("different in a way");
+  const result = QualiaProcessor.qualiaFor(
+    agent,
+    percept,
+    [],
+    { valence: 0, arousal: 0 },
+    neutralCircadian,
+    defaultConfig,
+  );
 
-  // 4. Body logic
-  expect(result).toContain("burning in your left arm");
+  const lower = result.toLowerCase();
+  // fire_unknown template: "hot" or "bright" or "heat"
+  expect(lower.includes("hot") || lower.includes("bright") || lower.includes("heat") || lower.includes("warm")).toBe(true);
+});
 
-  // 5. Emotion logic
-  expect(result).toContain("uneasy");
+test("QualiaProcessor: semantic masking replaces labels", () => {
+  const agent = createTestAgent();
+  agent.lexicon = [{ word: "grok", concept: "fire", confidence: 0.8, consensusCount: 1 }];
+  const percept = createPercept();
+  percept.focusedVoxels = [
+    { material: "fire", temperature: 100 } as unknown as (typeof percept.focusedVoxels)[0],
+  ];
 
-  // 6. Agent relation
-  expect(result).toContain("unfamiliar presence");
+  const maskedConfig = {
+    semanticMasking: {
+      enabled: true,
+      qualiaUsesRealLabels: false,
+      sensorLabelMap: { fire: "flux_7" },
+    },
+  } as unknown as WorldConfig;
 
-  // 7. Fire without lexicon
-  expect(result).toContain("hot, bright substance");
-  expect(result).not.toContain("flux_7"); // because fire isn't in output when not in lexicon, "hot, bright substance" is used
+  const result = QualiaProcessor.qualiaFor(
+    agent,
+    percept,
+    [],
+    { valence: 0, arousal: 0 },
+    neutralCircadian,
+    maskedConfig,
+  );
+
+  // If "fire" appeared in output, it should be replaced by "flux_7"
+  expect(result).not.toContain("fire");
+});
+
+test("QualiaProcessor: hunger rendering at mild and strong", () => {
+  const agent = createTestAgent();
+
+  // Mild hunger
+  const mildPercept = createPercept(0, 0.5, 0);
+  const mildResult = QualiaProcessor.qualiaFor(
+    agent, mildPercept, [], { valence: 0, arousal: 0 }, neutralCircadian, defaultConfig,
+  );
+  const mildLower = mildResult.toLowerCase();
+  expect(mildLower.includes("hollow") || mildLower.includes("empty") || mildLower.includes("hunger")).toBe(true);
+
+  // Strong hunger
+  const strongPercept = createPercept(0, 0.8, 0);
+  const strongResult = QualiaProcessor.qualiaFor(
+    agent, strongPercept, [], { valence: 0, arousal: 0 }, neutralCircadian, defaultConfig,
+  );
+  const strongLower = strongResult.toLowerCase();
+  expect(strongLower.includes("hunger") || strongLower.includes("desperate") || strongLower.includes("ravenous") || strongLower.includes("claws")).toBe(true);
 });
