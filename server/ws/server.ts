@@ -1,6 +1,11 @@
 import type { ServerWebSocket } from "bun";
 import { EventType, type SimEvent } from "../../shared/events";
-import type { AgentState, AuditLogEntry, WSCommand, WSSubscribeCommand } from "../../shared/types";
+import type {
+  AgentState,
+  AuditLogEntry,
+  WSClientCommand,
+  WSClientSubscribeCommand,
+} from "../../shared/types";
 import type { RunSupervisor } from "../core/run-supervisor";
 import { db } from "../persistence/database";
 import { authenticateOperator } from "./auth";
@@ -60,12 +65,15 @@ export class WebSocketServer {
           this.sockets.add(ws);
         },
         message: (ws, message) => {
-          const data = JSON.parse(String(message)) as WSCommand;
-          if (data.type === "subscribe") {
-            this.handleSubscribe(ws, data);
-          }
-          if (data.type === "AUTH_OPERATOR" || data.type === "auth_operator") {
-            ws.data.isOperator = authenticateOperator(data.token, this.operatorToken);
+          try {
+            const data = JSON.parse(String(message)) as WSClientCommand;
+            if (data.type === "subscribe") {
+              this.handleSubscribe(ws, data);
+            } else if (data.type === "AUTH_OPERATOR" || data.type === "auth_operator") {
+              ws.data.isOperator = authenticateOperator(data.token, this.operatorToken);
+            }
+          } catch {
+            // Ignore malformed websocket frames.
           }
         },
         close: (ws) => {
@@ -85,7 +93,7 @@ export class WebSocketServer {
     this.runtimeUnsubscribe = null;
   }
 
-  private handleSubscribe(ws: ServerWebSocket<WSData>, data: WSSubscribeCommand): void {
+  private handleSubscribe(ws: ServerWebSocket<WSData>, data: WSClientSubscribeCommand): void {
     ws.data.subscriptions.set(data.runId, {
       ...(data.eventTypes ? { eventTypes: new Set(data.eventTypes) } : {}),
       ...(data.agentIds ? { agentIds: new Set(data.agentIds) } : {}),

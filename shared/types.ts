@@ -649,7 +649,7 @@ export type FeelingResidueTint = {
   arousal: number;
 };
 
-export type WSSubscribeCommand = {
+export type WSClientSubscribeCommand = {
   type: "subscribe";
   runId: string;
   eventTypes?: string[];
@@ -658,14 +658,14 @@ export type WSSubscribeCommand = {
   includeAudit?: boolean;
 };
 
-export type WSAuthOperatorCommand = {
+export type WSClientAuthOperatorCommand = {
   type: "auth_operator" | "AUTH_OPERATOR";
   token: string;
 };
 
-export type WSCommand = WSSubscribeCommand | WSAuthOperatorCommand;
+export type WSClientCommand = WSClientSubscribeCommand | WSClientAuthOperatorCommand;
 
-export type WSSnapshotMessage = {
+export type WSServerSnapshotMessage = {
   type: "snapshot";
   runId: string;
   status: RunState;
@@ -673,45 +673,56 @@ export type WSSnapshotMessage = {
   agents: AgentState[];
 };
 
-export type WSEventMessage = {
+export type WSServerEventMessage = {
   type: "event";
   runId: string;
   event: import("./events").SimEvent;
 };
 
-export type WSTickMessage = {
+export type WSServerTickMessage = {
   type: "tick";
   runId: string;
   tick: number;
   status: RunState;
 };
 
-export type WSAgentUpdateMessage = {
+export type WSServerAgentUpdateMessage = {
   type: "agent_update";
   runId: string;
   agent: AgentState;
 };
 
-export type WSInnerMonologueMessage = {
+export type WSServerInnerMonologueMessage = {
   type: "inner_monologue";
   runId: string;
   agentId: string;
   innerMonologue: string;
 };
 
-export type WSAuditEntryMessage = {
+export type WSServerAuditEntryMessage = {
   type: "audit_entry";
   runId: string;
   entry: AuditLogEntry;
 };
 
-export type WSMessage =
-  | WSSnapshotMessage
-  | WSEventMessage
-  | WSTickMessage
-  | WSAgentUpdateMessage
-  | WSInnerMonologueMessage
-  | WSAuditEntryMessage;
+export type WSServerMessage =
+  | WSServerSnapshotMessage
+  | WSServerEventMessage
+  | WSServerTickMessage
+  | WSServerAgentUpdateMessage
+  | WSServerInnerMonologueMessage
+  | WSServerAuditEntryMessage;
+
+export type WSSubscribeCommand = WSClientSubscribeCommand;
+export type WSAuthOperatorCommand = WSClientAuthOperatorCommand;
+export type WSCommand = WSClientCommand;
+export type WSSnapshotMessage = WSServerSnapshotMessage;
+export type WSEventMessage = WSServerEventMessage;
+export type WSTickMessage = WSServerTickMessage;
+export type WSAgentUpdateMessage = WSServerAgentUpdateMessage;
+export type WSInnerMonologueMessage = WSServerInnerMonologueMessage;
+export type WSAuditEntryMessage = WSServerAuditEntryMessage;
+export type WSMessage = WSServerMessage;
 
 export type RunState =
   | "created"
