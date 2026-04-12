@@ -125,7 +125,14 @@ test("System2: think prompt does not leak other agent names or IDs", async () =>
     ownBody: {},
   } as unknown as FilteredPercept;
 
-  await system2.think(agent, "A familiar presence is nearby.", percept, mockWorldConfig, 10, "main");
+  await system2.think(
+    agent,
+    "A familiar presence is nearby.",
+    percept,
+    mockWorldConfig,
+    10,
+    "main",
+  );
 
   expect(capturedPrompt).not.toContain("Human 4");
   expect(capturedPrompt).not.toContain("a2");
