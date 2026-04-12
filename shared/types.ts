@@ -305,6 +305,10 @@ export type ImmediateReactionType = "RECOIL" | "FLEE" | "COLLAPSE" | "NONE";
 export type ActionType =
   | "IDLE"
   | "MOVE"
+  | "WANDER"
+  | "REST"
+  | "FLEE"
+  | "STALK"
   | "REPRODUCE"
   | "EAT"
   | "SLEEP"

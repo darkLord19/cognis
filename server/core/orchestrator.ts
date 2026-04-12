@@ -39,6 +39,7 @@ export class Orchestrator {
   private techTree: TechTree;
   private system2: System2;
   private vocalActuations: VocalActuation[] = [];
+  private recentDecisions = new Map<string, string[]>();
 
   constructor(
     private runId: string,
@@ -86,6 +87,30 @@ export class Orchestrator {
     }
 
     return false;
+  }
+
+  private checkDecisionLoop(agentId: string, decision: { type: string; params?: unknown }): boolean {
+    const history = this.recentDecisions.get(agentId) ?? [];
+    const decisionStr = JSON.stringify(decision);
+    history.push(decisionStr);
+    if (history.length > 5) history.shift();
+    this.recentDecisions.set(agentId, history);
+
+    if (history.length === 5 && history.every((entry) => entry === decisionStr)) {
+      console.warn(`[LOOP DETECTED] Agent ${agentId} looping on: ${decisionStr}`);
+      return true;
+    }
+
+    return false;
+  }
+
+  private breakDecisionLoop(): { type: "MOVE"; params: { goal: string; jitter: number } } {
+    const options = ["wander", "patrol", "probe"];
+    const goal = options[Math.floor(Math.random() * options.length)] ?? "wander";
+    return {
+      type: "MOVE",
+      params: { goal, jitter: Number(Math.random().toFixed(3)) },
+    };
   }
 
   public async tick(): Promise<void> {
@@ -201,7 +226,10 @@ export class Orchestrator {
 
       // 4i. System2 / behaviour tree
       if (this.usesBehaviorTree(agent)) {
-        const decision = BehaviorTree.tick(agent);
+        let decision = BehaviorTree.tick(agent, filteredPercept);
+        if (decision.type !== "IDLE" && this.checkDecisionLoop(agent.id, decision)) {
+          decision = this.breakDecisionLoop();
+        }
         if (decision.type !== "IDLE") {
           positionsChanged =
             this.applyDecision(agent, {
@@ -241,6 +269,9 @@ export class Orchestrator {
 
               // 4l. Apply decision / update position
               if (output.decision && output.decision.type !== "IDLE") {
+                if (this.checkDecisionLoop(agent.id, output.decision)) {
+                  output.decision = this.breakDecisionLoop();
+                }
                 positionsChanged =
                   this.applyDecision(agent, {
                     type: output.decision.type,

@@ -225,5 +225,5 @@ test("Orchestrator: uses behavior trees for wolf agents when System2 does not fi
   orchestrator.addAgent(agent);
   await orchestrator.tick();
 
-  expect(agent.currentAction).toBe("MOVE");
+  expect(agent.currentAction).toBe("WANDER");
 });
