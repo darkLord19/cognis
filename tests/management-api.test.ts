@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { GlassRoomManager } from "../server/agents/glass-room";
 import { createManagementApiHandler } from "../server/api/management-api";
 import { RunService } from "../server/core/run-service";
 import { RunSupervisor } from "../server/core/run-supervisor";
@@ -9,6 +10,7 @@ import { SpeciesRegistry } from "../server/species/registry";
 
 let supervisor: RunSupervisor;
 let service: RunService;
+let glassRoomManager: GlassRoomManager;
 let handler: (req: Request) => Promise<Response>;
 
 async function readJson(response: Response) {
@@ -25,6 +27,7 @@ beforeEach(() => {
   db.db.exec("PRAGMA foreign_keys = ON;");
 
   supervisor = new RunSupervisor();
+  glassRoomManager = new GlassRoomManager();
   const speciesRegistry = new SpeciesRegistry();
   speciesRegistry.loadAll();
   service = new RunService({
@@ -33,7 +36,11 @@ beforeEach(() => {
     speciesRegistry,
     database: db,
   });
-  handler = createManagementApiHandler({ runService: service, runSupervisor: supervisor });
+  handler = createManagementApiHandler({
+    runService: service,
+    runSupervisor: supervisor,
+    glassRoomManager,
+  });
 });
 
 afterEach(() => {
@@ -96,4 +103,57 @@ test("management api pauses, resumes, stops, and reports health from shared runt
   expect(stopResponse.status).toBe(200);
   expect((await readJson(stopResponse)).status).toBe("stopped");
   expect(supervisor.getRuntime(created.id)).toBeUndefined();
+});
+
+test("management api reports resisted and applied interventions and manages glass room sessions", async () => {
+  const created = service.createRun({ config: "earth-default", seed: 79 });
+  service.startRun(created.id);
+  const agentId = service.getAgents(created.id)[0]?.id;
+  expect(agentId).toBeDefined();
+
+  const resistedResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/interventions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agentId,
+        type: "integrity_drive_delta",
+        intensity: 0.1,
+      }),
+    }),
+  );
+  const resisted = await readJson(resistedResponse);
+  expect(resistedResponse.status).toBe(200);
+  expect(resisted.resisted).toBe(true);
+
+  const appliedResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/interventions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        agentId,
+        type: "fatigue_spike",
+        intensity: 0.5,
+      }),
+    }),
+  );
+  const applied = await readJson(appliedResponse);
+  expect(appliedResponse.status).toBe(200);
+  expect(applied.success).toBe(true);
+
+  const enterResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/glass-room/${agentId}`, {
+      method: "POST",
+    }),
+  );
+  expect(enterResponse.status).toBe(200);
+  expect(glassRoomManager.isAgentInGlassRoom(created.id, String(agentId))).toBe(true);
+
+  const exitResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/arnold/${agentId}`, {
+      method: "DELETE",
+    }),
+  );
+  expect(exitResponse.status).toBe(200);
+  expect(glassRoomManager.isAgentInGlassRoom(created.id, String(agentId))).toBe(false);
 });

@@ -1,4 +1,6 @@
+import { EventType } from "../../shared/events";
 import type { WorldConfig } from "../../shared/types";
+import type { GlassRoomManager } from "../agents/glass-room";
 import type { RunService } from "../core/run-service";
 import type { RunSupervisor } from "../core/run-supervisor";
 import { WorldConfigManager } from "../core/world-config-manager";
@@ -7,6 +9,7 @@ import { MerkleLogger } from "../persistence/merkle-logger";
 import { InterventionPipeline } from "./intervention-pipeline";
 
 type ApiDependencies = {
+  glassRoomManager: GlassRoomManager;
   runService: RunService;
   runSupervisor: RunSupervisor;
 };
@@ -216,7 +219,54 @@ export function createManagementApiHandler(deps: ApiDependencies) {
         body.type,
         body.intensity,
       );
-      return jsonResponse(result, result.success ? 200 : 400);
+      return jsonResponse(result, result.success || result.resisted ? 200 : 400);
+    }
+
+    const glassRoomMatch =
+      path.match(/^\/runs\/([^/]+)\/glass-room\/([^/]+)$/) ??
+      path.match(/^\/runs\/([^/]+)\/arnold\/([^/]+)$/);
+    if (glassRoomMatch && method === "POST") {
+      const runId = requirePathParam(glassRoomMatch[1]);
+      const agentId = requirePathParam(glassRoomMatch[2]);
+      const runtime = deps.runService.getRuntime(runId);
+      const agent = deps.runService.getAgents(runId).find((entry) => entry.id === agentId);
+      if (!runtime?.orchestrator || !agent) {
+        return jsonResponse({ error: "Runtime or agent not found" }, 404);
+      }
+
+      agent.currentAction = "SLEEP";
+      const session = deps.glassRoomManager.enterGlassRoom(runId, agentId, runtime.clock.getTick());
+      runtime.eventBus.emit({
+        event_id: crypto.randomUUID(),
+        branch_id: runtime.branchId,
+        run_id: runId,
+        tick: runtime.clock.getTick(),
+        type: EventType.GLASS_ROOM_ENTERED,
+        agent_id: agentId,
+        payload: { startTick: session.startTick },
+      });
+      return jsonResponse({ ok: true, session });
+    }
+
+    if (glassRoomMatch && method === "DELETE") {
+      const runId = requirePathParam(glassRoomMatch[1]);
+      const agentId = requirePathParam(glassRoomMatch[2]);
+      const runtime = deps.runService.getRuntime(runId);
+      if (!runtime?.orchestrator) {
+        return jsonResponse({ error: "Runtime not found" }, 404);
+      }
+
+      deps.glassRoomManager.exitGlassRoom(runId, agentId);
+      runtime.eventBus.emit({
+        event_id: crypto.randomUUID(),
+        branch_id: runtime.branchId,
+        run_id: runId,
+        tick: runtime.clock.getTick(),
+        type: EventType.GLASS_ROOM_EXITED,
+        agent_id: agentId,
+        payload: {},
+      });
+      return jsonResponse({ ok: true });
     }
 
     return jsonResponse({ error: "Not found" }, 404);
