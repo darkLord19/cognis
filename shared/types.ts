@@ -675,3 +675,70 @@ export type RunSummary = {
   endTick?: number;
   status: RunState;
 };
+
+// --- Derived/Internal Types (consolidated from modules) ---
+
+export type BodyStateDelta = Partial<BodyState>;
+
+export type EpisodicMemorySource =
+  | "real"
+  | "dream_prophetic"
+  | "nightmare"
+  | "dream_healing"
+  | "dream_chaos";
+
+export type AuditLogEntry = {
+  id: number;
+  tick: number;
+  branch_id: string;
+  agent_id: string | null;
+  system: string;
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+  cause_event_id: string | null;
+  cause_description: string | null;
+  suppressed: number;
+  previous_hash: string;
+  entry_hash: string;
+};
+
+export type EpisodicMemoryRow = {
+  id: string;
+  tick: number;
+  qualia_text: string;
+  salience: number;
+  emotional_valence: number;
+  emotional_arousal: number;
+  suppressed: number;
+  source: EpisodicMemorySource;
+  context_tags: string;
+};
+
+export type SemanticBeliefRow = {
+  id: string;
+  agent_id: string;
+  branch_id: string;
+  concept: string;
+  value: string;
+  confidence: number;
+  source_count: number;
+};
+
+export type BaselineInterpretation =
+  | "confabulation"
+  | "genuine_emergence"
+  | "physical_substrate"
+  | "semantic_dependent";
+
+export type ConflictDelta = {
+  damageA: number;
+  damageB: number;
+};
+
+export type DreamMemoryInput = {
+  tick: number;
+  source: EpisodicMemorySource;
+  valence?: number;
+  arousal?: number;
+};
