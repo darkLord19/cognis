@@ -1,23 +1,10 @@
-import type { SemanticBelief } from "../../shared/types";
+import type { SemanticBelief, SemanticBeliefRow } from "../../shared/types";
 import { db } from "../persistence/database";
-
-interface SemanticBeliefRow {
-  id: string;
-  agent_id: string;
-  branch_id: string;
-  concept: string;
-  value: string;
-  confidence: number;
-  source_count: number;
-}
 
 // biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
 export class SemanticStore {
   public static addBelief(agentId: string, branchId: string, belief: SemanticBelief): void {
-    // Append-only: just insert a new record. We'll query the latest or aggregate.
-    // To avoid PK conflict, we use a new UUID for the row if needed,
-    // but the table schema has 'id TEXT PRIMARY KEY'.
-    // Since we cannot UPDATE, we must ensure every insertion has a unique ID.
+    // Append-only: just insert a new record. We query the latest or aggregate at read time.
     db.db
       .query(`
       INSERT INTO semantic_beliefs (id, agent_id, branch_id, concept, value, confidence, source_count)

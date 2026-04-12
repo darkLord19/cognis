@@ -19,7 +19,7 @@ export class SalienceGate {
         bm.leftLeg.pain,
         bm.rightLeg.pain,
       );
-      painFactor = maxPain / 100.0;
+      painFactor = maxPain;
     }
 
     const isNovel = payload.isNovel ? 1.0 : 0.2;
