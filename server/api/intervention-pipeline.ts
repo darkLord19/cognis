@@ -33,8 +33,8 @@ export class InterventionPipeline {
         runtime.clock.getTick(),
         runtime.branchId,
         agentId,
-        "Intervention",
-        interventionType,
+        "WillEngine",
+        "intervention_resistance",
         null,
         `resisted:${intensity}`,
         null,
@@ -82,11 +82,24 @@ export class InterventionPipeline {
       runtime.branchId,
       agentId,
       "Intervention",
-      interventionType,
+      "intervention_application",
       String(oldValue),
       String(newValue),
       null,
     );
+
+    if (supportedType === "integrity_drive_delta") {
+      MerkleLogger.log(
+        runtime.clock.getTick(),
+        runtime.branchId,
+        agentId,
+        "Intervention",
+        "identity_scarring",
+        String(oldValue),
+        String(newValue),
+        null,
+      );
+    }
 
     runtime.eventBus.emit({
       event_id: crypto.randomUUID(),
