@@ -120,7 +120,7 @@ const flags = parseArgs();
 console.log("=== Cognis Server ===\n");
 
 const eventBus = new EventBus();
-const clock = new SimClock(async (tick) => {
+const clock = new SimClock(async (_tick) => {
   const ctx = RunContext.get();
   if (ctx) {
     await ctx.orchestrator.tick();

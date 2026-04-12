@@ -1,5 +1,5 @@
 import { EventType } from "../../shared/events";
-import type { EventBus, EventHandler } from "../core/event-bus";
+import type { EventBus } from "../core/event-bus";
 import { RunContext } from "../core/run-context";
 
 export interface WatcherOptions {
@@ -25,8 +25,6 @@ const defaultOptions: WatcherOptions = {
 export class Watcher {
   private eventBus: EventBus;
   private options: WatcherOptions;
-  private lastTickSummary = 0;
-  private agentCounts = { total: 0, asleep: 0, dreaming: 0 };
 
   constructor(eventBus: EventBus, options: Partial<WatcherOptions> = {}) {
     this.eventBus = eventBus;

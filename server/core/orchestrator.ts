@@ -89,7 +89,7 @@ export class Orchestrator {
     let positionsChanged = false;
 
     let totalDecisions = 0;
-    let vocalizations = 0;
+    let _vocalizations = 0;
 
     // 1. Circadian
     const circadianState = CircadianEngine.tick(tick, this.world, this.config.circadian);
@@ -320,7 +320,7 @@ export class Orchestrator {
 
     // 5. Language
     for (const va of this.vocalActuations) {
-      vocalizations++;
+      _vocalizations++;
       const emitter = this.agents.find((a) => a.id === va.emitterId);
       const emitterPos = emitter?.position ?? { x: 0, y: 0, z: 0 };
       const listeners = this.spatialIndex.getAgentsInRadius(emitterPos, 50);

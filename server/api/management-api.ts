@@ -112,7 +112,7 @@ function loadConfig(nameOrPath: string): WorldConfig | null {
 export function startManagementApi(port: number): void {
   Bun.serve({
     port,
-    async fetch(req, server): Promise<Response> {
+    async fetch(req, _server): Promise<Response> {
       const url = new URL(req.url);
       const path = url.pathname;
       const method = req.method;
