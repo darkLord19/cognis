@@ -2,12 +2,14 @@ import type { LLMProvider } from "./gateway";
 
 export class MockLLMGateway implements LLMProvider {
   public async completion(
-    prompt: string,
+    _prompt: string,
     _systemPrompt: string,
     _options?: Record<string, unknown>,
   ): Promise<string> {
     // Deterministic response for testing
-    return `{"innerMonologue": "I am thinking about ${prompt.substring(0, 10)}...", "decision": { "type": "IDLE" }}`;
+    // Note: innerMonologue in the response is expected — System2 routes it to MerkleLogger.
+    // The mock returns a valid System2Output shape for integration testing.
+    return `{"innerMonologue": "...", "decision": { "type": "IDLE" }}`;
   }
 
   public async embed(_text: string): Promise<number[]> {
