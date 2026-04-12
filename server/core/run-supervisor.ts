@@ -1,9 +1,9 @@
 import type { AgentState, RunState, WorldConfig } from "../../shared/types";
-import { EventBus } from "./event-bus";
+import type { VoxelGrid } from "../world/voxel-grid";
+import type { EventBus } from "./event-bus";
 import type { Orchestrator } from "./orchestrator";
 import { RunStateStore } from "./run-state-store";
-import { SimClock } from "./sim-clock";
-import type { VoxelGrid } from "../world/voxel-grid";
+import type { SimClock } from "./sim-clock";
 
 export interface RunRuntime {
   runId: string;
@@ -17,11 +17,18 @@ export interface RunRuntime {
   status: RunState;
 }
 
+type RunSupervisorEvent =
+  | { type: "registered"; runtime: RunRuntime }
+  | { type: "stopped"; runId: string }
+  | { type: "shutdown" };
+
 export class RunSupervisor {
   private runtimes: Map<string, RunRuntime> = new Map();
+  private listeners: Set<(event: RunSupervisorEvent) => void> = new Set();
 
   registerRuntime(runtime: RunRuntime): RunRuntime {
     this.runtimes.set(runtime.runId, runtime);
+    this.emit({ type: "registered", runtime });
     return runtime;
   }
 
@@ -65,6 +72,7 @@ export class RunSupervisor {
     runtime.status = "stopped";
     RunStateStore.record(runId, "stopped", runtime.clock.getTick());
     this.runtimes.delete(runId);
+    this.emit({ type: "stopped", runId });
   }
 
   shutdownAll(): void {
@@ -74,5 +82,19 @@ export class RunSupervisor {
       RunStateStore.record(runtime.runId, "stopped", runtime.clock.getTick());
     }
     this.runtimes.clear();
+    this.emit({ type: "shutdown" });
+  }
+
+  onRuntimeEvent(listener: (event: RunSupervisorEvent) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private emit(event: RunSupervisorEvent): void {
+    for (const listener of this.listeners) {
+      listener(event);
+    }
   }
 }

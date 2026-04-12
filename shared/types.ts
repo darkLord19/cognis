@@ -649,15 +649,69 @@ export type FeelingResidueTint = {
   arousal: number;
 };
 
-export type WSMessage = {
-  type: "EVENT" | "STATE" | "AUDIT" | "FINDING";
-  payload: unknown;
+export type WSSubscribeCommand = {
+  type: "subscribe";
+  runId: string;
+  eventTypes?: string[];
+  agentIds?: string[];
+  includeInnerMonologue?: boolean;
+  includeAudit?: boolean;
 };
 
-export type WSCommand = {
-  type: string;
-  params: unknown;
+export type WSAuthOperatorCommand = {
+  type: "auth_operator" | "AUTH_OPERATOR";
+  token: string;
 };
+
+export type WSCommand = WSSubscribeCommand | WSAuthOperatorCommand;
+
+export type WSSnapshotMessage = {
+  type: "snapshot";
+  runId: string;
+  status: RunState;
+  tick: number;
+  agents: AgentState[];
+};
+
+export type WSEventMessage = {
+  type: "event";
+  runId: string;
+  event: import("./events").SimEvent;
+};
+
+export type WSTickMessage = {
+  type: "tick";
+  runId: string;
+  tick: number;
+  status: RunState;
+};
+
+export type WSAgentUpdateMessage = {
+  type: "agent_update";
+  runId: string;
+  agent: AgentState;
+};
+
+export type WSInnerMonologueMessage = {
+  type: "inner_monologue";
+  runId: string;
+  agentId: string;
+  innerMonologue: string;
+};
+
+export type WSAuditEntryMessage = {
+  type: "audit_entry";
+  runId: string;
+  entry: AuditLogEntry;
+};
+
+export type WSMessage =
+  | WSSnapshotMessage
+  | WSEventMessage
+  | WSTickMessage
+  | WSAgentUpdateMessage
+  | WSInnerMonologueMessage
+  | WSAuditEntryMessage;
 
 export type RunState =
   | "created"

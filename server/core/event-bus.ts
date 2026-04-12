@@ -65,4 +65,8 @@ export class EventBus {
   onAny(callback: EventCallback): void {
     this.anyListeners.push(callback);
   }
+
+  offAny(callback: EventCallback): void {
+    this.anyListeners = this.anyListeners.filter((listener) => listener !== callback);
+  }
 }
