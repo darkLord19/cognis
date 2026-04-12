@@ -1,103 +1,54 @@
 import type { ServerWebSocket } from "bun";
-import type { SimEvent } from "../../shared/events";
-import { EventType } from "../../shared/events";
-import type { EventBus } from "../core/event-bus";
-import { MerkleLogger } from "../persistence/merkle-logger";
-import { TripleBaseline } from "../research/triple-baseline";
+import type { RunSupervisor } from "../core/run-supervisor";
 import { authenticateOperator } from "./auth";
 
 interface WSData {
   isOperator: boolean;
-}
-
-/** Event types that contain inner monologue or suppressed data — operator only. */
-const _OPERATOR_ONLY_EVENT_TYPES: Set<string> = new Set([
-  EventType.TICK, // TICK events may carry qualia in payload — filter innerMonologue
-]);
-
-/** Fields in event payloads that must be stripped for non-operator. */
-const SENSITIVE_PAYLOAD_FIELDS = ["innerMonologue", "suppressed", "auditEntry"];
-
-function sanitizeEventForPublic(event: SimEvent): SimEvent {
-  // If it's a System2 inner monologue log, suppress entirely for non-operators
-  if (event.payload && typeof event.payload === "object" && "innerMonologue" in event.payload) {
-    const cleaned = { ...event.payload };
-    for (const field of SENSITIVE_PAYLOAD_FIELDS) {
-      delete (cleaned as Record<string, unknown>)[field];
-    }
-    return { ...event, payload: cleaned };
-  }
-  return event;
+  subscriptions: Set<string>;
 }
 
 export class WebSocketServer {
   private sockets: Set<ServerWebSocket<WSData>> = new Set();
   private operatorToken: string | undefined;
 
-  constructor(private eventBus: EventBus) {
+  constructor(private runSupervisor: RunSupervisor) {
     this.operatorToken = process.env.OPERATOR_TOKEN;
-    this.eventBus.onAny((event) => {
-      for (const ws of this.sockets) {
-        if (ws.data.isOperator) {
-          // Operators get everything
-          ws.send(JSON.stringify({ type: "EVENT", payload: event }));
-        } else {
-          // Public connections get sanitised events
-          const sanitized = sanitizeEventForPublic(event);
-          ws.send(JSON.stringify({ type: "EVENT", payload: sanitized }));
-        }
-      }
-    });
   }
 
   public start(port = 3001) {
-    const self = this;
     Bun.serve<WSData>({
       port,
       fetch(req, server) {
-        if (server.upgrade(req, { data: { isOperator: false } })) {
+        if (server.upgrade(req, { data: { isOperator: false, subscriptions: new Set() } })) {
           return;
         }
         return new Response("Upgrade failed", { status: 500 });
       },
       websocket: {
-        open(ws) {
-          self.sockets.add(ws);
+        open: (ws) => {
+          this.sockets.add(ws);
         },
-        message(ws, message) {
-          try {
-            const data = JSON.parse(String(message));
-            if (data.type === "AUTH_OPERATOR") {
-              const authenticated = authenticateOperator(data.token, self.operatorToken);
-              ws.data.isOperator = authenticated;
-              ws.send(JSON.stringify({ type: "AUTH_RESULT", payload: { authenticated } }));
-              return;
-            }
-
-            // All commands below require operator status
-            if (!ws.data.isOperator) {
+        message: (ws, message) => {
+          const data = JSON.parse(String(message));
+          if (data.type === "subscribe") {
+            ws.data.subscriptions.add(data.runId);
+            const runtime = this.runSupervisor.getRuntime(data.runId);
+            if (runtime && runtime.orchestrator) {
               ws.send(
                 JSON.stringify({
-                  type: "ERROR",
-                  payload: { message: "Operator authentication required" },
+                  type: "snapshot",
+                  runState: "active",
+                  agentSummaries: runtime.orchestrator.getAgents(),
                 }),
               );
-              return;
             }
-
-            if (data.type === "VERIFY_CHAIN") {
-              const result = MerkleLogger.verifyChain(data.branchId);
-              ws.send(JSON.stringify({ type: "VERIFICATION_RESULT", payload: result }));
-            }
-            if (data.type === "START_BASELINE") {
-              TripleBaseline.spawn(data.config);
-            }
-          } catch (e) {
-            console.error("WS message error:", e);
+          }
+          if (data.type === "AUTH_OPERATOR") {
+            ws.data.isOperator = authenticateOperator(data.token, this.operatorToken);
           }
         },
-        close(ws) {
-          self.sockets.delete(ws);
+        close: (ws) => {
+          this.sockets.delete(ws);
         },
       },
     });

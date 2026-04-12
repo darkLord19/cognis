@@ -10,6 +10,8 @@ import { BranchManager } from "./branch-manager";
 import type { EventBus } from "./event-bus";
 import { Orchestrator } from "./orchestrator";
 import { RunManager } from "./run-manager";
+import type { RunSupervisor } from "./run-supervisor";
+import { RunStateStore } from "./run-state-store";
 import type { SimClock } from "./sim-clock";
 import { WorldConfigManager } from "./world-config-manager";
 
@@ -19,6 +21,7 @@ type BootstrapDependencies = {
   gateway: LLMGateway;
   speciesRegistry: SpeciesRegistry;
   database: Database;
+  runSupervisor: RunSupervisor;
 };
 
 type BootstrapResult = {
@@ -94,7 +97,7 @@ function createAgent(species: SpeciesConfig, index: number, branchId: string): A
 }
 
 function selectSpecies(config: WorldConfig, speciesRegistry: SpeciesRegistry): SpeciesConfig[] {
-  if (config.species.length > 0) {
+  if (config.species && config.species.length > 0) {
     return config.species;
   }
 
@@ -129,7 +132,29 @@ export function bootstrapSimulation(
   const world = TerrainGenerator.generate(config.terrain);
   const physics = new PhysicsEngine(config.physics);
   const system2 = new System2(deps.gateway, deps.speciesRegistry);
-  const orchestrator = new Orchestrator(config, world, deps.clock, deps.eventBus, physics, system2);
+
+  const orchestrator = new Orchestrator(
+    runId,
+    branchId,
+    config,
+    world,
+    deps.clock,
+    deps.eventBus,
+    physics,
+    system2,
+  );
+  deps.runSupervisor.registerRuntime({
+    runId,
+    branchId,
+    clock: deps.clock,
+    eventBus: deps.eventBus,
+    orchestrator,
+    worldConfig: config,
+    world,
+    agents: [],
+    status: "created",
+  });
+  RunStateStore.record(runId, "created", 0);
 
   const speciesPool = selectSpecies(config, deps.speciesRegistry);
   const agents = Array.from({ length: config.agents.initialCount }, (_, index) =>
@@ -138,6 +163,12 @@ export function bootstrapSimulation(
 
   for (const agent of agents) {
     orchestrator.addAgent(agent);
+  }
+
+  const runtime = deps.runSupervisor.getRuntime(runId);
+  if (runtime) {
+    runtime.agents = agents;
+    runtime.status = "created";
   }
 
   return { runId, branchId, config, world, orchestrator, agents };

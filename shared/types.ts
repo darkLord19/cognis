@@ -659,7 +659,14 @@ export type WSCommand = {
   params: unknown;
 };
 
-export type RunState = "created" | "running" | "paused" | "stopped";
+export type RunState =
+  | "created"
+  | "starting"
+  | "running"
+  | "paused"
+  | "resuming"
+  | "stopped"
+  | "completed";
 
 export type BranchNode = {
   id: string;
@@ -674,6 +681,7 @@ export type RunSummary = {
   startTick: number;
   endTick?: number;
   status: RunState;
+  currentTick: number;
 };
 
 // --- Derived/Internal Types (consolidated from modules) ---

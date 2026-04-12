@@ -1,19 +1,52 @@
-import { expect, test } from "bun:test";
-import { RunSupervisor } from "../server/core/run-supervisor";
-import type { WorldConfig } from "../shared/types";
+import { beforeEach, expect, test } from "bun:test";
+import { EventBus } from "../server/core/event-bus";
+import { RunSupervisor, type RunRuntime } from "../server/core/run-supervisor";
+import { SimClock } from "../server/core/sim-clock";
 
-test("RunSupervisor manages multiple independent runtimes", () => {
+function createRuntime(runId: string): RunRuntime {
+  return {
+    runId,
+    branchId: "main",
+    clock: new SimClock(),
+    eventBus: new EventBus(),
+    orchestrator: null,
+    worldConfig: {} as RunRuntime["worldConfig"],
+    world: null,
+    agents: [],
+    status: "created",
+  };
+}
+
+beforeEach(() => {
+  // No shared global state.
+});
+
+test("RunSupervisor registers provided runtimes instead of constructing placeholders", () => {
   const supervisor = new RunSupervisor();
-  const config = {} as unknown as WorldConfig;
+  const runtime1 = createRuntime("run-1");
+  const runtime2 = createRuntime("run-2");
 
-  const runtime1 = supervisor.createRuntime("run1", "branch1", config);
-  const runtime2 = supervisor.createRuntime("run2", "branch2", config);
+  supervisor.registerRuntime(runtime1);
+  supervisor.registerRuntime(runtime2);
 
-  expect(runtime1.runId).toBe("run1");
-  expect(runtime2.runId).toBe("run2");
-  expect(supervisor.listRuntimes().length).toBe(2);
+  expect(supervisor.getRuntime("run-1")).toBe(runtime1);
+  expect(supervisor.getRuntime("run-2")).toBe(runtime2);
+  expect(supervisor.listRuntimes()).toHaveLength(2);
+});
 
-  supervisor.stopRuntime("run1");
-  expect(supervisor.getRuntime("run1")).toBeUndefined();
-  expect(supervisor.getRuntime("run2")).toBeDefined();
+test("RunSupervisor pauses, resumes, and stops tracked runtimes", () => {
+  const supervisor = new RunSupervisor();
+  const runtime = createRuntime("run-1");
+
+  supervisor.registerRuntime(runtime);
+
+  supervisor.pauseRuntime("run-1");
+  expect(runtime.status).toBe("paused");
+
+  supervisor.resumeRuntime("run-1");
+  expect(runtime.status).toBe("running");
+
+  supervisor.stopRuntime("run-1");
+  expect(runtime.status).toBe("stopped");
+  expect(supervisor.getRuntime("run-1")).toBeUndefined();
 });
