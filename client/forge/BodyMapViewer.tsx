@@ -1,36 +1,34 @@
+const partOrder = ["head", "torso", "leftArm", "rightArm", "leftLeg", "rightLeg"] as const;
+
 export function BodyMapViewer({ bodyMap }: { bodyMap: Record<string, { pain: number }> }) {
   if (!bodyMap) return null;
 
   return (
-    <div className="p-2 border border-gray-700 rounded bg-black">
-      <h3 className="text-xs mb-2 text-gray-400 uppercase tracking-tighter">Body Schema</h3>
-      <div className="flex flex-col items-center space-y-1">
-        <div
-          className="w-8 h-8 rounded-full border border-gray-600 flex items-center justify-center text-[10px]"
-          style={{ backgroundColor: `rgba(255, 0, 0, ${(bodyMap.head?.pain ?? 0) / 100})` }}
-        >
-          HEAD
-        </div>
-        <div
-          className="w-12 h-16 border border-gray-600 flex items-center justify-center text-[10px]"
-          style={{ backgroundColor: `rgba(255, 0, 0, ${(bodyMap.torso?.pain ?? 0) / 100})` }}
-        >
-          TORSO
-        </div>
-        <div className="flex space-x-1">
-          <div
-            className="w-4 h-12 border border-gray-600 text-[8px] flex items-center justify-center rotate-12"
-            style={{ backgroundColor: `rgba(255, 0, 0, ${(bodyMap.leftLeg?.pain ?? 0) / 100})` }}
-          >
-            L-LEG
-          </div>
-          <div
-            className="w-4 h-12 border border-gray-600 text-[8px] flex items-center justify-center -rotate-12"
-            style={{ backgroundColor: `rgba(255, 0, 0, ${(bodyMap.rightLeg?.pain ?? 0) / 100})` }}
-          >
-            R-LEG
-          </div>
-        </div>
+    <div className="rounded-2xl border border-white/10 bg-slate-950/80 p-4 shadow-[0_0_0_1px_rgba(255,255,255,0.02)]">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-[11px] font-medium uppercase tracking-[0.28em] text-slate-400">
+          Body Schema
+        </h3>
+        <span className="text-[10px] text-slate-500">Pain heatmap</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {partOrder.map((part) => {
+          const pain = bodyMap[part]?.pain ?? 0;
+          const intensity = Math.min(pain / 100, 1);
+          return (
+            <div
+              key={part}
+              className="flex min-h-16 flex-col justify-between rounded-xl border border-white/8 px-3 py-2 text-[10px] uppercase tracking-[0.2em] text-slate-200 transition-colors"
+              style={{
+                backgroundColor: `rgba(248, 113, 113, ${0.08 + intensity * 0.42})`,
+                borderColor: `rgba(248, 113, 113, ${0.12 + intensity * 0.25})`,
+              }}
+            >
+              <span>{part}</span>
+              <span className="font-mono text-slate-300">{pain.toFixed(0)}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
