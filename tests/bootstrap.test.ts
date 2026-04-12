@@ -50,3 +50,24 @@ test("bootstrapSimulation: initializes run, branch, terrain, and agents from con
   expect(boot.agents.some((agent) => agent.speciesId === "human")).toBe(true);
   expect(boot.world.get(0, 0, 0)).not.toBeNull();
 });
+
+test("bootstrapSimulation: restarting against existing state does not fail on duplicate IDs", () => {
+  const speciesRegistry = new SpeciesRegistry();
+  speciesRegistry.loadAll();
+
+  const config = JSON.parse(
+    readFileSync("./data/world-configs/earth-default.json", "utf8"),
+  ) as Parameters<typeof bootstrapSimulation>[0];
+
+  const deps = {
+    eventBus: new EventBus(),
+    clock: new SimClock(),
+    gateway: new LLMGateway(new MockLLMGateway()),
+    speciesRegistry,
+    physics: new PhysicsEngine(config.physics),
+  };
+
+  bootstrapSimulation(config, deps);
+
+  expect(() => bootstrapSimulation(config, deps)).not.toThrow();
+});

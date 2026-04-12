@@ -2,6 +2,11 @@ import { db } from "../persistence/database";
 
 export const BranchManager = {
   createBranch(id: string, name: string, tick: number, parentId: string | null = null): void {
+    const existing = BranchManager.getBranch(id);
+    if (existing) {
+      return;
+    }
+
     db.db
       .query("INSERT INTO branches (id, parent_id, tick, name) VALUES (?, ?, ?, ?)")
       .run(id, parentId, tick, name);
