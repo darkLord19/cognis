@@ -3,6 +3,8 @@ import { join } from "node:path";
 import type { WorldConfig } from "../../shared/types";
 import type { LLMGateway } from "../llm/gateway";
 import type { Database } from "../persistence/database";
+import { MerkleLogger } from "../persistence/merkle-logger";
+import { FindingsJournal } from "../research/findings-journal";
 import type { SpeciesRegistry } from "../species/registry";
 import { bootstrapSimulation } from "./bootstrap";
 import { BranchManager } from "./branch-manager";
@@ -124,6 +126,52 @@ export class RunService {
         agentCount: runtime.agents.length,
       })),
     };
+  }
+
+  public getMetrics() {
+    const runtimes = this.deps.runSupervisor.listRuntimes();
+    return {
+      activeRuns: runtimes.length,
+      runs: runtimes.map((runtime) => ({
+        runId: runtime.runId,
+        branchId: runtime.branchId,
+        tick: runtime.clock.getTick(),
+        status: runtime.status,
+        agentCount: runtime.agents.length,
+        llmQueueDepth: 0,
+      })),
+    };
+  }
+
+  public listConfigTemplates(): string[] {
+    const configDir = join(import.meta.dir, "../../data/world-configs");
+    return Array.from(new Bun.Glob("*.json").scanSync({ cwd: configDir }))
+      .map((entry) => entry.replace(/\.json$/, ""))
+      .sort();
+  }
+
+  public getAuditLog(runId: string, branchId = "main", fromTick?: number, toTick?: number) {
+    const run = RunManager.getRun(runId);
+    if (!run) {
+      throw new Error(`Run not found: ${runId}`);
+    }
+    return this.deps.database.getAuditLogs(branchId, fromTick, toTick);
+  }
+
+  public verifyAudit(runId: string, branchId = "main", fromTick?: number, toTick?: number) {
+    const run = RunManager.getRun(runId);
+    if (!run) {
+      throw new Error(`Run not found: ${runId}`);
+    }
+    return MerkleLogger.verifyChain(branchId, fromTick, toTick);
+  }
+
+  public getFindings(runId: string, branchId = "main") {
+    const run = RunManager.getRun(runId);
+    if (!run) {
+      throw new Error(`Run not found: ${runId}`);
+    }
+    return FindingsJournal.getFindings(branchId);
   }
 
   public startRun(runId: string): { status: "running"; currentTick: number } {

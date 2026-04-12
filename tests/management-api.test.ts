@@ -6,6 +6,8 @@ import { RunSupervisor } from "../server/core/run-supervisor";
 import { LLMGateway } from "../server/llm/gateway";
 import { MockLLMGateway } from "../server/llm/mock-gateway";
 import { db } from "../server/persistence/database";
+import { MerkleLogger } from "../server/persistence/merkle-logger";
+import { FindingsJournal } from "../server/research/findings-journal";
 import { SpeciesRegistry } from "../server/species/registry";
 
 let supervisor: RunSupervisor;
@@ -21,6 +23,7 @@ beforeEach(() => {
   db.db.exec("PRAGMA foreign_keys = OFF;");
   db.db.exec("DELETE FROM run_state_events");
   db.db.exec("DELETE FROM config_mutations");
+  db.db.exec("DELETE FROM findings");
   db.db.exec("DELETE FROM audit_log");
   db.db.exec("DELETE FROM branches");
   db.db.exec("DELETE FROM runs");
@@ -156,4 +159,42 @@ test("management api reports resisted and applied interventions and manages glas
   );
   expect(exitResponse.status).toBe(200);
   expect(glassRoomManager.isAgentInGlassRoom(created.id, String(agentId))).toBe(false);
+});
+
+test("management api returns config templates, metrics, findings, and audit verification", async () => {
+  const created = service.createRun({ config: "earth-default", seed: 80 });
+  service.startRun(created.id);
+
+  MerkleLogger.log(1, "main", "agent-1", "System2", "innerMonologue", null, "thinking", null);
+  FindingsJournal.logFinding("main", 1, "Observed proto-language clustering", "language_cluster");
+
+  const configsResponse = await handler(new Request("http://localhost/configs"));
+  const configs = await readJson(configsResponse);
+  expect(configsResponse.status).toBe(200);
+  expect(Array.isArray(configs.configs)).toBe(true);
+  expect((configs.configs as string[]).includes("earth-default")).toBe(true);
+
+  const metricsResponse = await handler(new Request("http://localhost/metrics"));
+  const metrics = await readJson(metricsResponse);
+  expect(metricsResponse.status).toBe(200);
+  expect(metrics.activeRuns).toBe(1);
+
+  const findingsResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/findings`),
+  );
+  const findings = await readJson(findingsResponse);
+  expect(findingsResponse.status).toBe(200);
+  expect((findings.findings as { length: number }).length).toBe(1);
+
+  const auditResponse = await handler(new Request(`http://localhost/runs/${created.id}/audit`));
+  const audit = await readJson(auditResponse);
+  expect(auditResponse.status).toBe(200);
+  expect((audit.entries as { length: number }).length).toBeGreaterThan(0);
+
+  const verifyResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/audit/verify`, { method: "POST" }),
+  );
+  const verify = await readJson(verifyResponse);
+  expect(verifyResponse.status).toBe(200);
+  expect(verify.valid).toBe(true);
 });

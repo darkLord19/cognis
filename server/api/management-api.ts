@@ -65,6 +65,14 @@ export function createManagementApiHandler(deps: ApiDependencies) {
       return jsonResponse(deps.runService.getHealth());
     }
 
+    if (path === "/configs" && method === "GET") {
+      return jsonResponse({ configs: deps.runService.listConfigTemplates() });
+    }
+
+    if (path === "/metrics" && method === "GET") {
+      return jsonResponse(deps.runService.getMetrics());
+    }
+
     if (path === "/runs" && method === "GET") {
       return jsonResponse({ runs: deps.runService.listRuns() });
     }
@@ -198,6 +206,57 @@ export function createManagementApiHandler(deps: ApiDependencies) {
         return jsonResponse({ error: "Agent not found" }, 404);
       }
       return jsonResponse(agent);
+    }
+
+    const findingsMatch = path.match(/^\/runs\/([^/]+)\/findings$/);
+    if (findingsMatch && method === "GET") {
+      try {
+        return jsonResponse({
+          findings: deps.runService.getFindings(requirePathParam(findingsMatch[1])),
+        });
+      } catch (error) {
+        return jsonResponse(
+          { error: error instanceof Error ? error.message : "Failed to load findings" },
+          404,
+        );
+      }
+    }
+
+    const auditMatch = path.match(/^\/runs\/([^/]+)\/audit$/);
+    if (auditMatch && method === "GET") {
+      const runId = requirePathParam(auditMatch[1]);
+      const fromTick = url.searchParams.get("fromTick");
+      const toTick = url.searchParams.get("toTick");
+
+      try {
+        return jsonResponse({
+          entries: deps.runService.getAuditLog(
+            runId,
+            "main",
+            fromTick ? Number(fromTick) : undefined,
+            toTick ? Number(toTick) : undefined,
+          ),
+        });
+      } catch (error) {
+        return jsonResponse(
+          { error: error instanceof Error ? error.message : "Failed to load audit log" },
+          404,
+        );
+      }
+    }
+
+    const auditVerifyMatch = path.match(/^\/runs\/([^/]+)\/audit\/verify$/);
+    if (auditVerifyMatch && method === "POST") {
+      const runId = requirePathParam(auditVerifyMatch[1]);
+
+      try {
+        return jsonResponse(deps.runService.verifyAudit(runId));
+      } catch (error) {
+        return jsonResponse(
+          { error: error instanceof Error ? error.message : "Failed to verify audit log" },
+          404,
+        );
+      }
     }
 
     const interventionMatch = path.match(/^\/runs\/([^/]+)\/interventions$/);
