@@ -1,4 +1,3 @@
-import type { SimEvent } from "../../shared/events";
 import type { AgentState, DreamConfig, MemoryConfig } from "../../shared/types";
 import { EpisodicStore } from "../memory/episodic-store";
 import { MerkleLogger } from "../persistence/merkle-logger";
@@ -34,13 +33,16 @@ export class DreamEngine {
   private static dreamConsolidation(agent: AgentState, branchId: string, tick: number): void {
     const episodes = EpisodicStore.retrieve(agent.id, branchId, 5);
     for (const ep of episodes) {
-      EpisodicStore.encode(
+      // Use encodeDream to avoid unsafe SimEvent cast
+      EpisodicStore.encodeDream(
         agent.id,
         branchId,
         `Dream replay: ${ep.qualiaText}`,
-        { tick, payload: {} } as unknown as SimEvent,
+        tick,
         ep.salience * 0.5,
-        {} as unknown as MemoryConfig,
+        "dream_healing",
+        ep.emotionalValence,
+        ep.emotionalArousal,
       );
     }
     MerkleLogger.log(tick, branchId, agent.id, "Dream", "mode", null, "consolidation", null);
@@ -62,6 +64,18 @@ export class DreamEngine {
           String(oldSeverity),
           null,
         );
+
+        // Create a healing dream memory
+        EpisodicStore.encodeDream(
+          agent.id,
+          branchId,
+          "A gentler version of a painful memory replays, its edges softened.",
+          tick,
+          0.6,
+          "dream_healing",
+          0.2, // slightly positive valence from healing
+          0.3,
+        );
       }
     }
   }
@@ -73,13 +87,14 @@ export class DreamEngine {
       const m2 = episodes[Math.floor(Math.random() * episodes.length)];
       if (m1 && m2) {
         const combined = `A strange vision of ${m1.qualiaText.substring(0, 20)} and ${m2.qualiaText.substring(0, 20)}`;
-        EpisodicStore.encode(
+        // Use encodeDream to avoid unsafe casts
+        EpisodicStore.encodeDream(
           agent.id,
           branchId,
           combined,
-          { tick, payload: { source: "dream_chaos" } } as unknown as SimEvent,
+          tick,
           0.5,
-          {} as unknown as MemoryConfig,
+          "dream_chaos",
         );
       }
     }
@@ -87,6 +102,17 @@ export class DreamEngine {
   }
 
   private static dreamProphetic(agent: AgentState, branchId: string, tick: number): void {
+    // Create a prophetic dream memory with novel recombination
+    EpisodicStore.encodeDream(
+      agent.id,
+      branchId,
+      "A vivid flash of something not-yet, a pattern forming just beyond comprehension.",
+      tick,
+      0.7,
+      "dream_prophetic",
+      0.1,
+      0.5,
+    );
     MerkleLogger.log(tick, branchId, agent.id, "Dream", "mode", null, "prophetic", null);
   }
 }

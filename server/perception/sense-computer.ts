@@ -1,3 +1,12 @@
+import {
+  AMBIENT_TEMPERATURE,
+  BASE_SIGHT_RANGE,
+  BASE_SMELL_RANGE,
+  BASE_SOUND_RANGE,
+  DARKNESS_SIGHT_FACTOR,
+  DARKNESS_SIGHT_FLOOR,
+  VOXEL_PERCEPTION_RADIUS,
+} from "../../shared/constants";
 import type {
   AgentState,
   CircadianState,
@@ -18,19 +27,12 @@ export class SenseComputer {
     circadianState: CircadianState,
     allVocalActuations: VocalActuation[],
   ): RawPercept {
-    // Simplify sense profile. Assume human profile if not found (just for demo/tests)
-    // The actual system should lookup species profile, but we just hardcode basic ranges here
-    // or assume AgentState has speciesId we can lookup.
-    // For now, let's use fixed base ranges and multiply by light level for sight.
-    const baseSightRange = 30;
-    const baseSoundRange = 50;
-    const baseSmellRange = 15;
+    const actualSightRange =
+      BASE_SIGHT_RANGE * (DARKNESS_SIGHT_FLOOR + DARKNESS_SIGHT_FACTOR * circadianState.lightLevel);
+    const audibleRange = BASE_SOUND_RANGE;
+    const smellableRange = BASE_SMELL_RANGE;
 
-    const actualSightRange = baseSightRange * (0.2 + 0.8 * circadianState.lightLevel); // Darkness reduces sight
-    const audibleRange = baseSoundRange;
-    const smellableRange = baseSmellRange;
-
-    // We can use spatial index to get nearby agents up to max range
+    // Use spatial index to get nearby agents up to max range
     const maxRange = Math.max(actualSightRange, audibleRange, smellableRange);
     const nearbyAgents = spatialIndex.getAgentsInRadius(agent.position, maxRange);
 
@@ -52,10 +54,10 @@ export class SenseComputer {
     }
 
     const nearbyVoxels: Voxel[] = [];
-    // gather voxels in a tiny radius (e.g. 2)
-    for (let dx = -2; dx <= 2; dx++) {
-      for (let dy = -2; dy <= 2; dy++) {
-        for (let dz = -2; dz <= 2; dz++) {
+    // Gather voxels in perception radius
+    for (let dx = -VOXEL_PERCEPTION_RADIUS; dx <= VOXEL_PERCEPTION_RADIUS; dx++) {
+      for (let dy = -VOXEL_PERCEPTION_RADIUS; dy <= VOXEL_PERCEPTION_RADIUS; dy++) {
+        for (let dz = -VOXEL_PERCEPTION_RADIUS; dz <= VOXEL_PERCEPTION_RADIUS; dz++) {
           const v = world.get(
             Math.floor(agent.position.x) + dx,
             Math.floor(agent.position.y) + dy,
@@ -84,10 +86,11 @@ export class SenseComputer {
       audibleAgents,
       smellableAgents,
       nearbyVoxels,
-      localTemperature: 15 + circadianState.surfaceTemperatureDelta, // placeholder
+      localTemperature: AMBIENT_TEMPERATURE + circadianState.surfaceTemperatureDelta,
       lightLevel: circadianState.lightLevel,
       weather: "clear",
       vocalActuations: heardActuations,
     };
   }
 }
+
