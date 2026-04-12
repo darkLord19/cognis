@@ -50,9 +50,25 @@ test("System2: shouldFire on integrity drive jump", () => {
   const system2 = new System2(gateway);
 
   const agent = { body: { integrityDrive: 0.1 } } as unknown as AgentState;
-  const bodyDelta = { integrityDrive: 0.3 }; // Jump of 0.3 > 0.2 threshold
+  const bodyDelta = { previousIntegrityDrive: 0.1, currentIntegrityDrive: 0.41 };
 
   const percept = {} as FilteredPercept;
 
   expect(system2.shouldFire(agent, bodyDelta, percept, mockWorldConfig)).toBe(true);
+});
+
+test("System2: shouldFire does not double-count absolute integrity values", () => {
+  const gateway = new LLMGateway(new MockLLMGateway());
+  const system2 = new System2(gateway);
+
+  const agent = { body: { integrityDrive: 0.3 } } as unknown as AgentState;
+  const bodyDelta = {
+    integrityDrive: 0.3,
+    previousIntegrityDrive: 0.3,
+    currentIntegrityDrive: 0.3,
+  };
+
+  const percept = {} as FilteredPercept;
+
+  expect(system2.shouldFire(agent, bodyDelta, percept, mockWorldConfig)).toBe(false);
 });

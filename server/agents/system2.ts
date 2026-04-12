@@ -26,9 +26,16 @@ export class System2 {
     _percept: FilteredPercept,
     _config: WorldConfig,
   ): boolean {
-    const oldIntegrity = agent.body.integrityDrive || 0;
+    const oldIntegrity =
+      typeof bodyDelta.previousIntegrityDrive === "number"
+        ? bodyDelta.previousIntegrityDrive
+        : (agent.body.integrityDrive ?? 0);
     const newIntegrity =
-      (agent.body.integrityDrive || 0) + ((bodyDelta.integrityDrive as number) || 0);
+      typeof bodyDelta.currentIntegrityDrive === "number"
+        ? bodyDelta.currentIntegrityDrive
+        : typeof bodyDelta.integrityDrive === "number"
+          ? bodyDelta.integrityDrive
+          : (agent.body.integrityDrive ?? 0);
     const integrityDelta = Math.abs(newIntegrity - oldIntegrity);
 
     if (integrityDelta > INTEGRITY_DELTA_THRESHOLD) return true;

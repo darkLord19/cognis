@@ -213,7 +213,11 @@ export class Orchestrator {
       } else if (
         this.system2.shouldFire(
           agent,
-          bodyDelta as Record<string, unknown>,
+          {
+            ...bodyDelta,
+            previousIntegrityDrive: oldBody.integrityDrive ?? 0,
+            currentIntegrityDrive: agent.body.integrityDrive ?? 0,
+          } as Record<string, unknown>,
           filteredPercept,
           this.config,
         )
