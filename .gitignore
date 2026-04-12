@@ -4,3 +4,5 @@ database.sqlite
 .env
 saves/
 *.db
+database.sqlite-shm
+database.sqlite-wal
