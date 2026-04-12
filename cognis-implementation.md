@@ -96,7 +96,7 @@ pre-commit:
 LM_STUDIO_URL=http://localhost:1234/v1
 LM_STUDIO_COMPLETION_MODEL=llama-3.1-8b-abliterated
 LM_STUDIO_EMBEDDING_MODEL=nomic-embed-text
-WORLD_CONFIG=data/world-configs/earth-default.json
+WORLD_CONFIG=data/world-configs/earth-default.json   # template path, snapshotted into DB at run creation
 ELASTIC_HEARTBEAT=false
 TRIPLE_BASELINE=false
 
@@ -262,6 +262,11 @@ Create data/tech-tree.json — array of TechNode including:
 fire_making, stone_tools, shelter_building, food_preservation,
 animal_domestication, voxel_marking (journaling), rope_making, farming,
 pottery, death_concept (isDeathConcept: true)
+
+IMPORTANT:
+- These JSON files are authoring templates only
+- Runtime code may read the selected template once at run creation
+- After that, the template is canonicalised into SQLite and all runtime config reads come from the database snapshot plus config mutations
 ```
 
 **Validate:**
@@ -366,6 +371,8 @@ Create migrations in order:
 003-language.sql: utterances, grammar_rules, dialect_distances, vocal_actuations (NEW)
 004-audit-merkle.sql: audit_log WITH previous_hash and entry_hash columns (Merkle)
 005-research.sql: hypotheses, findings, param_sweep_runs, triple_baseline_runs (NEW)
+006-append-only-memory-events.sql: suppression/context tag append-only tables (NEW)
+007-world-config.sql: runs.world_config, runs.world_config_hash, config_mutations (NEW)
 
 Create server/persistence/merkle-logger.ts (NEW):
 - MerkleLogger class
@@ -398,7 +405,51 @@ git add -A && git commit -m "feat: SQLite migrations with Merkle-Causality audit
 
 ---
 
-### TASK 1.4 — LM Studio Gateway
+### TASK 1.4 — World Config Persistence (NEW)
+
+**Read:** PRD Section 2.11 (World Config Persistence), Section 8.1 (TripleBaseline)
+
+**Act:**
+```
+Create server/core/world-config-manager.ts:
+- WorldConfigManager class
+- create(template: WorldConfig, runId: string, db): void
+  Canonicalises the template JSON and stores it in runs.world_config
+  Stores sha256 in runs.world_config_hash
+- load(runId: string, branchId: string, tick: number, db): WorldConfig
+  Loads base snapshot from runs and applies config_mutations up to tick
+- mutate(runId, branchId, tick, path, newValue, db, merkleLogger, appliedBy, causeEventId): void
+  Reads old value from reconstructed config
+  Writes append-only config_mutations row
+  Logs the mutation through MerkleLogger with old/new values
+- verify(runId: string, db): boolean
+  Recomputes hash of stored world_config and compares to world_config_hash
+
+Update bootstrap/runtime:
+- World config JSON files remain templates only
+- bootstrapSimulation snapshots the chosen template into SQLite at run creation
+- bootstrapSimulation loads runtime config from WorldConfigManager.load(...)
+- Deterministic run IDs include config identity, not seed alone
+- Runtime systems do not re-read JSON files after run creation
+
+Create tests/world-config-manager.test.ts:
+- Persists canonical config snapshot in runs
+- Reconstructs config from base snapshot + mutations
+- verify() catches tampered config snapshots
+- Restarting against the same DB does not reinsert duplicate run artifacts
+```
+
+**Validate:**
+```bash
+bun test tests/world-config-manager.test.ts
+bun test tests/bootstrap.test.ts
+bunx tsc --noEmit
+git add -A && git commit -m "feat: persist world configs as run artifacts"
+```
+
+---
+
+### TASK 1.5 — LM Studio Gateway
 
 **Read:** PRD Section 9 (LM Studio), Section 3.2 (System 2 prompt rules)
 
@@ -444,7 +495,7 @@ git add -A && git commit -m "feat: LM Studio gateway with forbidden-word safety"
 
 ---
 
-### TASK 1.5 — Run Manager and Branch Manager
+### TASK 1.6 — Run Manager and Branch Manager
 
 **Read:** PRD Section 8 (research platform schemas)
 

@@ -1,8 +1,9 @@
 import type { AgentState, BodyMap, SpeciesConfig, WorldConfig } from "../../shared/types";
 import { System2 } from "../agents/system2";
 import type { LLMGateway } from "../llm/gateway";
+import type { Database } from "../persistence/database";
 import type { SpeciesRegistry } from "../species/registry";
-import type { PhysicsEngine } from "../world/physics-engine";
+import { PhysicsEngine } from "../world/physics-engine";
 import { TerrainGenerator } from "../world/terrain-generator";
 import type { VoxelGrid } from "../world/voxel-grid";
 import { BranchManager } from "./branch-manager";
@@ -10,18 +11,20 @@ import type { EventBus } from "./event-bus";
 import { Orchestrator } from "./orchestrator";
 import { RunManager } from "./run-manager";
 import type { SimClock } from "./sim-clock";
+import { WorldConfigManager } from "./world-config-manager";
 
 type BootstrapDependencies = {
   eventBus: EventBus;
   clock: SimClock;
   gateway: LLMGateway;
   speciesRegistry: SpeciesRegistry;
-  physics: PhysicsEngine;
+  database: Database;
 };
 
 type BootstrapResult = {
   runId: string;
   branchId: string;
+  config: WorldConfig;
   world: VoxelGrid;
   orchestrator: Orchestrator;
   agents: AgentState[];
@@ -109,25 +112,21 @@ function selectSpecies(config: WorldConfig, speciesRegistry: SpeciesRegistry): S
 }
 
 export function bootstrapSimulation(
-  config: WorldConfig,
+  template: WorldConfig,
   deps: BootstrapDependencies,
 ): BootstrapResult {
-  const runId = `run-${config.meta.seed}`;
+  const configHash = WorldConfigManager.hashWorldConfig(template).slice(0, 12);
+  const runId = `run-${template.meta.seed}-${configHash}`;
   const branchId = "main";
 
-  RunManager.createRun(runId, config.meta.name, 0);
+  RunManager.createRun(runId, template.meta.name, 0);
+  WorldConfigManager.create(template, runId, deps.database);
   BranchManager.createBranch(branchId, "main", 0);
-
+  const config = WorldConfigManager.load(runId, branchId, 0, deps.database);
   const world = TerrainGenerator.generate(config.terrain);
+  const physics = new PhysicsEngine(config.physics);
   const system2 = new System2(deps.gateway, deps.speciesRegistry);
-  const orchestrator = new Orchestrator(
-    config,
-    world,
-    deps.clock,
-    deps.eventBus,
-    deps.physics,
-    system2,
-  );
+  const orchestrator = new Orchestrator(config, world, deps.clock, deps.eventBus, physics, system2);
 
   const speciesPool = selectSpecies(config, deps.speciesRegistry);
   const agents = Array.from({ length: config.agents.initialCount }, (_, index) =>
@@ -138,5 +137,5 @@ export function bootstrapSimulation(
     orchestrator.addAgent(agent);
   }
 
-  return { runId, branchId, world, orchestrator, agents };
+  return { runId, branchId, config, world, orchestrator, agents };
 }

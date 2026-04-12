@@ -89,7 +89,7 @@ The operator audit log is a cryptographically chained record. Each entry is hash
 
 ## 2. World Configuration (Reality Blueprint)
 
-Every simulation run is defined by a single `WorldConfig` JSON. This is the complete input needed to instantiate a world.
+Every simulation run is instantiated from a single `WorldConfig`. Human authors work with JSON template files, but the running system treats config as a first-class persisted artifact: at run creation, the template is canonicalised, hashed, and stored in the database. From that point forward, all runtime config reads come from the database snapshot plus any audited config mutations.
 
 ```typescript
 type WorldConfig = {
@@ -332,6 +332,58 @@ type ResearchConfig = {
   causalMiningEnabled: boolean
   tippingPointEnabled: boolean
   emergenceDetectionEnabled: boolean
+}
+```
+
+### 2.11 World Config Persistence
+
+`WorldConfig` templates in `data/world-configs/` are authoring inputs only. They are never treated as the live source of truth after run creation.
+
+**Run creation contract:**
+- The chosen template is canonicalised and stored in `runs.world_config`
+- Its sha256 is stored in `runs.world_config_hash`
+- The run ID is sufficient to recover the exact config that seeded the world
+
+**Runtime contract:**
+- All runtime config reads resolve through the persisted snapshot in the database
+- Operator interventions that change config write append-only config mutation records
+- The live config at any tick is reconstructed as:
+  `base world_config snapshot + all config_mutations up to tick`
+
+**Why this is required:**
+- Research findings must remain reproducible even if template files later change
+- TripleBaseline config variants must be stored as linked, immutable run artifacts
+- Mid-run operator interventions must be causally auditable with old/new values
+- A run must be shareable by its run ID alone, without depending on local files
+
+**Schema shape:**
+
+```sql
+-- runs table
+world_config TEXT NOT NULL
+world_config_hash TEXT NOT NULL
+
+CREATE TABLE config_mutations (
+  id INTEGER PRIMARY KEY,
+  branch_id TEXT NOT NULL,
+  tick INTEGER NOT NULL,
+  path TEXT NOT NULL,
+  old_value TEXT NOT NULL,
+  new_value TEXT NOT NULL,
+  applied_by TEXT NOT NULL,   -- "operator" | "system"
+  cause_event_id TEXT,
+  merkle_hash TEXT NOT NULL
+);
+```
+
+**Runtime API:**
+
+```typescript
+class WorldConfigManager {
+  static create(template: WorldConfig, runId: string, db: Database): void
+  static load(runId: string, branchId: string, tick: number, db: Database): WorldConfig
+  static mutate(runId: string, branchId: string, tick: number, path: string, newValue: unknown, db: Database): void
+  static verify(runId: string, db: Database): boolean
 }
 ```
 
