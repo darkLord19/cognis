@@ -27,12 +27,7 @@ export type RunStateSnapshot = RunStateEventRecord & {
 };
 
 export const RunStateStore = {
-  record(
-    runId: string,
-    status: RunState,
-    tick: number,
-    metadata?: Record<string, unknown>,
-  ): void {
+  record(runId: string, status: RunState, tick: number, metadata?: Record<string, unknown>): void {
     db.db
       .query("INSERT INTO run_state_events (run_id, status, tick, metadata) VALUES (?, ?, ?, ?)")
       .run(runId, status, tick, metadata ? JSON.stringify(metadata) : null);

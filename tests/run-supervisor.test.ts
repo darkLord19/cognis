@@ -1,6 +1,6 @@
 import { beforeEach, expect, test } from "bun:test";
 import { EventBus } from "../server/core/event-bus";
-import { RunSupervisor, type RunRuntime } from "../server/core/run-supervisor";
+import { type RunRuntime, RunSupervisor } from "../server/core/run-supervisor";
 import { SimClock } from "../server/core/sim-clock";
 
 function createRuntime(runId: string): RunRuntime {
