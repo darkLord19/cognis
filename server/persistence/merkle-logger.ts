@@ -1,4 +1,5 @@
-import { type AuditLogEntry, db } from "./database";
+import type { AuditLogEntry } from "../../shared/types";
+import { db } from "./database";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
 export class MerkleLogger {

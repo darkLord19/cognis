@@ -1,22 +1,7 @@
 import { Database as BunDatabase } from "bun:sqlite";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-
-export interface AuditLogEntry {
-  id: number;
-  tick: number;
-  branch_id: string;
-  agent_id: string | null;
-  system: string;
-  field: string;
-  old_value: string | null;
-  new_value: string | null;
-  cause_event_id: string | null;
-  cause_description: string | null;
-  suppressed: number;
-  previous_hash: string;
-  entry_hash: string;
-}
+import type { AuditLogEntry } from "../../shared/types";
 
 export class Database {
   public db: BunDatabase;
