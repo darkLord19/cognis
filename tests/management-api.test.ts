@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { GlassModeManager } from "../server/agents/glass-mode";
+import { GlassRoomManager } from "../server/agents/glass-room";
 import { WillEngine } from "../server/agents/will-engine";
 import { createManagementApiHandler } from "../server/api/management-api";
 import { RunService } from "../server/core/run-service";
@@ -13,7 +13,7 @@ import { SpeciesRegistry } from "../server/species/registry";
 
 let supervisor: RunSupervisor;
 let service: RunService;
-let glassModeManager: GlassModeManager;
+let glassRoomManager: GlassRoomManager;
 let handler: (req: Request) => Promise<Response>;
 
 async function readJson(response: Response) {
@@ -32,7 +32,7 @@ beforeEach(() => {
   db.db.exec("PRAGMA foreign_keys = ON;");
 
   supervisor = new RunSupervisor();
-  glassModeManager = new GlassModeManager();
+  glassRoomManager = new GlassRoomManager();
   const speciesRegistry = new SpeciesRegistry();
   speciesRegistry.loadAll();
   service = new RunService({
@@ -44,7 +44,7 @@ beforeEach(() => {
   handler = createManagementApiHandler({
     runService: service,
     runSupervisor: supervisor,
-    glassModeManager,
+    glassRoomManager,
   });
 });
 
@@ -110,7 +110,7 @@ test("management api pauses, resumes, stops, and reports health from shared runt
   expect(supervisor.getRuntime(created.id)).toBeUndefined();
 });
 
-test("management api reports resisted and applied interventions and manages glass mode sessions", async () => {
+test("management api reports resisted and applied interventions and manages glass room sessions", async () => {
   const created = service.createRun({ config: "earth-default", seed: 79 });
   service.startRun(created.id);
   const agentId = service.getAgents(created.id)[0]?.id;
@@ -159,20 +159,20 @@ test("management api reports resisted and applied interventions and manages glas
   expect(applied.success).toBe(true);
 
   const enterResponse = await handler(
-    new Request(`http://localhost/runs/${created.id}/glass-mode/${agentId}`, {
+    new Request(`http://localhost/runs/${created.id}/glass-room/${agentId}`, {
       method: "POST",
     }),
   );
   expect(enterResponse.status).toBe(200);
-  expect(glassModeManager.isAgentInGlassMode(created.id, String(agentId))).toBe(true);
+  expect(glassRoomManager.isAgentInGlassRoom(created.id, String(agentId))).toBe(true);
 
   const exitResponse = await handler(
-    new Request(`http://localhost/runs/${created.id}/glass-mode/${agentId}`, {
+    new Request(`http://localhost/runs/${created.id}/glass-room/${agentId}`, {
       method: "DELETE",
     }),
   );
   expect(exitResponse.status).toBe(200);
-  expect(glassModeManager.isAgentInGlassMode(created.id, String(agentId))).toBe(false);
+  expect(glassRoomManager.isAgentInGlassRoom(created.id, String(agentId))).toBe(false);
 });
 
 test("management api returns config templates, metrics, findings, and audit verification", async () => {

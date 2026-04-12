@@ -1,6 +1,6 @@
 import { EventType } from "../../shared/events";
 import type { WorldConfig } from "../../shared/types";
-import type { GlassModeManager } from "../agents/glass-mode";
+import type { GlassRoomManager } from "../agents/glass-room";
 import type { RunService } from "../core/run-service";
 import type { RunSupervisor } from "../core/run-supervisor";
 import { WorldConfigManager } from "../core/world-config-manager";
@@ -9,7 +9,7 @@ import { MerkleLogger } from "../persistence/merkle-logger";
 import { InterventionPipeline } from "./intervention-pipeline";
 
 type ApiDependencies = {
-  glassModeManager: GlassModeManager;
+  glassRoomManager: GlassRoomManager;
   runService: RunService;
   runSupervisor: RunSupervisor;
 };
@@ -410,10 +410,10 @@ export function createManagementApiHandler(deps: ApiDependencies) {
       return jsonResponse(result, result.success || result.resisted ? 200 : 400);
     }
 
-    const glassModeMatch = path.match(/^\/runs\/([^/]+)\/glass-mode\/([^/]+)$/);
-    if (glassModeMatch && method === "POST") {
-      const runId = requirePathParam(glassModeMatch[1]);
-      const agentId = requirePathParam(glassModeMatch[2]);
+    const glassRoomMatch = path.match(/^\/runs\/([^/]+)\/glass-room\/([^/]+)$/);
+    if (glassRoomMatch && method === "POST") {
+      const runId = requirePathParam(glassRoomMatch[1]);
+      const agentId = requirePathParam(glassRoomMatch[2]);
       const runtime = deps.runService.getRuntime(runId);
       const agent = deps.runService.getAgents(runId).find((entry) => entry.id === agentId);
       if (!runtime?.orchestrator || !agent) {
@@ -421,34 +421,34 @@ export function createManagementApiHandler(deps: ApiDependencies) {
       }
 
       agent.currentAction = "SLEEP";
-      const session = deps.glassModeManager.enterGlassMode(runId, agentId, runtime.clock.getTick());
+      const session = deps.glassRoomManager.enterGlassRoom(runId, agentId, runtime.clock.getTick());
       runtime.eventBus.emit({
         event_id: crypto.randomUUID(),
         branch_id: runtime.branchId,
         run_id: runId,
         tick: runtime.clock.getTick(),
-        type: EventType.GLASS_MODE_ENTERED,
+        type: EventType.GLASS_ROOM_ENTERED,
         agent_id: agentId,
         payload: { startTick: session.startTick },
       });
       return jsonResponse({ ok: true, session });
     }
 
-    if (glassModeMatch && method === "DELETE") {
-      const runId = requirePathParam(glassModeMatch[1]);
-      const agentId = requirePathParam(glassModeMatch[2]);
+    if (glassRoomMatch && method === "DELETE") {
+      const runId = requirePathParam(glassRoomMatch[1]);
+      const agentId = requirePathParam(glassRoomMatch[2]);
       const runtime = deps.runService.getRuntime(runId);
       if (!runtime?.orchestrator) {
         return jsonResponse({ error: "Runtime not found" }, 404);
       }
 
-      deps.glassModeManager.exitGlassMode(runId, agentId);
+      deps.glassRoomManager.exitGlassRoom(runId, agentId);
       runtime.eventBus.emit({
         event_id: crypto.randomUUID(),
         branch_id: runtime.branchId,
         run_id: runId,
         tick: runtime.clock.getTick(),
-        type: EventType.GLASS_MODE_EXITED,
+        type: EventType.GLASS_ROOM_EXITED,
         agent_id: agentId,
         payload: {},
       });

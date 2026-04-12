@@ -65,7 +65,7 @@ Every state change is hashed and chained to the previous entry. The operator can
 │                                                                   │
 │  The Forge (React UI)     Management API (HTTP :3000)            │
 │  Watcher (stdout/SSE)     Health endpoint                         │
-│  Glass Mode sessions     Graceful shutdown                       │
+│  Glass Room sessions     Graceful shutdown                       │
 └────────────┬──────────────────────┬──────────────────────────────┘
              │ WebSocket :3001       │ HTTP :3000
              │ (subscription model)  │ (run lifecycle)
@@ -182,8 +182,8 @@ GET    /runs/:id/findings              Findings journal
 GET    /runs/:id/audit                 Merkle audit log (paginated)
 POST   /runs/:id/audit/verify          Verify Merkle chain integrity
 POST   /runs/:id/interventions         Apply god-mode intervention
-POST   /runs/:id/glass-mode/:agentId    Enter Glass Mode for agent
-DELETE /runs/:id/glass-mode/:agentId    Exit Glass Mode
+POST   /runs/:id/glass-room/:agentId     Enter Glass Room for agent
+DELETE /runs/:id/glass-room/:agentId     Exit Glass Room
 GET    /configs                        List available config templates
 GET    /health                         Server health + all run statuses + metrics
 GET    /metrics                        Tick rates, LLM queue depth, memory usage
@@ -600,7 +600,7 @@ Agents start with no name. The operator sees them by system ID (e.g., `"op-id-3"
 An agent acquires a name through one of three emergent paths:
 1. Another agent uses a consistent sound token when referring to them, which enters their shared lexicon as a name (detected by the language emergence engine as a `referent_type: "agent"` lexicon entry)
 2. The agent develops a self-referential token in their self-narrative (System2 begins using a consistent token when referring to themselves)
-3. Operator assigns a display label via Glass Mode (visible in Forge but never shown to any agent)
+3. Operator assigns a display label via Glass Room (visible in Forge but never shown to any agent)
 
 Until named, the agent is referred to in Qualia output as "you" (self) or contextual relationship labels ("the one who helped you yesterday", "the large one", "a stranger").
 
@@ -1067,16 +1067,16 @@ Runs in global Analysis Worker. Never blocks simulation.
 
 ## 8. Operator Services (Server-Side)
 
-### 8.1 Glass Mode Session
+### 8.1 Glass Room Session
 
-When operator enters Glass Mode for an agent:
-1. Server records `GlassModeSession { runId, agentId, startTick }` in memory
+When operator enters Glass Room for an agent:
+1. Server records `GlassRoomSession { runId, agentId, startTick }` in memory
 2. Agent's next sleep cycle begins immediately (regardless of fatigue)
 3. Agent experiences the transition through Qualia (unfamiliar environment, translated culturally)
 4. Operator messages route through QualiaProcessor before reaching agent's System2
 5. Agent's inner monologue streams to operator in real-time via WebSocket
-6. Glass Mode does NOT use a hard memory gate — experience translation preserves Veil naturally
-7. On exit: agent's next sleep cycle consolidates Glass Mode experience as any other memory
+6. Glass Room does NOT use a hard memory gate — experience translation preserves Veil naturally
+7. On exit: agent's next sleep cycle consolidates Glass Room experience as any other memory
 
 ### 8.2 God-Mode Intervention Pipeline
 
@@ -1151,7 +1151,7 @@ cognis/
 │   │   ├── management-api.ts        ← HTTP :3000
 │   │   ├── ws-server.ts             ← WebSocket :3001 subscription model
 │   │   ├── watcher.ts               ← stdout/SSE event stream
-│   │   ├── glass-mode.ts           ← Glass Mode session management
+│   │   ├── glass-room.ts           ← Glass Room session management
 │   │   ├── world-config-manager.ts  ← DB-backed config with mutation tracking
 │   │   └── health.ts                ← Health + metrics endpoint
 │   ├── workers/                     ← NEW: worker thread definitions
@@ -1229,7 +1229,7 @@ cognis/
 │   ├── forge/
 │   │   ├── Forge.tsx
 │   │   ├── MatrixView.tsx
-│   │   ├── GlassMode.tsx
+│   │   ├── GlassRoom.tsx
 │   │   ├── MerkleAuditInspector.tsx
 │   │   ├── InterventionPalette.tsx
 │   │   ├── TimelineScrubber.tsx
@@ -1245,7 +1245,7 @@ cognis/
 │   │   ├── RelationshipGraph.tsx
 │   │   └── WorldPanel.tsx
 │   └── scene/
-│       ├── GlassModeRoom.tsx
+│       ├── GlassRoomRoom.tsx
 │       ├── AgentAvatar.tsx
 │       └── MicroExpressions.tsx
 │
@@ -1374,8 +1374,8 @@ enum EventType {
   BASELINE_DIVERGENCE_FOUND = "baseline_divergence_found",
   INTERVENTION_APPLIED = "intervention_applied",
   INTERVENTION_RESISTED = "intervention_resisted",
-  GLASS_MODE_ENTERED = "glass_mode_entered",
-  GLASS_MODE_EXITED = "glass_mode_exited",
+  GLASS_ROOM_ENTERED = "glass_room_entered",
+  GLASS_ROOM_EXITED = "glass_room_exited",
   MERKLE_CHAIN_VERIFIED = "merkle_chain_verified",
 }
 ```

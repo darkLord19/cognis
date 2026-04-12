@@ -72,7 +72,7 @@ export default function App() {
   const metrics = useStore((state) => state.metrics);
   const configs = useStore((state) => state.configs);
   const events = useStore((state) => state.events);
-  const glassModeSession = useStore((state) => state.glassModeSession);
+  const glassRoomSession = useStore((state) => state.glassRoomSession);
   const tripleBaseline = useStore((state) => state.tripleBaseline);
   const connectionStatus = useStore((state) => state.connectionStatus);
   const operatorMode = useStore((state) => state.operatorMode);
@@ -86,7 +86,7 @@ export default function App() {
     setMetrics,
     setConfigs,
     addEvent,
-    setGlassModeSession,
+    setGlassRoomSession,
     setTripleBaseline,
     setConnectionStatus,
     setOperatorMode,
@@ -274,7 +274,7 @@ export default function App() {
     }
   }
 
-  async function toggleGlassMode(enable: boolean) {
+  async function toggleGlassRoom(enable: boolean) {
     if (!selectedRunId || !selectedAgent) return;
 
     try {
@@ -282,17 +282,17 @@ export default function App() {
         const payload = await fetchJson<{
           ok: boolean;
           session: { runId: string; agentId: string; startTick: number };
-        }>(`/runs/${selectedRunId}/glass-mode/${selectedAgent.id}`, { method: "POST" });
-        setGlassModeSession(payload.session);
+        }>(`/runs/${selectedRunId}/glass-room/${selectedAgent.id}`, { method: "POST" });
+        setGlassRoomSession(payload.session);
       } else {
-        await fetchJson<{ ok: boolean }>(`/runs/${selectedRunId}/glass-mode/${selectedAgent.id}`, {
+        await fetchJson<{ ok: boolean }>(`/runs/${selectedRunId}/glass-room/${selectedAgent.id}`, {
           method: "DELETE",
         });
-        setGlassModeSession(null);
+        setGlassRoomSession(null);
       }
       setErrorMessage(null);
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "Glass Mode request failed");
+      setErrorMessage(error instanceof Error ? error.message : "Glass Room request failed");
     }
   }
 
@@ -328,7 +328,7 @@ export default function App() {
                 Cognis Forge
               </div>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">
-                Operator console for runs, audits, and Glass Mode sessions
+                Operator console for runs, audits, and Glass Room sessions
               </h1>
               <p className="mt-2 max-w-3xl text-sm text-slate-400">
                 A live control surface for the current run, derived metrics, research findings, and
@@ -468,7 +468,7 @@ export default function App() {
             <div className="grid gap-4 lg:grid-cols-2">
               <Section
                 title="Agent Inspector"
-                subtitle="Inspect the selected agent and Glass Mode status."
+                subtitle="Inspect the selected agent and Glass Room status."
               >
                 {selectedAgent ? (
                   <div className="space-y-4">
@@ -494,30 +494,30 @@ export default function App() {
               </Section>
 
               <Section
-                title="Glass Mode"
-                subtitle="Enter or exit the selected agent from the Glass Mode."
+                title="Glass Room"
+                subtitle="Enter or exit the selected agent from the Glass Room."
               >
                 <div className="space-y-3">
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <Stat label="Session" value={glassModeSession ? "Active" : "Idle"} />
+                    <Stat label="Session" value={glassRoomSession ? "Active" : "Idle"} />
                     <Stat label="Selected" value={selectedAgent?.id ?? "None"} />
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <button
                       type="button"
                       className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-4 py-2 text-sm text-emerald-100 transition-colors hover:bg-emerald-400/15 disabled:opacity-50"
-                      onClick={() => toggleGlassMode(true)}
+                      onClick={() => toggleGlassRoom(true)}
                       disabled={!selectedAgent}
                     >
-                      Enter Glass Mode
+                      Enter Glass Room
                     </button>
                     <button
                       type="button"
                       className="rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-sm text-slate-200 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
-                      onClick={() => toggleGlassMode(false)}
+                      onClick={() => toggleGlassRoom(false)}
                       disabled={!selectedAgent}
                     >
-                      Exit Glass Mode
+                      Exit Glass Room
                     </button>
                     <button
                       type="button"
@@ -532,8 +532,8 @@ export default function App() {
                       Current session
                     </div>
                     <div className="mt-2 font-mono text-xs">
-                      {glassModeSession
-                        ? `${glassModeSession.runId} / ${glassModeSession.agentId} @ ${glassModeSession.startTick}`
+                      {glassRoomSession
+                        ? `${glassRoomSession.runId} / ${glassRoomSession.agentId} @ ${glassRoomSession.startTick}`
                         : "No active session"}
                     </div>
                   </div>
