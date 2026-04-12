@@ -67,8 +67,8 @@ export const System1 = {
     const delta: BodyStateDelta = {};
 
     // 1. Homeostasis
-    delta.hunger = (body.hunger || 0) + HUNGER_RATE;
-    delta.thirst = (body.thirst || 0) + THIRST_RATE;
+    delta.hunger = clamp01((body.hunger || 0) + HUNGER_RATE);
+    delta.thirst = clamp01((body.thirst || 0) + THIRST_RATE);
 
     // 2. Circadian integration
     const hormoneTarget = circadianState.cycleHormoneValue;
@@ -78,7 +78,7 @@ export const System1 = {
     // Fatigue accumulates faster when hormone is high
     const fatigueRate =
       BASE_FATIGUE_RATE * (1 + (delta.cycleHormone ?? 0) * FATIGUE_HORMONE_MULTIPLIER);
-    delta.fatigue = (body.fatigue || 0) + fatigueRate;
+    delta.fatigue = clamp01((body.fatigue || 0) + fatigueRate);
 
     // 3. Body schema
     const newBodyMap = { ...body.bodyMap };

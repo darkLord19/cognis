@@ -14,7 +14,7 @@ export function BodyMapViewer({ bodyMap }: { bodyMap: Record<string, { pain: num
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {partOrder.map((part) => {
           const pain = bodyMap[part]?.pain ?? 0;
-          const intensity = Math.min(pain / 100, 1);
+          const intensity = Math.min(pain, 1);
           return (
             <div
               key={part}
@@ -25,7 +25,7 @@ export function BodyMapViewer({ bodyMap }: { bodyMap: Record<string, { pain: num
               }}
             >
               <span>{part}</span>
-              <span className="font-mono text-slate-300">{pain.toFixed(0)}</span>
+              <span className="font-mono text-slate-300">{pain.toFixed(2)}</span>
             </div>
           );
         })}

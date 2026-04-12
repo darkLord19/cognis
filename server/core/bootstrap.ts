@@ -34,14 +34,39 @@ type BootstrapResult = {
   agents: AgentState[];
 };
 
-function createBodyMap(labelPrefix: string): BodyMap {
+function createBodyMap(labelPrefix: string, baselineTemperature: number): BodyMap {
   return {
-    head: { pain: 0, temperature: 15, damage: 0, label: `${labelPrefix} head` },
-    torso: { pain: 0, temperature: 15, damage: 0, label: `${labelPrefix} torso` },
-    leftArm: { pain: 0, temperature: 15, damage: 0, label: `${labelPrefix} left arm` },
-    rightArm: { pain: 0, temperature: 15, damage: 0, label: `${labelPrefix} right arm` },
-    leftLeg: { pain: 0, temperature: 15, damage: 0, label: `${labelPrefix} left leg` },
-    rightLeg: { pain: 0, temperature: 15, damage: 0, label: `${labelPrefix} right leg` },
+    head: { pain: 0, temperature: baselineTemperature, damage: 0, label: `${labelPrefix} head` },
+    torso: {
+      pain: 0,
+      temperature: baselineTemperature,
+      damage: 0,
+      label: `${labelPrefix} torso`,
+    },
+    leftArm: {
+      pain: 0,
+      temperature: baselineTemperature,
+      damage: 0,
+      label: `${labelPrefix} left arm`,
+    },
+    rightArm: {
+      pain: 0,
+      temperature: baselineTemperature,
+      damage: 0,
+      label: `${labelPrefix} right arm`,
+    },
+    leftLeg: {
+      pain: 0,
+      temperature: baselineTemperature,
+      damage: 0,
+      label: `${labelPrefix} left leg`,
+    },
+    rightLeg: {
+      pain: 0,
+      temperature: baselineTemperature,
+      damage: 0,
+      label: `${labelPrefix} right leg`,
+    },
   };
 }
 
@@ -49,8 +74,14 @@ function midpoint([min, max]: [number, number]): number {
   return (min + max) / 2;
 }
 
-function createAgent(species: SpeciesConfig, index: number, branchId: string): AgentState {
+function createAgent(
+  species: SpeciesConfig,
+  index: number,
+  branchId: string,
+  config: WorldConfig,
+): AgentState {
   const labelPrefix = species.name.toLowerCase();
+  const baselineTemperature = config.physics.temperatureBaseline ?? 15;
 
   return {
     id: `${species.id}-${index + 1}`,
@@ -58,16 +89,16 @@ function createAgent(species: SpeciesConfig, index: number, branchId: string): A
     name: `${species.name} ${index + 1}`,
     generation: 1,
     body: {
-      hunger: 0,
-      thirst: 0,
-      fatigue: 0,
-      health: species.baseStats.maxHealth,
-      bodyMap: createBodyMap(labelPrefix),
-      coreTemperature: 15,
-      arousal: 0,
-      valence: 0,
-      cycleHormone: 0,
-      circadianPhase: 0,
+      hunger: 0.3,
+      thirst: 0.2,
+      fatigue: 0.1,
+      health: 1,
+      bodyMap: createBodyMap(labelPrefix, baselineTemperature),
+      coreTemperature: baselineTemperature,
+      arousal: 0.2,
+      valence: 0.1,
+      cycleHormone: 0.3,
+      circadianPhase: 0.5,
       immediateReaction: "NONE",
       integrityDrive: 0,
     },
@@ -157,7 +188,7 @@ export function bootstrapSimulation(
   });
   const speciesPool = selectSpecies(config, deps.speciesRegistry);
   const agents = Array.from({ length: config.agents.initialCount }, (_, index) =>
-    createAgent(speciesPool[index % speciesPool.length] as SpeciesConfig, index, branchId),
+    createAgent(speciesPool[index % speciesPool.length] as SpeciesConfig, index, branchId, config),
   );
 
   for (const agent of agents) {

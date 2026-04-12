@@ -588,7 +588,7 @@ export default function App() {
                 <div className="mt-4 flex gap-4 text-[10px] text-slate-500 uppercase tracking-[0.2em] font-medium">
                   <span>{selectedAgent.speciesId}</span>
                   <span className="opacity-20">|</span>
-                  <span>Integrity: {selectedAgent.willScore.toFixed(2)}</span>
+                  <span>Integrity: {selectedAgent.body.integrityDrive.toFixed(2)}</span>
                 </div>
               </header>
 

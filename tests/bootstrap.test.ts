@@ -40,6 +40,42 @@ test("bootstrapSimulation: initializes run, branch, terrain, and agents from con
   expect(boot.orchestrator).toBeDefined();
 });
 
+test("bootstrapSimulation: initializes non-zero baseline body state", () => {
+  const config = {
+    meta: { name: "test", seed: 456 },
+    agents: { initialCount: 1 },
+    terrain: { width: 10, height: 10, depth: 10 },
+    physics: { gravity: 0.1, temperatureBaseline: 18 },
+    perception: { residueDecayRate: 0.1 },
+    memory: { decayRate: 0.1 },
+    species: [
+      {
+        id: "human",
+        name: "Human",
+        baseStats: { maxHealth: 100 },
+        muscleStatRanges: { strength: [1, 2], speed: [1, 2], endurance: [1, 2] },
+      },
+    ],
+  } as unknown as WorldConfig;
+  const deps = {
+    eventBus: new EventBus(),
+    clock: new SimClock(),
+    gateway: {} as LLMGateway,
+    speciesRegistry: new SpeciesRegistry(),
+    database: db,
+    runSupervisor: new RunSupervisor(),
+  };
+
+  const [agent] = bootstrapSimulation(config, deps).agents;
+  expect(agent).toBeDefined();
+  expect(agent?.body.hunger).toBeGreaterThan(0);
+  expect(agent?.body.thirst).toBeGreaterThan(0);
+  expect(agent?.body.fatigue).toBeGreaterThan(0);
+  expect(agent?.body.health).toBe(1);
+  expect(agent?.body.coreTemperature).toBe(18);
+  expect(agent?.body.bodyMap.head.temperature).toBe(18);
+});
+
 test("bootstrapSimulation: restarting against existing state does not fail on duplicate IDs", () => {
   const config = {
     meta: { name: "test", seed: 123 },
