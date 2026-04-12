@@ -60,3 +60,14 @@ test("System1: conflict outcome based on muscle stats", () => {
 
   expect(outcome.damageB).toBeGreaterThan(outcome.damageA);
 });
+
+test("System1: starvation drains health and marks death when health reaches zero", () => {
+  const agent = createAgent("a1", 0);
+  agent.body.hunger = 0.95;
+  agent.body.health = 0.002;
+
+  const delta = System1.tick(agent, mockCircadian, mockWorldConfig);
+
+  expect(delta.health).toBe(0);
+  expect(delta.shouldDie).toBe(true);
+});

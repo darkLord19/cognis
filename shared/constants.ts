@@ -19,6 +19,8 @@ export const MAX_HEARTBEAT_WAIT_MS = 5000;
 // System1 constants
 export const HUNGER_RATE = 0.01;
 export const THIRST_RATE = 0.02;
+export const STARVATION_DAMAGE_RATE = 0.01;
+export const STARVATION_HUNGER_THRESHOLD = 0.9;
 export const CYCLE_HORMONE_INERTIA = 0.9;
 export const CYCLE_HORMONE_REACTIVITY = 0.1;
 export const BASE_FATIGUE_RATE = 0.01;

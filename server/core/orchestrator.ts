@@ -130,6 +130,7 @@ export class Orchestrator {
   public async tick(): Promise<void> {
     const tick = this.clock.getTick();
     let positionsChanged = false;
+    const deadAgentIds: string[] = [];
 
     let totalDecisions = 0;
     let _vocalizations = 0;
@@ -155,6 +156,11 @@ export class Orchestrator {
       const bodyDelta = System1.tick(agent, circadianState, this.config);
       const oldBody = { ...agent.body };
       Object.assign(agent.body, bodyDelta);
+
+      if (bodyDelta.shouldDie) {
+        deadAgentIds.push(agent.id);
+        continue;
+      }
 
       // Log significant body state changes to MerkleLogger
       if (bodyDelta.integrityDrive !== undefined) {
@@ -384,6 +390,35 @@ export class Orchestrator {
     }
 
     if (positionsChanged) {
+      this.spatialIndex.rebuildIndex(this.agents);
+    }
+
+    if (deadAgentIds.length > 0) {
+      for (const deadAgentId of deadAgentIds) {
+        const deadAgent = this.agents.find((agent) => agent.id === deadAgentId);
+        if (!deadAgent) continue;
+        const witnesses = this.spatialIndex
+          .getAgentsInRadius(deadAgent.position, 15)
+          .filter((agent) => agent.id !== deadAgentId).length;
+        this.emitAndTrack({
+          event_id: crypto.randomUUID(),
+          branch_id: this.branchId,
+          run_id: this.runId,
+          tick,
+          type: EventType.AGENT_DIED,
+          agent_id: deadAgentId,
+          payload: {
+            agent_id: deadAgentId,
+            cause: "starvation",
+            witness_count: witnesses,
+          },
+        });
+      }
+
+      this.agents = this.agents.filter((agent) => !deadAgentIds.includes(agent.id));
+      for (const deadAgentId of deadAgentIds) {
+        this.recentDecisions.delete(deadAgentId);
+      }
       this.spatialIndex.rebuildIndex(this.agents);
     }
 

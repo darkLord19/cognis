@@ -775,7 +775,9 @@ export type RunSummary = {
 
 // --- Derived/Internal Types (consolidated from modules) ---
 
-export type BodyStateDelta = Partial<BodyState>;
+export type BodyStateDelta = Partial<BodyState> & {
+  shouldDie?: boolean;
+};
 
 export type EpisodicMemorySource =
   | "real"

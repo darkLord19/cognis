@@ -23,6 +23,8 @@ import {
   PLEASURE_AROUSAL_THRESHOLD,
   PLEASURE_VALENCE_THRESHOLD,
   RECOIL_PAIN_THRESHOLD,
+  STARVATION_DAMAGE_RATE,
+  STARVATION_HUNGER_THRESHOLD,
   THIRST_RATE,
 } from "../../shared/constants";
 import type {
@@ -38,6 +40,10 @@ import type {
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
+}
+
+function getHealthScale(health: number | undefined): number {
+  return (health ?? 1) > 1 ? 100 : 1;
 }
 
 function averageBodyTemperatureDeviation(body: BodyMap): number {
@@ -70,6 +76,15 @@ export const System1 = {
     delta.hunger = clamp01((body.hunger || 0) + HUNGER_RATE);
     delta.thirst = clamp01((body.thirst || 0) + THIRST_RATE);
 
+    const healthScale = getHealthScale(body.health);
+    const currentHealth = Math.max(0, body.health ?? healthScale);
+    if ((delta.hunger ?? body.hunger ?? 0) > STARVATION_HUNGER_THRESHOLD) {
+      delta.health = Math.max(0, currentHealth - STARVATION_DAMAGE_RATE * healthScale);
+      if (delta.health <= 0 && currentHealth > 0) {
+        delta.shouldDie = true;
+      }
+    }
+
     // 2. Circadian integration
     const hormoneTarget = circadianState.cycleHormoneValue;
     delta.cycleHormone =
@@ -96,7 +111,8 @@ export const System1 = {
 
     // 4. IntegrityDrive (ω)
     const omega = worldConfig.freeWill.survivalDriveWeight;
-    const healthDeficit = clamp01(1 - (body.health ?? 0));
+    const effectiveHealth = delta.health ?? currentHealth;
+    const healthDeficit = clamp01(1 - effectiveHealth / healthScale);
     const temperatureStress = clamp01(
       Math.max(
         Math.abs((body.coreTemperature ?? AMBIENT_TEMPERATURE) - AMBIENT_TEMPERATURE),
@@ -121,6 +137,8 @@ export const System1 = {
    */
   checkImmediateReaction(agent: AgentState): ImmediateReaction | null {
     const body = agent.body;
+    const healthScale = getHealthScale(body.health);
+    const normalizedHealth = clamp01((body.health ?? healthScale) / healthScale);
 
     // Find max pain across body parts
     let maxPain = 0;
@@ -131,11 +149,11 @@ export const System1 = {
     }
 
     // COLLAPSE — agent near death
-    if (body.health !== undefined && body.health < COLLAPSE_HEALTH_THRESHOLD) {
+    if (body.health !== undefined && normalizedHealth < COLLAPSE_HEALTH_THRESHOLD) {
       return {
         type: "COLLAPSE",
         agentId: agent.id,
-        intensity: 1.0 - (body.health ?? 0),
+        intensity: 1.0 - normalizedHealth,
       };
     }
 

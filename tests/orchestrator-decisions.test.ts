@@ -6,6 +6,7 @@ import { SimClock } from "../server/core/sim-clock";
 import { db } from "../server/persistence/database";
 import { PhysicsEngine } from "../server/world/physics-engine";
 import { VoxelGrid } from "../server/world/voxel-grid";
+import { EventType } from "../shared/events";
 import type { AgentState, System2Output, WorldConfig } from "../shared/types";
 
 beforeEach(() => {
@@ -227,4 +228,93 @@ test("Orchestrator: uses behavior trees for wolf agents when System2 does not fi
   await orchestrator.tick();
 
   expect(agent.currentAction).toBe("WANDER");
+});
+
+test("Orchestrator: emits AGENT_DIED and removes starved agents", async () => {
+  const events: { type: EventType; agent_id?: string }[] = [];
+  const eventBus = new EventBus();
+  eventBus.onAny((event) => {
+    const record: { type: EventType; agent_id?: string } = { type: event.type };
+    if (event.agent_id) {
+      record.agent_id = event.agent_id;
+    }
+    events.push(record);
+  });
+
+  const system2 = {
+    shouldFire: () => false,
+    think: async () =>
+      ({
+        innerMonologue: "idle",
+        decision: { type: "IDLE" },
+      }) satisfies System2Output,
+  };
+
+  const starvingAgent = createAgent("a-starved");
+  starvingAgent.body.hunger = 0.95;
+  starvingAgent.body.health = 0.001;
+
+  const world = new VoxelGrid(10, 10, 10);
+  const clock = new SimClock();
+  const orchestrator = new Orchestrator(
+    "run1",
+    "main",
+    mockConfig,
+    world,
+    clock,
+    eventBus,
+    new PhysicsEngine(mockConfig.physics),
+    system2 as unknown as System2,
+  );
+  orchestrator.addAgent(starvingAgent);
+
+  await orchestrator.tick();
+
+  expect(orchestrator.getAgents().length).toBe(0);
+  expect(events.some((event) => event.type === EventType.AGENT_DIED)).toBe(true);
+});
+
+test("Orchestrator: starvation causes death before tick 200 under baseline body state", async () => {
+  const events: { type: EventType; tick: number }[] = [];
+  const eventBus = new EventBus();
+  eventBus.onAny((event) => {
+    events.push({ type: event.type, tick: event.tick });
+  });
+
+  const system2 = {
+    shouldFire: () => false,
+    think: async () =>
+      ({
+        innerMonologue: "idle",
+        decision: { type: "IDLE" },
+      }) satisfies System2Output,
+  };
+
+  const agent = createAgent("a-baseline");
+  agent.body.hunger = 0.3;
+  agent.body.health = 1;
+
+  const world = new VoxelGrid(10, 10, 10);
+  const clock = new SimClock();
+  const orchestrator = new Orchestrator(
+    "run1",
+    "main",
+    mockConfig,
+    world,
+    clock,
+    eventBus,
+    new PhysicsEngine(mockConfig.physics),
+    system2 as unknown as System2,
+  );
+  orchestrator.addAgent(agent);
+
+  for (let tick = 0; tick < 200; tick++) {
+    await clock.advanceTick();
+    await orchestrator.tick();
+    if (orchestrator.getAgents().length === 0) break;
+  }
+
+  const deathEvent = events.find((event) => event.type === EventType.AGENT_DIED);
+  expect(deathEvent).toBeDefined();
+  expect(deathEvent?.tick ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(200);
 });
