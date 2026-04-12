@@ -56,3 +56,25 @@ test("MerkleLogger: verifyChain fails when entry modified", () => {
   // Revert the tampering so other tests (if any) could pass
   db.db.query("UPDATE audit_log SET new_value = ? WHERE id = ?").run("I feel pain", logToTamper.id);
 });
+
+test("MerkleLogger: verifyChain fails when audit metadata is modified", () => {
+  const branchId = "main";
+
+  MerkleLogger.log(4, branchId, "agent_2", "System1", "health", "90", "80", "cause-1");
+
+  const logs = db.getAuditLogs(branchId);
+  const logToTamper = logs[logs.length - 1];
+  if (!logToTamper) throw new Error("Missing log to tamper");
+
+  db.db
+    .query("UPDATE audit_log SET system = ?, cause_description = ?, suppressed = ? WHERE id = ?")
+    .run("TamperedSystem", "tampered cause description", 1, logToTamper.id);
+
+  const result = MerkleLogger.verifyChain(branchId);
+  expect(result.valid).toBe(false);
+  expect(result.error).toContain("entry hash mismatch");
+
+  db.db
+    .query("UPDATE audit_log SET system = ?, cause_description = ?, suppressed = ? WHERE id = ?")
+    .run("System1", null, 0, logToTamper.id);
+});

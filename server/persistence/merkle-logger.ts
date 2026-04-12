@@ -7,6 +7,34 @@ function hash(data: string): string {
   return hasher.digest("hex");
 }
 
+function serializeEntryForHash(entry: {
+  previousHash: string;
+  tick: number;
+  branchId: string;
+  agentId: string | null;
+  system: string;
+  field: string;
+  oldValue: string | null;
+  newValue: string | null;
+  causeEventId: string | null;
+  causeDescription: string | null;
+  suppressed: boolean;
+}): string {
+  return JSON.stringify({
+    previousHash: entry.previousHash,
+    tick: entry.tick,
+    branchId: entry.branchId,
+    agentId: entry.agentId,
+    system: entry.system,
+    field: entry.field,
+    oldValue: entry.oldValue,
+    newValue: entry.newValue,
+    causeEventId: entry.causeEventId,
+    causeDescription: entry.causeDescription,
+    suppressed: entry.suppressed,
+  });
+}
+
 export const MerkleLogger = {
   log(
     tick: number,
@@ -19,7 +47,19 @@ export const MerkleLogger = {
     causeEventId: string | null,
   ): void {
     const previousHash = db.getLastAuditHash(branchId);
-    const data = `${previousHash}${tick}${agentId || ""}${field}${oldValue || ""}${newValue || ""}`;
+    const data = serializeEntryForHash({
+      previousHash,
+      tick,
+      branchId,
+      agentId,
+      system,
+      field,
+      oldValue,
+      newValue,
+      causeEventId,
+      causeDescription: null,
+      suppressed: false,
+    });
     const entryHash = hash(data);
 
     db.insertAuditLog({
@@ -46,7 +86,19 @@ export const MerkleLogger = {
     tick: number,
   ): void {
     const previousHash = db.getLastAuditHash(branchId);
-    const data = `${previousHash}${tick}${agentId}${field}${""}${suppressedValue}`;
+    const data = serializeEntryForHash({
+      previousHash,
+      tick,
+      branchId,
+      agentId,
+      system: "Memory",
+      field,
+      oldValue: null,
+      newValue: suppressedValue,
+      causeEventId: null,
+      causeDescription: null,
+      suppressed: true,
+    });
     const entryHash = hash(data);
 
     db.insertAuditLog({
@@ -90,7 +142,19 @@ export const MerkleLogger = {
         };
       }
 
-      const data = `${entry.previous_hash}${entry.tick}${entry.agent_id || ""}${entry.field}${entry.old_value || ""}${entry.new_value || ""}`;
+      const data = serializeEntryForHash({
+        previousHash: entry.previous_hash,
+        tick: entry.tick,
+        branchId: entry.branch_id,
+        agentId: entry.agent_id,
+        system: entry.system,
+        field: entry.field,
+        oldValue: entry.old_value,
+        newValue: entry.new_value,
+        causeEventId: entry.cause_event_id,
+        causeDescription: entry.cause_description,
+        suppressed: Boolean(entry.suppressed),
+      });
       const computedHash = hash(data);
 
       if (entry.entry_hash !== computedHash) {
