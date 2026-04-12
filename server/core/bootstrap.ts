@@ -141,7 +141,7 @@ function selectSpecies(config: WorldConfig, speciesRegistry: SpeciesRegistry): S
         if (!ref) return null;
         const match = ref.match(/\/([^/]+)\.json$/);
         const speciesId = match?.[1];
-        return speciesId ? speciesRegistry.get(speciesId) ?? null : null;
+        return speciesId ? (speciesRegistry.get(speciesId) ?? null) : null;
       })
       .filter((entry): entry is SpeciesConfig => Boolean(entry));
     if (resolved.length > 0) {

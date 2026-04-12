@@ -81,7 +81,8 @@ export class EmergenceDetector {
       {
         name: "behavioral_rhythm",
         description: "Sustained non-random decision activity emerges over time",
-        check: (batch) => batch.filter((event) => event.type === EventType.DECISION_MADE).length > 50,
+        check: (batch) =>
+          batch.filter((event) => event.type === EventType.DECISION_MADE).length > 50,
       },
     ];
 

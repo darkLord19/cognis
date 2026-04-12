@@ -10,8 +10,8 @@ import { AttentionFilter } from "../agents/attention-filter";
 import { QualiaProcessor } from "../agents/qualia-processor";
 import { System1 } from "../agents/system1";
 import type { System2 } from "../agents/system2";
-import { LanguageEmergence } from "../language/emergence";
 import { EmergenceDetector } from "../analysis/emergence-detector";
+import { LanguageEmergence } from "../language/emergence";
 import { DecayEngine } from "../memory/decay-engine";
 import { EpisodicStore } from "../memory/episodic-store";
 import { SalienceGate } from "../memory/salience-gate";
@@ -246,7 +246,7 @@ export class Orchestrator {
         }
         if (decision.type !== "IDLE") {
           positionsChanged =
-          this.applyDecision(agent, {
+            this.applyDecision(agent, {
               type: decision.type,
               position: decision.position,
             }) || positionsChanged;

@@ -7,6 +7,7 @@ import { MerkleLogger } from "../persistence/merkle-logger";
 import { FindingsJournal } from "../research/findings-journal";
 import { TripleBaseline } from "../research/triple-baseline";
 import type { SpeciesRegistry } from "../species/registry";
+import { validateWorldConfig } from "../validation/config-validator";
 import { bootstrapSimulation } from "./bootstrap";
 import { BranchManager } from "./branch-manager";
 import { EventBus } from "./event-bus";
@@ -15,7 +16,6 @@ import { RunStateStore } from "./run-state-store";
 import type { RunRuntime, RunSupervisor } from "./run-supervisor";
 import { SimClock } from "./sim-clock";
 import { WorldConfigManager } from "./world-config-manager";
-import { validateWorldConfig } from "../validation/config-validator";
 
 interface CreateRunRequest {
   config?: string;

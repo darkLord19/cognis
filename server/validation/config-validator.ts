@@ -27,9 +27,7 @@ export function validateWorldConfig(raw: unknown): string[] {
 
   const elements = c.elements as Record<string, unknown> | undefined;
   if (elements && typeof elements.fireSpreadRate === "number") {
-    errors.push(
-      "elements.fireSpreadRate is not valid — use elements.fire.spreadRateTicksPerVoxel",
-    );
+    errors.push("elements.fireSpreadRate is not valid — use elements.fire.spreadRateTicksPerVoxel");
   }
 
   const species = c.species as unknown[] | undefined;
