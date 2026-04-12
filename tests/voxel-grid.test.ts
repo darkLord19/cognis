@@ -27,8 +27,8 @@ test("VoxelGrid: set and get", () => {
 
   const v = grid.get(5, 5, 5);
   expect(v).toBeTruthy();
-  expect(v!.material).toBe("stone");
-  expect(v!.temperature).toBe(20);
+  expect(v?.material).toBe("stone");
+  expect(v?.temperature).toBe(20);
   expect(grid.getLightLevel(5, 5, 5)).toBeCloseTo(0.8);
 });
 
@@ -63,8 +63,8 @@ test("DeltaStream: flush and reconstruct", () => {
   const v1 = reconstructed.get(1, 1, 1);
   const v2 = reconstructed.get(2, 2, 2);
 
-  expect(v1!.material).toBe("dirt");
-  expect(v2!.material).toBe("wood");
+  expect(v1?.material).toBe("dirt");
+  expect(v2?.material).toBe("wood");
 });
 
 test("TerrainGenerator: builds valid grid", () => {

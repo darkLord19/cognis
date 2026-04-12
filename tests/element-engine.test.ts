@@ -52,7 +52,7 @@ test("ElementEngine: fire extinguishes without fuel", () => {
   }
 
   const v = grid.get(1, 1, 1);
-  expect(v!.material).toBe("air");
+  expect(v?.material).toBe("air");
 });
 
 test("ElementEngine: fire spreads to fuel", () => {
@@ -84,5 +84,5 @@ test("ElementEngine: fire spreads to fuel", () => {
   elements.tick(grid);
 
   const v = grid.get(1, 1, 2);
-  expect(v!.material).toBe("fire");
+  expect(v?.material).toBe("fire");
 });

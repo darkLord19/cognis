@@ -14,7 +14,7 @@ export class SenseComputer {
     agent: AgentState,
     world: VoxelGrid,
     spatialIndex: SpatialIndex,
-    config: PerceptionConfig,
+    _config: PerceptionConfig,
     circadianState: CircadianState,
     allVocalActuations: VocalActuation[],
   ): RawPercept {

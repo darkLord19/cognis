@@ -1,10 +1,4 @@
-import type {
-  AgentState,
-  FilteredPercept,
-  PerceptionConfig,
-  RawPercept,
-  Voxel,
-} from "../../shared/types";
+import type { AgentState, FilteredPercept, PerceptionConfig, RawPercept } from "../../shared/types";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
 export class AttentionFilter {

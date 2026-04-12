@@ -16,8 +16,8 @@ export class TechTree {
   }
 
   public checkDiscovery(
-    agentId: string,
-    context: { observationType?: string; target?: string },
+    _agentId: string,
+    _context: { observationType?: string; target?: string },
   ): TechNode | null {
     return null;
   }
@@ -75,10 +75,10 @@ export class TechTree {
     set.add(techId);
   }
 
-  public canTeach(teacher: AgentState, studentId: string, techId: string): boolean {
+  public canTeach(teacher: AgentState, _studentId: string, techId: string): boolean {
     if (!this.hasDiscovered(teacher.id, techId)) return false;
     const node = this.nodes.get(techId);
-    if (!node || !node.canBeTeaching) return false;
+    if (!node?.canBeTeaching) return false;
 
     for (const required of node.teachingRequiresLexicon) {
       const hasWord = teacher.lexicon.some((l) => l.concept === required);

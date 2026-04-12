@@ -26,7 +26,7 @@ export class Pathfinding {
   private cache = new LRUCache<string, Vec3[]>(1000);
 
   // Simplified A* - 3D grid
-  public findPath(world: VoxelGrid, start: Vec3, end: Vec3): Vec3[] {
+  public findPath(_world: VoxelGrid, start: Vec3, end: Vec3): Vec3[] {
     const sx = Math.floor(start.x);
     const sy = Math.floor(start.y);
     const sz = Math.floor(start.z);

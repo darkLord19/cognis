@@ -46,7 +46,7 @@ test("System1: vocal actuation on high pain", () => {
   const vocal = System1.checkVocalActuation(agent, 10);
 
   expect(vocal).toBeTruthy();
-  expect(vocal!.soundToken).toBe("AARGH");
+  expect(vocal?.soundToken).toBe("AARGH");
 });
 
 test("System1: conflict outcome based on muscle stats", () => {

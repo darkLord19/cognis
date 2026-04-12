@@ -25,20 +25,20 @@ test("JournalingSystem: marks and recovers meaning based on overlap", () => {
   expect(marked).toBe(true);
 
   const v = grid.get(1, 1, 1);
-  expect(v!.metadata!.markings!.length).toBe(1);
+  expect(v?.metadata?.markings?.length).toBe(1);
 
   // Agent knows both
   const agentFull = { lexicon: [{ word: "hello" }, { word: "world" }] } as unknown as AgentState;
   const discFull = journal.discoverMarking(agentFull, 1, 1, 1, grid);
-  expect(discFull!.status).toBe("full");
+  expect(discFull?.status).toBe("full");
 
   // Agent knows one
   const agentPartial = { lexicon: [{ word: "hello" }] } as unknown as AgentState;
   const discPartial = journal.discoverMarking(agentPartial, 1, 1, 1, grid);
-  expect(discPartial!.status).toBe("partial");
+  expect(discPartial?.status).toBe("partial");
 
   // Agent knows none
   const agentNone = { lexicon: [{ word: "apple" }] } as unknown as AgentState;
   const discNone = journal.discoverMarking(agentNone, 1, 1, 1, grid);
-  expect(discNone!.status).toBe("none");
+  expect(discNone?.status).toBe("none");
 });

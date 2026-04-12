@@ -44,7 +44,7 @@ Respond with your thoughts and intentions.`;
   }
 
   public async complete(
-    agentId: string,
+    _agentId: string,
     prompt: string,
     systemPrompt: string,
     options: Record<string, unknown> = {},

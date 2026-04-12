@@ -1,4 +1,3 @@
-import type { Voxel } from "../../shared/types";
 import type { PhysicsEngine } from "./physics-engine";
 import type { VoxelGrid } from "./voxel-grid";
 

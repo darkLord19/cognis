@@ -77,7 +77,7 @@ test("EpisodicStore: encode and retrieve", () => {
 
   const retrieved = EpisodicStore.retrieve("agent1", "main", 1);
   expect(retrieved.length).toBe(1);
-  expect(retrieved[0]!.qualiaText).toBe("I saw a tree");
+  expect(retrieved[0]?.qualiaText).toBe("I saw a tree");
 });
 
 test("EpisodicStore: suppression is logged", () => {
@@ -95,7 +95,7 @@ test("EpisodicStore: suppression is logged", () => {
 
   const retrieved = EpisodicStore.retrieve("agent1", "main", 10);
   const suppressed = retrieved.find((m) => m.id === mem.id);
-  expect(suppressed!.suppressed).toBe(true);
+  expect(suppressed?.suppressed).toBe(true);
 
   const audit = db.getAuditLogs("main");
   const suppressionLog = audit.find((a) => a.suppressed === 1);

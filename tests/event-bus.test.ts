@@ -23,8 +23,10 @@ test("EventBus: basic pub/sub", () => {
 
   bus.emit(event);
 
-  expect(caughtEvent).toBeTruthy();
-  expect(caughtEvent!.event_id).toBe("1");
+  expect(caughtEvent).not.toBeNull();
+  if (caughtEvent) {
+    expect((caughtEvent as SimEvent).event_id).toBe("1");
+  }
 
   bus.off(EventType.TICK, handler);
   caughtEvent = null;

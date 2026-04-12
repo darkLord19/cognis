@@ -15,24 +15,24 @@ test("RunManager: CRUD", () => {
   RunManager.createRun("run1", "Test Run", 0);
   const run = RunManager.getRun("run1");
   expect(run).toBeTruthy();
-  expect(run!.name).toBe("Test Run");
-  expect(run!.status).toBe("running");
+  expect(run?.name).toBe("Test Run");
+  expect(run?.status).toBe("running");
 
   RunManager.stopRun("run1", 100);
   const stopped = RunManager.getRun("run1");
-  expect(stopped!.status).toBe("stopped");
-  expect(stopped!.end_tick).toBe(100);
+  expect(stopped?.status).toBe("stopped");
+  expect(stopped?.end_tick).toBe(100);
 });
 
 test("BranchManager: CRUD and state reconstruction", () => {
   BranchManager.createBranch("main_branch", "Main Branch", 0);
   const branch = BranchManager.getBranch("main_branch");
   expect(branch).toBeTruthy();
-  expect(branch!.name).toBe("Main Branch");
+  expect(branch?.name).toBe("Main Branch");
 
   BranchManager.createBranch("fork1", "Fork 1", 50, "main_branch");
   const fork = BranchManager.getBranch("fork1");
-  expect(fork!.parent_id).toBe("main_branch");
+  expect(fork?.parent_id).toBe("main_branch");
 
   db.db
     .query("INSERT INTO world_deltas (branch_id, tick, voxel_data) VALUES (?, ?, ?)")

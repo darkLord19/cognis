@@ -37,7 +37,7 @@ test("System2: think calls LLM and logs monologue to MerkleLogger", async () => 
   const logs = db.getAuditLogs("main");
   const monologueLog = logs.find((l) => l.field === "innerMonologue");
   expect(monologueLog).toBeTruthy();
-  expect(monologueLog!.new_value).toBe(output.innerMonologue);
+  expect(monologueLog?.new_value).toBe(output.innerMonologue);
 });
 
 test("System2: shouldFire on integrity drive jump", () => {

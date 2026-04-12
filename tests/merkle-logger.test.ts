@@ -25,7 +25,7 @@ test("MerkleLogger: chains entries correctly and verifyChain passes", () => {
 
   const logs = db.getAuditLogs(branchId);
   expect(logs.length).toBe(2);
-  expect(logs[1]!.previous_hash).toBe(logs[0]!.entry_hash);
+  expect(logs[1]?.previous_hash).toBe(logs[0]?.entry_hash);
 });
 
 test("MerkleLogger: logSuppression sets suppressed flag", () => {
@@ -34,7 +34,7 @@ test("MerkleLogger: logSuppression sets suppressed flag", () => {
 
   const logs = db.getAuditLogs(branchId);
   expect(logs.length).toBe(3);
-  expect(logs[2]!.suppressed).toBe(1); // SQLite boolean
+  expect(logs[2]?.suppressed).toBe(1); // SQLite boolean
 
   const result = MerkleLogger.verifyChain(branchId);
   expect(result.valid).toBe(true);

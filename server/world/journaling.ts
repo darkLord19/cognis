@@ -11,7 +11,7 @@ export type DiscoveredMarking = {
 export class JournalingSystem {
   constructor(private eventBus: EventBus) {}
 
-  public checkDiscovery(agent: AgentState, world: VoxelGrid): boolean {
+  public checkDiscovery(_agent: AgentState, _world: VoxelGrid): boolean {
     return false;
   }
 
@@ -65,7 +65,7 @@ export class JournalingSystem {
     world: VoxelGrid,
   ): DiscoveredMarking | null {
     const v = world.get(x, y, z);
-    if (!v || !v.metadata || !v.metadata.markings || v.metadata.markings.length === 0) return null;
+    if (!v?.metadata?.markings || v.metadata.markings.length === 0) return null;
 
     const marking = v.metadata.markings[v.metadata.markings.length - 1];
     if (!marking) return null;

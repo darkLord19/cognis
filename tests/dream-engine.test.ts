@@ -81,5 +81,5 @@ test("DreamEngine: healing reduces trauma", async () => {
 
   await DreamEngine.dream(agent, branchId, forceHealing, memConfig, 101);
 
-  expect(agent.traumaFlags![0]!.severity).toBeLessThan(100);
+  expect(agent.traumaFlags?.[0]?.severity).toBeLessThan(100);
 });

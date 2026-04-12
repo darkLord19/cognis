@@ -1,5 +1,3 @@
-import React from "react";
-
 export default function App() {
   return (
     <div className="flex h-screen bg-gray-900 text-white font-mono">

@@ -1,5 +1,3 @@
-import React from "react";
-
 export function BodyMapViewer({ bodyMap }: { bodyMap: Record<string, { pain: number }> }) {
   if (!bodyMap) return null;
 

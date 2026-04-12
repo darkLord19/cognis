@@ -1,11 +1,10 @@
 import type { AgentState, MemoryConfig } from "../../shared/types";
-import { db } from "../persistence/database";
 
 // biome-ignore lint/complexity/noStaticOnlyClass: PRD requires a class
 export class DecayEngine {
   public static tickAll(
     agents: AgentState[],
-    branchId: string,
+    _branchId: string,
     config: MemoryConfig,
     _currentTick: number,
   ): void {
