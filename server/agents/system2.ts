@@ -148,7 +148,11 @@ export class System2 {
     const rawResponse = await this.gateway.complete(agent.id, fullPrompt, systemPrompt);
 
     try {
-      const output = JSON.parse(rawResponse) as System2Output;
+      const start = rawResponse.indexOf("{");
+      const end = rawResponse.lastIndexOf("}");
+      if (start === -1 || end === -1 || end <= start) throw new Error("No JSON found");
+      const jsonStr = rawResponse.substring(start, end + 1);
+      const output = JSON.parse(jsonStr) as System2Output;
 
       MerkleLogger.log(
         tick,
