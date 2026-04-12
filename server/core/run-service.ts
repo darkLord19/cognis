@@ -79,6 +79,82 @@ export class RunService {
     };
   }
 
+  public createTripleBaseline(request: CreateRunRequest): {
+    seed: number;
+    runs: Array<{ baseline: "A" | "B" | "C"; id: string }>;
+  } {
+    const baseConfig = request.inlineConfig
+      ? structuredClone(request.inlineConfig)
+      : this.loadConfig(request.config || request.configPath || "earth-default");
+
+    if (!baseConfig) {
+      throw new Error("Config not found");
+    }
+
+    if (request.seed !== undefined) {
+      baseConfig.meta.seed = request.seed;
+    }
+
+    if (request.name) {
+      baseConfig.meta.name = request.name;
+    }
+
+    const speciesPool =
+      baseConfig.species.length > 0
+        ? baseConfig.species.map((species) => structuredClone(species))
+        : this.deps.speciesRegistry.getAll().map((species) => structuredClone(species));
+
+    if (speciesPool.length === 0) {
+      throw new Error("No species definitions available for triple baseline runs");
+    }
+
+    const configA = structuredClone(baseConfig);
+    configA.meta.name = `${baseConfig.meta.name} A`;
+    configA.species = structuredClone(speciesPool);
+
+    const configB = structuredClone(baseConfig);
+    configB.meta.name = `${baseConfig.meta.name} B`;
+    configB.species = speciesPool.map((species) => ({
+      ...species,
+      cognitiveTier: "pure_reflex",
+    }));
+
+    const configC = structuredClone(baseConfig);
+    configC.meta.name = `${baseConfig.meta.name} C`;
+    configC.species = structuredClone(speciesPool);
+    configC.semanticMasking = {
+      ...configC.semanticMasking,
+      enabled: true,
+      qualiaUsesRealLabels: false,
+    };
+
+    const runA = this.createRun({ inlineConfig: configA });
+    const runB = this.createRun({ inlineConfig: configB });
+    const runC = this.createRun({ inlineConfig: configC });
+
+    this.deps.database.db
+      .query(
+        "INSERT INTO triple_baseline_runs (id, seed, run_id_a, run_id_b, run_id_c, divergences) VALUES (?, ?, ?, ?, ?, ?)",
+      )
+      .run(
+        crypto.randomUUID(),
+        baseConfig.meta.seed,
+        runA.id,
+        runB.id,
+        runC.id,
+        JSON.stringify([]),
+      );
+
+    return {
+      seed: baseConfig.meta.seed,
+      runs: [
+        { baseline: "A", id: runA.id },
+        { baseline: "B", id: runB.id },
+        { baseline: "C", id: runC.id },
+      ],
+    };
+  }
+
   public listRuns() {
     return RunStateStore.listSummaries();
   }

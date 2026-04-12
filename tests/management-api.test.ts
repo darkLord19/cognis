@@ -24,6 +24,7 @@ beforeEach(() => {
   db.db.exec("DELETE FROM run_state_events");
   db.db.exec("DELETE FROM config_mutations");
   db.db.exec("DELETE FROM findings");
+  db.db.exec("DELETE FROM triple_baseline_runs");
   db.db.exec("DELETE FROM audit_log");
   db.db.exec("DELETE FROM branches");
   db.db.exec("DELETE FROM runs");
@@ -229,4 +230,45 @@ test("management api creates branches and exposes a watcher stream", async () =>
   expect(payload).toContain(`"runId":"${created.id}"`);
 
   await reader?.cancel();
+});
+
+test("management api creates linked triple baseline runs", async () => {
+  const response = await handler(
+    new Request("http://localhost/triple-baseline", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ config: "earth-default", seed: 90, name: "Baseline Run" }),
+    }),
+  );
+
+  const result = await readJson(response);
+  expect(response.status).toBe(201);
+  expect(result.seed).toBe(90);
+  expect(Array.isArray(result.runs)).toBe(true);
+  expect((result.runs as unknown[]).length).toBe(3);
+
+  const [runA, runB, runC] = result.runs as [
+    { id: string; baseline: "A" },
+    { id: string; baseline: "B" },
+    { id: string; baseline: "C" },
+  ];
+  expect(runA.baseline).toBe("A");
+  expect(runB.baseline).toBe("B");
+  expect(runC.baseline).toBe("C");
+  expect(
+    service.getConfig(runA.id).species.some((species) => species.cognitiveTier === "full_llm"),
+  ).toBe(true);
+  expect(
+    service.getConfig(runB.id).species.every((species) => species.cognitiveTier === "pure_reflex"),
+  ).toBe(true);
+  expect(service.getConfig(runC.id).semanticMasking.qualiaUsesRealLabels).toBe(false);
+
+  const persisted = db.db
+    .query<{ run_id_a: string; run_id_b: string; run_id_c: string }, [number]>(
+      "SELECT run_id_a, run_id_b, run_id_c FROM triple_baseline_runs WHERE seed = ?",
+    )
+    .get(90);
+  expect(persisted?.run_id_a).toBe(runA.id);
+  expect(persisted?.run_id_b).toBe(runB.id);
+  expect(persisted?.run_id_c).toBe(runC.id);
 });

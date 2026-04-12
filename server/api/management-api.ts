@@ -113,6 +113,32 @@ export function createManagementApiHandler(deps: ApiDependencies) {
       }
     }
 
+    if (path === "/triple-baseline" && method === "POST") {
+      const body = await parseRequestBody<Record<string, unknown>>(req);
+      if (!body) {
+        return jsonResponse({ error: "Invalid JSON" }, 400);
+      }
+
+      try {
+        const request: Parameters<RunService["createTripleBaseline"]>[0] = {};
+        if (typeof body.config === "string") request.config = body.config;
+        if (typeof body.configPath === "string") request.configPath = body.configPath;
+        if (typeof body.name === "string") request.name = body.name;
+        if (typeof body.seed === "number") request.seed = body.seed;
+        const inlineConfig = readInlineConfig(body);
+        if (inlineConfig) request.inlineConfig = inlineConfig;
+
+        return jsonResponse(deps.runService.createTripleBaseline(request), 201);
+      } catch (error) {
+        return jsonResponse(
+          {
+            error: error instanceof Error ? error.message : "Failed to create triple baseline runs",
+          },
+          400,
+        );
+      }
+    }
+
     const runMatch = path.match(/^\/runs\/([^/]+)$/);
     if (runMatch && method === "GET") {
       const runId = requirePathParam(runMatch[1]);
