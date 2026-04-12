@@ -165,7 +165,7 @@ export default function App() {
 
       const auditContent =
         entry.field === "innerMonologue"
-          ? (entry.new_value || "null")
+          ? entry.new_value || "null"
           : `${entry.field}: ${entry.old_value || "null"} -> ${entry.new_value || "null"}`;
 
       items.push({
@@ -367,7 +367,7 @@ export default function App() {
     }
   }
 
-  const selectedMonologues = selectedAgent ? monologuesByAgent[selectedAgent.id] ?? [] : [];
+  const selectedMonologues = selectedAgent ? (monologuesByAgent[selectedAgent.id] ?? []) : [];
   const latestMonologue =
     selectedMonologues[selectedMonologues.length - 1]?.text || selectedAgent?.innerMonologue || "";
 

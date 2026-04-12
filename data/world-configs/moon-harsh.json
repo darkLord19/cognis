@@ -83,13 +83,24 @@
     ]
   },
   "agents": {
-    "initialCount": 5,
-    "startingMode": "none"
+    "count": 5,
+    "speciesId": "human",
+    "startingArea": { "centerX": 64, "centerZ": 64, "radius": 15 }
   },
-  "species": [],
+  "species": [
+    { "$ref": "data/species/human.json" },
+    { "$ref": "data/species/wolf.json" },
+    { "$ref": "data/species/deer.json" }
+  ],
   "language": {
-    "stagesEnabled": [1, 2, 3, 4, 5],
-    "driftRate": 0.01
+    "startingMode": "none",
+    "maxEmergenceStage": 5,
+    "lexiconConstrainsThought": true,
+    "dialectDivergenceEnabled": true,
+    "pidginFormationEnabled": true,
+    "writingDiscoveryEnabled": true,
+    "confidenceThresholdForLexicon": 0.7,
+    "minimumAgentsForConsensus": 3
   },
   "sleep": {
     "mode": "natural_sleep",
@@ -169,9 +180,9 @@
     }
   },
   "elements": {
-    "fireSpreadRate": 0.1,
-    "waterFlowRate": 0.2,
-    "windStrength": 0.5
+    "fire": { "enabled": true, "spreadRateTicksPerVoxel": 3, "selfExtinguishTicks": 200 },
+    "water": { "enabled": true, "flowRateTicksPerVoxel": 2 },
+    "wind": { "enabled": true, "directionChangeProbability": 0.01, "maxSpeed": 2.0 }
   },
   "semanticMasking": {
     "enabled": true,

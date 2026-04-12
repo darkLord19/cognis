@@ -46,13 +46,29 @@ export type ResourceDefinition = {
 };
 
 export type AgentPopulationConfig = {
-  initialCount: number;
-  startingMode: "none" | "pidgin" | "established";
+  count: number;
+  speciesId?: string;
+  startingArea?: {
+    centerX: number;
+    centerZ: number;
+    radius: number;
+  };
+  // Legacy compatibility
+  initialCount?: number;
 };
 
 export type LanguageConfig = {
-  stagesEnabled: number[];
-  driftRate: number;
+  startingMode?: "none" | "pidgin" | "established";
+  maxEmergenceStage?: number;
+  lexiconConstrainsThought?: boolean;
+  dialectDivergenceEnabled?: boolean;
+  pidginFormationEnabled?: boolean;
+  writingDiscoveryEnabled?: boolean;
+  confidenceThresholdForLexicon?: number;
+  minimumAgentsForConsensus?: number;
+  // Legacy compatibility
+  stagesEnabled?: number[];
+  driftRate?: number;
 };
 
 export type RestMode =
@@ -169,9 +185,13 @@ export type TimeConfig = {
 };
 
 export type ElementConfig = {
-  fireSpreadRate: number;
-  waterFlowRate: number;
-  windStrength: number;
+  fire?: { enabled: boolean; spreadRateTicksPerVoxel: number; selfExtinguishTicks: number };
+  water?: { enabled: boolean; flowRateTicksPerVoxel: number };
+  wind?: { enabled: boolean; directionChangeProbability: number; maxSpeed: number };
+  // Legacy compatibility
+  fireSpreadRate?: number;
+  waterFlowRate?: number;
+  windStrength?: number;
 };
 
 export type SeasonType = "spring" | "summer" | "autumn" | "winter";

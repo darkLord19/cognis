@@ -130,7 +130,23 @@ function createAgent(
 
 function selectSpecies(config: WorldConfig, speciesRegistry: SpeciesRegistry): SpeciesConfig[] {
   if (config.species && config.species.length > 0) {
-    return config.species;
+    const direct = config.species.filter((entry): entry is SpeciesConfig => "id" in entry);
+    if (direct.length > 0) {
+      return direct;
+    }
+
+    const resolved = config.species
+      .map((entry) => {
+        const ref = (entry as { $ref?: string }).$ref;
+        if (!ref) return null;
+        const match = ref.match(/\/([^/]+)\.json$/);
+        const speciesId = match?.[1];
+        return speciesId ? speciesRegistry.get(speciesId) ?? null : null;
+      })
+      .filter((entry): entry is SpeciesConfig => Boolean(entry));
+    if (resolved.length > 0) {
+      return resolved;
+    }
   }
 
   const loaded = speciesRegistry.getAll();
@@ -187,7 +203,8 @@ export function bootstrapSimulation(
     status: "created",
   });
   const speciesPool = selectSpecies(config, deps.speciesRegistry);
-  const agents = Array.from({ length: config.agents.initialCount }, (_, index) =>
+  const requestedCount = config.agents.count ?? config.agents.initialCount ?? 0;
+  const agents = Array.from({ length: requestedCount }, (_, index) =>
     createAgent(speciesPool[index % speciesPool.length] as SpeciesConfig, index, branchId, config),
   );
 

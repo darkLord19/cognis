@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { RunService } from "../server/core/run-service";
 import { RunStateStore } from "../server/core/run-state-store";
 import { RunSupervisor } from "../server/core/run-supervisor";
@@ -62,4 +63,20 @@ test("RunService starts, pauses, resumes, and stops a shared runtime", () => {
   expect(stopped.status).toBe("stopped");
   expect(supervisor.getRuntime(created.id)).toBeUndefined();
   expect(RunStateStore.getLatest(created.id)?.status).toBe("stopped");
+});
+
+test("RunService rejects configs with deprecated schema fields", () => {
+  const invalid = JSON.parse(
+    readFileSync("./data/world-configs/earth-default.json", "utf8"),
+  ) as Record<string, unknown>;
+  invalid.agents = { initialCount: 10, startingMode: "none" };
+  invalid.language = { stagesEnabled: [1, 2, 3], driftRate: 0.01 };
+  invalid.elements = { fireSpreadRate: 0.1 };
+  invalid.species = [];
+
+  expect(() =>
+    service.createRun({
+      inlineConfig: invalid as never,
+    }),
+  ).toThrow(/agents\.count|stagesEnabled|fireSpreadRate|species/i);
 });

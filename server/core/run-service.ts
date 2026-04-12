@@ -15,6 +15,7 @@ import { RunStateStore } from "./run-state-store";
 import type { RunRuntime, RunSupervisor } from "./run-supervisor";
 import { SimClock } from "./sim-clock";
 import { WorldConfigManager } from "./world-config-manager";
+import { validateWorldConfig } from "../validation/config-validator";
 
 interface CreateRunRequest {
   config?: string;
@@ -62,6 +63,13 @@ export class RunService {
       configSource.meta.name = request.name;
     }
 
+    const validationErrors = validateWorldConfig(configSource);
+    if (validationErrors.length > 0) {
+      throw new Error(
+        `Config validation failed:\n${validationErrors.map((error) => `  - ${error}`).join("\n")}`,
+      );
+    }
+
     const configHash = WorldConfigManager.hashWorldConfig(configSource).slice(0, 12);
     const runId = `run-${configSource.meta.seed}-${configHash}`;
     const existing = RunManager.getRun(runId);
@@ -98,6 +106,13 @@ export class RunService {
 
     if (request.name) {
       baseConfig.meta.name = request.name;
+    }
+
+    const validationErrors = validateWorldConfig(baseConfig);
+    if (validationErrors.length > 0) {
+      throw new Error(
+        `Config validation failed:\n${validationErrors.map((error) => `  - ${error}`).join("\n")}`,
+      );
     }
     const { configA, configB, configC } = TripleBaseline.spawn(
       baseConfig,
