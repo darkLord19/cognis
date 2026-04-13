@@ -233,7 +233,6 @@ export class System2 {
         speed: [0, 1] as [number, number],
         endurance: [0, 1] as [number, number],
       },
-      behaviorTree: [],
     }) as SpeciesConfig;
 
     const systemPrompt = this.gateway.systemPromptForAgent(agent, species, config.semanticMasking);

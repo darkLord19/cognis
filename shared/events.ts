@@ -4,6 +4,7 @@ export enum EventType {
   TICK = "tick",
   VOXEL_CHANGED = "voxel_changed",
   ELEMENT_SPREAD = "element_spread",
+  RESOURCE_CREATED = "resource_created",
   RESOURCE_DEPLETED = "resource_depleted",
   STRUCTURE_BUILT = "structure_built",
   VOXEL_MARKED = "voxel_marked",

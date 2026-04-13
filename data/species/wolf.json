@@ -1,7 +1,7 @@
 {
   "id": "wolf",
   "name": "Wolf",
-  "cognitiveTier": "behavior_tree",
+  "cognitiveTier": "full_llm",
   "senseProfile": { "sight": 40, "sound": 80, "smell": 200, "empath": 3 },
   "emotionalFieldEnabled": true,
   "socialCapacity": "limited",
@@ -15,7 +15,7 @@
     "maxHealth": 80,
     "speed": 15,
     "strength": 12,
-    "metabolism": 1.2,
+    "metabolism": 1.35,
     "lifespanTicks": 20000,
     "reproductionAge": 5000,
     "gestationTicks": 1000
@@ -23,7 +23,7 @@
   "muscleStatRanges": { "strength": [0.6, 0.95], "speed": [0.7, 0.95], "endurance": [0.6, 0.9] },
   "dnaTraits": [],
   "threatLevel": 0.7,
-  "ecologicalRole": "predator",
+  "ecologicalRole": "neutral",
   "sleepConfig": {
     "mode": "natural_sleep",
     "fatigueEnabled": true,

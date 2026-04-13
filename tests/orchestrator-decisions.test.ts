@@ -198,7 +198,7 @@ test("Orchestrator: applies MOVE decisions returned by System2", async () => {
   expect(agent.innerMonologue).toBe("move");
 });
 
-test("Orchestrator: uses behavior trees for wolf agents when System2 does not fire", async () => {
+test("Orchestrator: does not run behavior-tree fallback for wolf agents", async () => {
   const system2 = {
     shouldFire: () => false,
     think: async () =>
@@ -227,7 +227,7 @@ test("Orchestrator: uses behavior trees for wolf agents when System2 does not fi
   orchestrator.addAgent(agent);
   await orchestrator.tick();
 
-  expect(agent.currentAction).toBe("WANDER");
+  expect(agent.currentAction).toBe("IDLE");
 });
 
 test("Orchestrator: urgency override forces immediate System2 interrupt for behavior-tree species", async () => {
@@ -319,6 +319,62 @@ test("Orchestrator: emits AGENT_DIED and removes starved agents", async () => {
 
   expect(orchestrator.getAgents().length).toBe(0);
   expect(events.some((event) => event.type === EventType.AGENT_DIED)).toBe(true);
+});
+
+test("Orchestrator: dead agents transition into biomass with causal audit linkage", async () => {
+  const events: { type: EventType; event_id: string; agent_id?: string }[] = [];
+  const eventBus = new EventBus();
+  eventBus.onAny((event) => {
+    const record: { type: EventType; event_id: string; agent_id?: string } = {
+      type: event.type,
+      event_id: event.event_id,
+    };
+    if (event.agent_id) {
+      record.agent_id = event.agent_id;
+    }
+    events.push(record);
+  });
+
+  const system2 = {
+    shouldFire: () => false,
+    think: async () =>
+      ({
+        innerMonologue: "idle",
+        decision: { type: "IDLE" },
+      }) satisfies System2Output,
+  };
+
+  const starvingAgent = createAgent("a-carcass");
+  starvingAgent.body.hunger = 0.95;
+  starvingAgent.body.health = 0.001;
+  starvingAgent.position = { x: 2, y: 5, z: 2 };
+
+  const world = new VoxelGrid(10, 10, 10);
+  const clock = new SimClock();
+  const orchestrator = new Orchestrator(
+    "run1",
+    "main",
+    mockConfig,
+    world,
+    clock,
+    eventBus,
+    new PhysicsEngine(mockConfig.physics),
+    system2 as unknown as System2,
+  );
+  orchestrator.addAgent(starvingAgent);
+
+  await orchestrator.tick();
+
+  const deathEvent = events.find((event) => event.type === EventType.AGENT_DIED);
+  expect(deathEvent).toBeDefined();
+  expect(events.some((event) => event.type === EventType.RESOURCE_CREATED)).toBe(true);
+
+  const biomassVoxel = world.get(2, 5, 2);
+  expect(biomassVoxel?.material).toBe("biomass");
+
+  const logs = db.getAuditLogs("main");
+  const resourceLog = logs.find((entry) => entry.field === "RESOURCE_CREATED");
+  expect(resourceLog?.cause_event_id).toBe(deathEvent?.event_id ?? null);
 });
 
 test("Orchestrator: starvation causes death before tick 200 under baseline body state", async () => {

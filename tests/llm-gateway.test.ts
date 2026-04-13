@@ -16,7 +16,7 @@ test("LLMGateway: system prompt generation uses masked labels", () => {
   const gateway = new LLMGateway(new MockLLMGateway());
 
   const agent: Partial<AgentState> = { name: "Bob" };
-  const species: Partial<SpeciesConfig> = { name: "Human" };
+  const species: Partial<SpeciesConfig> = { name: "Wolf" };
   const maskingConfig: SemanticMaskingConfig = {
     enabled: true,
     qualiaUsesRealLabels: false,
@@ -34,7 +34,9 @@ test("LLMGateway: system prompt generation uses masked labels", () => {
     maskingConfig,
   );
 
-  expect(prompt).toContain("Human");
+  expect(prompt).toContain("moving entities");
+  expect(prompt).not.toContain("Wolf");
+  expect(prompt).not.toContain("Human");
   expect(prompt).toContain("vital_deltas");
   expect(prompt).toContain("flux_inputs");
   expect(prompt).not.toContain("needs");

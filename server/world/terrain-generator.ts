@@ -1,5 +1,5 @@
 import { createNoise2D } from "simplex-noise";
-import type { TerrainConfig } from "../../shared/types";
+import type { MaterialType, TerrainConfig } from "../../shared/types";
 import { VoxelGrid } from "./voxel-grid";
 
 // Quick seeded random for JS
@@ -32,8 +32,7 @@ export const TerrainGenerator = {
 
         for (let y = 0; y < config.height; y++) {
           if (y <= heightMapY) {
-            let mat: "stone" | "dirt" | "wood" | "water" | "ore" | "food" | "air" | "fire" =
-              "stone";
+            let mat: MaterialType = "stone";
             if (y === heightMapY) mat = "dirt"; // Top layer is dirt
 
             grid.set(x, y, z, {

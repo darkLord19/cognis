@@ -3,13 +3,10 @@ import {
   ALARM_VALENCE_THRESHOLD,
   AMBIENT_TEMPERATURE,
   BASE_FATIGUE_RATE,
+  BIOMASS_INTEGRITY_FLUX,
   BODY_TEMP_CONVERGENCE_RATE,
   COLLAPSE_HEALTH_THRESHOLD,
-  CONFLICT_BASE_DAMAGE,
-  CONFLICT_DAMAGE_MULTIPLIER,
-  CONFLICT_ENDURANCE_WEIGHT,
-  CONFLICT_SPEED_WEIGHT,
-  CONFLICT_STRENGTH_WEIGHT,
+  CONFLICT_MIN_DEFENSE,
   CYCLE_HORMONE_INERTIA,
   CYCLE_HORMONE_REACTIVITY,
   FATIGUE_HORMONE_MULTIPLIER,
@@ -31,6 +28,7 @@ import type {
   CircadianState,
   ConflictDelta,
   EmotionalFieldData,
+  MaterialType,
   VocalActuation,
   WorldConfig,
 } from "../../shared/types";
@@ -65,6 +63,10 @@ export const System1 = {
     agent: AgentState,
     circadianState: CircadianState,
     worldConfig: WorldConfig,
+    context?: {
+      localMaterial?: MaterialType | undefined;
+      biomassAvailable?: number;
+    },
   ): BodyStateDelta {
     const body = agent.body;
     const delta: BodyStateDelta = {};
@@ -119,7 +121,23 @@ export const System1 = {
     const fatigueStress = clamp01(delta.fatigue ?? body.fatigue ?? 0);
     const thirstStress = clamp01(delta.thirst ?? body.thirst ?? 0);
     const threat = clamp01((healthDeficit + temperatureStress + fatigueStress + thirstStress) / 4);
-    delta.integrityDrive = omega * clamp01((delta.hunger || 0) + maxPain + threat);
+    let integrityDrive = omega * clamp01((delta.hunger || 0) + maxPain + threat);
+
+    const canConsumeBiomass =
+      context?.localMaterial === "biomass" &&
+      (agent.currentAction === "EAT" ||
+        agent.currentAction === "COLLECT" ||
+        agent.currentAction === "ATTACK");
+    if (canConsumeBiomass) {
+      const available = Math.max(0, context?.biomassAvailable ?? 0);
+      const consumed = Math.min(BIOMASS_INTEGRITY_FLUX, available);
+      if (consumed > 0) {
+        delta.biomassConsumed = consumed;
+        integrityDrive = Math.max(0, integrityDrive - consumed);
+      }
+    }
+
+    delta.integrityDrive = integrityDrive;
 
     return delta;
   },
@@ -210,20 +228,18 @@ export const System1 = {
     return null;
   },
 
-  computeConflictOutcome(agentA: AgentState, agentB: AgentState): ConflictDelta {
-    const powerA =
-      agentA.muscleStats.strength * CONFLICT_STRENGTH_WEIGHT +
-      agentA.muscleStats.speed * CONFLICT_SPEED_WEIGHT +
-      agentA.muscleStats.endurance * CONFLICT_ENDURANCE_WEIGHT;
-    const powerB =
-      agentB.muscleStats.strength * CONFLICT_STRENGTH_WEIGHT +
-      agentB.muscleStats.speed * CONFLICT_SPEED_WEIGHT +
-      agentB.muscleStats.endurance * CONFLICT_ENDURANCE_WEIGHT;
-
-    const diff = powerA - powerB;
+  computeConflictOutcome(agentA: AgentState, agentB: AgentState, actuatorForce = 1): ConflictDelta {
+    const defenseA = Math.max(
+      CONFLICT_MIN_DEFENSE,
+      agentA.muscleStats.speed + agentA.muscleStats.endurance,
+    );
+    const defenseB = Math.max(
+      CONFLICT_MIN_DEFENSE,
+      agentB.muscleStats.speed + agentB.muscleStats.endurance,
+    );
     return {
-      damageA: Math.max(0, CONFLICT_BASE_DAMAGE - diff * CONFLICT_DAMAGE_MULTIPLIER),
-      damageB: Math.max(0, CONFLICT_BASE_DAMAGE + diff * CONFLICT_DAMAGE_MULTIPLIER),
+      damageA: (agentB.muscleStats.strength * actuatorForce) / defenseA,
+      damageB: (agentA.muscleStats.strength * actuatorForce) / defenseB,
     };
   },
 };

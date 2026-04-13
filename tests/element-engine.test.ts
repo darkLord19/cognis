@@ -86,3 +86,24 @@ test("ElementEngine: fire spreads to fuel", () => {
   const v = grid.get(1, 1, 2);
   expect(v?.material).toBe("fire");
 });
+
+test("ElementEngine: biomass decays into waste after decay window", () => {
+  const physics = new PhysicsEngine(mockPreset);
+  const elements = new ElementEngine(physics);
+  const grid = new VoxelGrid(3, 3, 3);
+
+  grid.set(1, 1, 1, {
+    type: 9,
+    material: "biomass",
+    temperature: 15,
+    moisture: 0,
+    fertility: 0,
+    lightLevel: 0,
+    metadata: { placedAt: 0 },
+  });
+
+  elements.tick(grid, 80);
+
+  const v = grid.get(1, 1, 1);
+  expect(v?.material).toBe("waste");
+});

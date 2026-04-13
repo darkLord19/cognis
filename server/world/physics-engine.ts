@@ -1,4 +1,5 @@
 import type {
+  AgentState,
   BodyPart,
   BodyState,
   CircadianState,
@@ -28,11 +29,11 @@ export class PhysicsEngine {
   ): number {
     switch (property) {
       case "density":
-        return this.preset.materialDensities[material];
+        return this.preset.materialDensities[material] ?? 0;
       case "flammability":
-        return this.preset.flammability[material];
+        return this.preset.flammability[material] ?? 0;
       case "thermalConductivity":
-        return this.preset.thermalConductivity[material];
+        return this.preset.thermalConductivity[material] ?? 0;
     }
     return 0;
   }
@@ -101,5 +102,33 @@ export class PhysicsEngine {
       damage: Math.min(targetPart.damage + damageDelta, 100) - targetPart.damage,
       pain: Math.min(targetPart.pain + painDelta, 100) - targetPart.pain,
     };
+  }
+
+  public convertDeadAgentToBiomass(
+    agent: Pick<AgentState, "id" | "position">,
+    world: VoxelGrid,
+    tick: number,
+  ): { x: number; y: number; z: number } {
+    const x = Math.floor(agent.position.x);
+    const y = Math.floor(agent.position.y);
+    const z = Math.floor(agent.position.z);
+    const current = world.get(x, y, z);
+
+    world.set(x, y, z, {
+      type: 9,
+      material: "biomass",
+      temperature: current?.temperature ?? this.preset.temperatureBaseline,
+      moisture: current?.moisture ?? 0.2,
+      fertility: current?.fertility ?? 0.1,
+      lightLevel: current?.lightLevel ?? 0,
+      metadata: {
+        ...(current?.metadata ?? {}),
+        resourceQuality: 1,
+        placedBy: agent.id,
+        placedAt: tick,
+      },
+    });
+
+    return { x, y, z };
   }
 }

@@ -27,6 +27,8 @@ function materialBand(material: string): number {
   if (material === "fire") return 780;
   if (material === "water") return 470;
   if (material === "food") return 620;
+  if (material === "biomass") return 860;
+  if (material === "waste") return 240;
   if (material === "ore") return 510;
   if (material === "wood") return 590;
   if (material === "stone") return 430;
@@ -123,6 +125,11 @@ function externalSignalVector(agent: AgentState, filteredPercept: FilteredPercep
 
   const packed = filteredPercept.focusedVoxels
     .map((voxel) => {
+      if (voxel.material === "biomass") {
+        const intensity = clamp01((voxel.temperature + 30) / 120);
+        return `A heavy metallic sweetness resonates at ${format(intensity)}`;
+      }
+
       const wave = materialBand(voxel.material);
       const intensity = clamp01((voxel.temperature + 30) / 120);
       const token = conceptToken(agent, voxel.material);

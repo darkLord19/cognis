@@ -6,9 +6,9 @@ export type PhysicsPreset = {
   atmospherePressure: number;
   oxygenLevel: number;
   temperatureBaseline: number;
-  materialDensities: Record<MaterialType, number>;
-  flammability: Record<MaterialType, number>;
-  thermalConductivity: Record<MaterialType, number>;
+  materialDensities: Partial<Record<MaterialType, number>>;
+  flammability: Partial<Record<MaterialType, number>>;
+  thermalConductivity: Partial<Record<MaterialType, number>>;
 };
 
 export type CircadianConfig = {
@@ -452,7 +452,7 @@ export type AudioFieldSample = {
 
 // --- Species Types ---
 
-export type CognitiveTier = "full_llm" | "behavior_tree" | "pure_reflex";
+export type CognitiveTier = "full_llm" | "pure_reflex";
 
 export type SenseProfile = {
   sight: number;
@@ -503,7 +503,17 @@ export type SpeciesConfig = {
 
 // --- World Types ---
 
-export type MaterialType = "stone" | "dirt" | "wood" | "water" | "ore" | "food" | "air" | "fire";
+export type MaterialType =
+  | "stone"
+  | "dirt"
+  | "wood"
+  | "water"
+  | "ore"
+  | "food"
+  | "air"
+  | "fire"
+  | "biomass"
+  | "waste";
 export type BiomeType = "forest" | "plains" | "desert" | "tundra" | "mountain" | "ocean";
 export type StructureType = "shelter" | "storage" | "fence";
 export type CropType = "wheat" | "berry";
@@ -786,6 +796,7 @@ export type RunSummary = {
 
 export type BodyStateDelta = Partial<BodyState> & {
   shouldDie?: boolean;
+  biomassConsumed?: number;
 };
 
 export type EpisodicMemorySource =

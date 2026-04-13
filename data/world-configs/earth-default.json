@@ -20,7 +20,9 @@
       "ore": 5.0,
       "food": 0.5,
       "air": 0.001,
-      "fire": 0
+      "fire": 0,
+      "biomass": 0.95,
+      "waste": 1.1
     },
     "flammability": {
       "wood": 0.8,
@@ -30,7 +32,9 @@
       "water": 0,
       "ore": 0,
       "food": 0.3,
-      "air": 0
+      "air": 0,
+      "biomass": 0,
+      "waste": 0
     },
     "thermalConductivity": {
       "stone": 0.5,
@@ -40,7 +44,9 @@
       "ore": 0.9,
       "food": 0.1,
       "air": 0.02,
-      "fire": 1.0
+      "fire": 1.0,
+      "biomass": 0.15,
+      "waste": 0.12
     }
   },
   "circadian": {
@@ -169,7 +175,7 @@
     "selfNarrativeEnabled": true,
     "simulationAwarenessEnabled": true,
     "awarenessThreshold": 0.85,
-    "survivalDriveWeight": 0.6
+    "survivalDriveWeight": 0.8
   },
   "perception": {
     "physicsLimitsEnabled": true,
@@ -184,7 +190,7 @@
       "relationshipStrength": 0.3,
       "emotionalFieldIntensity": 0.3,
       "movementVelocity": 0.2,
-      "novelty": 0.2
+      "novelty": 0.5
     }
   },
   "elements": {

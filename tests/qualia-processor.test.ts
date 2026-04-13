@@ -106,6 +106,25 @@ test("QualiaProcessor renders unknown external concepts as undifferentiated", ()
   expect(result).toContain("undifferentiated");
 });
 
+test("QualiaProcessor describes biomass with metallic sweetness cue", () => {
+  const agent = createTestAgent();
+  const percept = createPercept();
+  percept.focusedVoxels = [
+    { material: "biomass", temperature: 18 } as unknown as (typeof percept.focusedVoxels)[0],
+  ];
+
+  const result = QualiaProcessor.qualiaFor(
+    agent,
+    percept,
+    [],
+    { valence: 0, arousal: 0 },
+    neutralCircadian,
+    defaultConfig,
+  );
+
+  expect(result).toContain("heavy metallic sweetness");
+});
+
 test("QualiaProcessor uses lexicon token when concept is available", () => {
   const agent = createTestAgent();
   agent.lexicon = [{ word: "grok", concept: "fire", confidence: 0.8, consensusCount: 1 }];

@@ -10,6 +10,8 @@ export const MaterialIds: Record<MaterialType, number> = {
   food: 6,
   air: 7,
   fire: 8,
+  biomass: 9,
+  waste: 10,
 };
 export const IdToMaterial: Record<number, MaterialType> = Object.fromEntries(
   Object.entries(MaterialIds).map(([k, v]) => [v, k as MaterialType]),

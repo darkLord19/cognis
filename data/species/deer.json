@@ -1,7 +1,7 @@
 {
   "id": "deer",
   "name": "Deer",
-  "cognitiveTier": "behavior_tree",
+  "cognitiveTier": "full_llm",
   "senseProfile": { "sight": 50, "sound": 90, "smell": 80, "empath": 2 },
   "emotionalFieldEnabled": false,
   "socialCapacity": "limited",
@@ -15,7 +15,7 @@
     "maxHealth": 60,
     "speed": 18,
     "strength": 8,
-    "metabolism": 0.8,
+    "metabolism": 1.05,
     "lifespanTicks": 25000,
     "reproductionAge": 4000,
     "gestationTicks": 1000
@@ -23,7 +23,7 @@
   "muscleStatRanges": { "strength": [0.2, 0.6], "speed": [0.8, 1.0], "endurance": [0.7, 0.95] },
   "dnaTraits": [],
   "threatLevel": 0.1,
-  "ecologicalRole": "prey",
+  "ecologicalRole": "neutral",
   "sleepConfig": {
     "mode": "natural_sleep",
     "fatigueEnabled": true,

@@ -1,3 +1,4 @@
+import { BIOMASS_DECAY_TICKS } from "../../shared/constants";
 import type { PhysicsEngine } from "./physics-engine";
 import type { VoxelGrid } from "./voxel-grid";
 
@@ -8,7 +9,7 @@ export class ElementEngine {
     this.physics = physics;
   }
 
-  public tick(world: VoxelGrid): void {
+  public tick(world: VoxelGrid, currentTick = 0): void {
     const width = world.width;
     const height = world.height;
     const depth = world.depth;
@@ -22,6 +23,22 @@ export class ElementEngine {
         for (let z = 0; z < depth; z++) {
           const v = world.get(x, y, z);
           if (!v) continue;
+
+          if (v.material === "biomass") {
+            const placedAt = v.metadata?.placedAt ?? currentTick;
+            if (currentTick - placedAt >= BIOMASS_DECAY_TICKS) {
+              world.set(x, y, z, {
+                ...v,
+                type: 10,
+                material: "waste",
+                metadata: {
+                  ...(v.metadata ?? {}),
+                  resourceQuality: 0,
+                },
+              });
+            }
+            continue;
+          }
 
           if (v.material === "fire") {
             // Check neighbors for flammability

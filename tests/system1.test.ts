@@ -93,3 +93,34 @@ test("System1: integrity drive follows omega * (hunger + pain + threat)", () => 
   expect(high).toBeGreaterThan(low);
   expect(high).toBeLessThanOrEqual(1);
 });
+
+test("System1: conflict outcome follows strength over defender speed+endurance", () => {
+  const attacker = createAgent("attacker", 0);
+  attacker.muscleStats = { strength: 0.9, speed: 0.4, endurance: 0.4 };
+
+  const defender = createAgent("defender", 0);
+  defender.muscleStats = { strength: 0.2, speed: 0.6, endurance: 0.3 };
+
+  const outcome = System1.computeConflictOutcome(attacker, defender, 1);
+  const expectedDamageToDefender = 0.9 / (0.6 + 0.3);
+  const expectedDamageToAttacker = 0.2 / (0.4 + 0.4);
+
+  expect(outcome.damageB).toBeCloseTo(expectedDamageToDefender, 5);
+  expect(outcome.damageA).toBeCloseTo(expectedDamageToAttacker, 5);
+});
+
+test("System1: consuming biomass reduces integrity pressure", () => {
+  const agent = createAgent("a1", 0.2);
+  agent.body.hunger = 0.9;
+  agent.currentAction = "EAT";
+
+  const withoutBiomass =
+    System1.tick(structuredClone(agent), mockCircadian, mockWorldConfig).integrityDrive ?? 0;
+  const withBiomass =
+    System1.tick(structuredClone(agent), mockCircadian, mockWorldConfig, {
+      localMaterial: "biomass",
+      biomassAvailable: 1,
+    }).integrityDrive ?? 0;
+
+  expect(withBiomass).toBeLessThan(withoutBiomass);
+});

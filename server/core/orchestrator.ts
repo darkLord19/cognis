@@ -22,7 +22,6 @@ import { EmotionalField } from "../perception/emotional-field";
 import { FeelingResidueSystem } from "../perception/feeling-residue";
 import { SenseComputer } from "../perception/sense-computer";
 import { MerkleLogger } from "../persistence/merkle-logger";
-import { BehaviorTree } from "../species/behavior-tree";
 import { CircadianEngine } from "../world/circadian-engine";
 import { DeltaStream } from "../world/delta-stream";
 import { ElementEngine } from "../world/element-engine";
@@ -71,10 +70,6 @@ export class Orchestrator {
   public addAgent(agent: AgentState): void {
     this.agents.push(agent);
     this.spatialIndex.rebuildIndex(this.agents);
-  }
-
-  private usesBehaviorTree(agent: AgentState): boolean {
-    return agent.speciesId === "wolf" || agent.speciesId === "deer";
   }
 
   private applyDecision(
@@ -152,7 +147,7 @@ export class Orchestrator {
 
     // 2. Elements
     const elements = new ElementEngine(this.physics);
-    elements.tick(this.world);
+    elements.tick(this.world, tick);
 
     // 3. Physics
     for (const agent of this.agents) {
@@ -165,11 +160,60 @@ export class Orchestrator {
 
     for (const agent of this.agents) {
       // 4a. System1
-      const bodyDelta = System1.tick(agent, circadianState, this.config);
-      const oldBody = { ...agent.body };
-      Object.assign(agent.body, bodyDelta);
+      const localX = Math.floor(agent.position.x);
+      const localY = Math.floor(agent.position.y);
+      const localZ = Math.floor(agent.position.z);
+      const localVoxel = this.world.get(localX, localY, localZ);
+      const biomassAvailable =
+        localVoxel?.material === "biomass" ? (localVoxel.metadata?.resourceQuality ?? 1) : 0;
 
-      if (bodyDelta.shouldDie) {
+      const bodyDelta = System1.tick(agent, circadianState, this.config, {
+        localMaterial: localVoxel?.material,
+        biomassAvailable,
+      });
+      const { shouldDie, biomassConsumed = 0, ...bodyStateDelta } = bodyDelta;
+      const oldBody = { ...agent.body };
+      Object.assign(agent.body, bodyStateDelta);
+
+      if (biomassConsumed > 0 && localVoxel?.material === "biomass") {
+        const currentQuality = localVoxel.metadata?.resourceQuality ?? 1;
+        const nextQuality = Math.max(0, currentQuality - biomassConsumed);
+
+        if (nextQuality === 0) {
+          this.world.set(localX, localY, localZ, {
+            ...localVoxel,
+            type: 2,
+            material: "dirt",
+            metadata: {
+              ...(localVoxel.metadata ?? {}),
+              resourceQuality: 0,
+            },
+          });
+          this.emitAndTrack({
+            event_id: crypto.randomUUID(),
+            branch_id: this.branchId,
+            run_id: this.runId,
+            tick,
+            type: EventType.RESOURCE_DEPLETED,
+            agent_id: agent.id,
+            payload: {
+              material: "biomass",
+              position: { x: localX, y: localY, z: localZ },
+              consumed: biomassConsumed,
+            },
+          });
+        } else {
+          this.world.set(localX, localY, localZ, {
+            ...localVoxel,
+            metadata: {
+              ...(localVoxel.metadata ?? {}),
+              resourceQuality: nextQuality,
+            },
+          });
+        }
+      }
+
+      if (shouldDie) {
         deadAgentIds.push(agent.id);
         continue;
       }
@@ -272,30 +316,8 @@ export class Orchestrator {
       };
       const salience = SalienceGate.computeSalience(event, agent, this.config.memory);
 
-      // 4i. System2 / behaviour tree
-      if (this.usesBehaviorTree(agent) && !urgencyOverride) {
-        let decision = BehaviorTree.tick(agent, filteredPercept);
-        if (decision.type !== "IDLE" && this.checkDecisionLoop(agent.id, decision)) {
-          decision = this.breakDecisionLoop();
-        }
-        if (decision.type !== "IDLE") {
-          positionsChanged =
-            this.applyDecision(agent, {
-              type: decision.type,
-              position: decision.position,
-            }) || positionsChanged;
-          this.emitAndTrack({
-            event_id: crypto.randomUUID(),
-            branch_id: this.branchId,
-            run_id: this.runId,
-            tick,
-            type: EventType.DECISION_MADE,
-            agent_id: agent.id,
-            payload: { decision },
-          });
-          totalDecisions++;
-        }
-      } else if (
+      // 4i. System2
+      if (
         urgencyOverride ||
         this.system2.shouldFire(
           agent,
@@ -443,8 +465,9 @@ export class Orchestrator {
         const witnesses = this.spatialIndex
           .getAgentsInRadius(deadAgent.position, 15)
           .filter((agent) => agent.id !== deadAgentId).length;
+        const deathEventId = crypto.randomUUID();
         this.emitAndTrack({
-          event_id: crypto.randomUUID(),
+          event_id: deathEventId,
           branch_id: this.branchId,
           run_id: this.runId,
           tick,
@@ -456,6 +479,36 @@ export class Orchestrator {
             witness_count: witnesses,
           },
         });
+
+        const biomassPosition = this.physics.convertDeadAgentToBiomass(deadAgent, this.world, tick);
+        this.emitAndTrack({
+          event_id: crypto.randomUUID(),
+          branch_id: this.branchId,
+          run_id: this.runId,
+          tick,
+          type: EventType.RESOURCE_CREATED,
+          agent_id: deadAgentId,
+          payload: {
+            material: "biomass",
+            position: biomassPosition,
+            source_agent_id: deadAgentId,
+          },
+        });
+        MerkleLogger.log(
+          tick,
+          this.branchId,
+          deadAgentId,
+          "Physics",
+          "RESOURCE_CREATED",
+          null,
+          {
+            material: "biomass",
+            position: biomassPosition,
+            source_agent_id: deadAgentId,
+          },
+          deathEventId,
+          `agent_death=${deadAgentId}`,
+        );
       }
 
       this.agents = this.agents.filter((agent) => !deadAgentIds.includes(agent.id));
