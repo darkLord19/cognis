@@ -4,6 +4,7 @@ import {
   URGENCY_THRESHOLD,
 } from "../../shared/constants";
 import type {
+  ActionType,
   AgentState,
   FilteredPercept,
   SpeciesConfig,
@@ -14,6 +15,80 @@ import type { LLMGateway } from "../llm/gateway";
 import { MerkleLogger } from "../persistence/merkle-logger";
 import type { SpeciesRegistry } from "../species/registry";
 import { resolveAgentReference } from "./qualia-processor";
+
+const ALLOWED_ACTIONS = new Set<ActionType>([
+  "IDLE",
+  "MOVE",
+  "WANDER",
+  "REST",
+  "FLEE",
+  "STALK",
+  "REPRODUCE",
+  "EAT",
+  "SLEEP",
+  "BUILD",
+  "COLLECT",
+  "ATTACK",
+]);
+
+function normalizeMonologue(value: unknown): string {
+  if (typeof value === "string" && value.length > 0) {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+    return String(value);
+  }
+  if (value === null || value === undefined) {
+    return "I am confused.";
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "I am confused.";
+  }
+}
+
+function normalizeDecision(value: unknown): System2Output["decision"] {
+  if (!value || typeof value !== "object") {
+    return { type: "IDLE" };
+  }
+
+  const record = value as Record<string, unknown>;
+  const rawType = typeof record.type === "string" ? record.type : "IDLE";
+  const type =
+    rawType === "COMMUNICATE"
+      ? "IDLE"
+      : ALLOWED_ACTIONS.has(rawType as ActionType)
+        ? rawType
+        : "IDLE";
+  const decision: System2Output["decision"] = { type: type as ActionType };
+
+  if (typeof record.targetId === "string") {
+    decision.targetId = record.targetId;
+  }
+
+  if (record.position && typeof record.position === "object") {
+    const position = record.position as Record<string, unknown>;
+    if (
+      typeof position.x === "number" &&
+      typeof position.y === "number" &&
+      typeof position.z === "number"
+    ) {
+      decision.position = {
+        x: position.x,
+        y: position.y,
+        z: position.z,
+      };
+    }
+  }
+
+  if (record.params && typeof record.params === "object" && !Array.isArray(record.params)) {
+    decision.params = record.params as Record<string, unknown>;
+  }
+
+  return decision;
+}
 
 export class System2 {
   constructor(
@@ -160,11 +235,12 @@ export class System2 {
       const end = rawResponse.lastIndexOf("}");
       if (start === -1 || end === -1 || end <= start) throw new Error("No JSON found");
       const jsonStr = rawResponse.substring(start, end + 1);
-      const output = JSON.parse(jsonStr) as System2Output;
-      const decisionType = (output.decision as { type?: string } | undefined)?.type;
-      if (decisionType === "COMMUNICATE") {
-        output.decision = { type: "IDLE" };
-      }
+      const parsed = JSON.parse(jsonStr) as Partial<System2Output>;
+      const output = {
+        ...parsed,
+        innerMonologue: normalizeMonologue(parsed.innerMonologue),
+        decision: normalizeDecision(parsed.decision),
+      } as System2Output;
       if ("utterance" in output) {
         delete output.utterance;
       }

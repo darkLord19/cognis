@@ -178,3 +178,39 @@ test("System2: strips intentional communicate decisions and utterances", async (
   expect(output.decision.type).toBe("IDLE");
   expect(output.utterance).toBeUndefined();
 });
+
+test("System2: coerces non-string monologue to SQLite-safe string", async () => {
+  const provider = {
+    completion: async () =>
+      `{"innerMonologue":{"signal":"nociception","level":0.94},"decision":{"type":"MOVE"}}`,
+    embed: async () => [],
+  };
+  const gateway = new LLMGateway(provider);
+  const system2 = new System2(gateway);
+
+  const agent = {
+    id: "a1",
+    relationships: [],
+    body: { integrityDrive: 0.1 },
+  } as unknown as AgentState;
+  const percept = {
+    primaryAttention: [],
+    peripheralAwareness: { count: 0 },
+    focusedVoxels: [],
+    ownBody: {},
+  } as unknown as FilteredPercept;
+
+  const output = await system2.think(
+    agent,
+    "interoceptive_map(...)",
+    percept,
+    mockWorldConfig,
+    10,
+    "main",
+  );
+
+  expect(typeof output.innerMonologue).toBe("string");
+  expect(output.innerMonologue).toContain("nociception");
+  const log = db.getAuditLogs("main").at(-1);
+  expect(typeof log?.new_value).toBe("string");
+});
