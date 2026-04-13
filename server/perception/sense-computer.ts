@@ -9,6 +9,7 @@ import {
 } from "../../shared/constants";
 import type {
   AgentState,
+  AudioFieldSample,
   CircadianState,
   PerceptionConfig,
   RawPercept,
@@ -69,17 +70,28 @@ export const SenseComputer = {
     }
 
     // Filter vocal actuations by audible range
-    const heardActuations = allVocalActuations.filter((va) => {
-      if (va.emitterId === agent.id) return false;
+    const heardActuations: VocalActuation[] = [];
+    const audioField: AudioFieldSample[] = [];
+    for (const va of allVocalActuations) {
+      if (va.emitterId === agent.id) continue;
       const emitter = nearbyAgents.find((a) => a.id === va.emitterId);
-      if (!emitter) return false;
+      if (!emitter) continue;
       const dist = Math.sqrt(
         (emitter.position.x - agent.position.x) ** 2 +
           (emitter.position.y - agent.position.y) ** 2 +
           (emitter.position.z - agent.position.z) ** 2,
       );
-      return dist <= audibleRange;
-    });
+      if (dist > audibleRange) continue;
+      heardActuations.push(va);
+      const amplitude = Math.max(0, 1 - dist / audibleRange);
+      audioField.push({
+        emitterId: va.emitterId,
+        soundToken: va.soundToken,
+        amplitude,
+        valence: va.valence,
+        arousal: va.arousal,
+      });
+    }
 
     return {
       visibleAgents,
@@ -89,6 +101,7 @@ export const SenseComputer = {
       localTemperature: AMBIENT_TEMPERATURE + circadianState.surfaceTemperatureDelta,
       lightLevel: circadianState.lightLevel,
       weather: "clear",
+      audioField,
       vocalActuations: heardActuations,
     };
   },

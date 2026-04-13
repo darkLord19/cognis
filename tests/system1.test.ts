@@ -71,3 +71,24 @@ test("System1: starvation drains health and marks death when health reaches zero
   expect(delta.health).toBe(0);
   expect(delta.shouldDie).toBe(true);
 });
+
+test("System1: integrity drive follows omega * (hunger + pain + threat)", () => {
+  const baseAgent = createAgent("a1", 0.4);
+  baseAgent.body.hunger = 0.5;
+  baseAgent.body.thirst = 0.3;
+  baseAgent.body.health = 0.7;
+  baseAgent.body.coreTemperature = 5;
+
+  const lowOmega = {
+    freeWill: { survivalDriveWeight: 0.5 },
+  } as WorldConfig;
+  const highOmega = {
+    freeWill: { survivalDriveWeight: 1.0 },
+  } as WorldConfig;
+
+  const low = System1.tick(structuredClone(baseAgent), mockCircadian, lowOmega).integrityDrive ?? 0;
+  const high = System1.tick(structuredClone(baseAgent), mockCircadian, highOmega).integrityDrive ?? 0;
+
+  expect(high).toBeGreaterThan(low);
+  expect(high).toBeLessThanOrEqual(1);
+});

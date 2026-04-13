@@ -137,3 +137,30 @@ test("System2: think prompt does not leak other agent names or IDs", async () =>
   expect(capturedPrompt).not.toContain("Human 4");
   expect(capturedPrompt).not.toContain("a2");
 });
+
+test("System2: strips intentional communicate decisions and utterances", async () => {
+  const provider = {
+    completion: async () =>
+      `{"innerMonologue":"pulse rising","decision":{"type":"COMMUNICATE"},"utterance":"hello"}`,
+    embed: async () => [],
+  };
+  const gateway = new LLMGateway(provider);
+  const system2 = new System2(gateway);
+
+  const agent = {
+    id: "a1",
+    relationships: [],
+    body: { integrityDrive: 0.1 },
+  } as unknown as AgentState;
+  const percept = {
+    primaryAttention: [],
+    peripheralAwareness: { count: 0 },
+    focusedVoxels: [],
+    ownBody: {},
+  } as unknown as FilteredPercept;
+
+  const output = await system2.think(agent, "interoceptive_map(...)", percept, mockWorldConfig, 10, "main");
+
+  expect(output.decision.type).toBe("IDLE");
+  expect(output.utterance).toBeUndefined();
+});

@@ -15,9 +15,6 @@ import {
   FATIGUE_HORMONE_MULTIPLIER,
   FLEE_THRESHOLD,
   HUNGER_RATE,
-  INTEGRITY_HUNGER_WEIGHT,
-  INTEGRITY_PAIN_WEIGHT,
-  INTEGRITY_THREAT_WEIGHT,
   PAIN_DECAY_RATE,
   PAIN_VOCAL_THRESHOLD,
   PLEASURE_AROUSAL_THRESHOLD,
@@ -122,11 +119,7 @@ export const System1 = {
     const fatigueStress = clamp01(delta.fatigue ?? body.fatigue ?? 0);
     const thirstStress = clamp01(delta.thirst ?? body.thirst ?? 0);
     const threat = clamp01((healthDeficit + temperatureStress + fatigueStress + thirstStress) / 4);
-    delta.integrityDrive =
-      omega *
-      ((delta.hunger || 0) * INTEGRITY_HUNGER_WEIGHT +
-        maxPain * INTEGRITY_PAIN_WEIGHT +
-        threat * INTEGRITY_THREAT_WEIGHT);
+    delta.integrityDrive = omega * clamp01((delta.hunger || 0) + maxPain + threat);
 
     return delta;
   },
@@ -193,7 +186,7 @@ export const System1 = {
       }
     }
 
-    // Pain cry
+    // Reflexive pain cry
     if (maxPain > PAIN_VOCAL_THRESHOLD) {
       return { emitterId: agent.id, soundToken: "AARGH", arousal: 0.9, valence: -0.8, tick };
     }

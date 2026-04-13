@@ -61,6 +61,7 @@ test("AttentionFilter: only top N entities pass through", () => {
     localTemperature: 20,
     lightLevel: 1.0,
     weather: "clear",
+    audioField: [],
     vocalActuations: [],
   };
 

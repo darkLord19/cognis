@@ -334,8 +334,7 @@ export type ActionType =
   | "SLEEP"
   | "BUILD"
   | "COLLECT"
-  | "ATTACK"
-  | "COMMUNICATE";
+  | "ATTACK";
 
 export type AgentState = {
   id: string;
@@ -440,6 +439,14 @@ export type VocalActuation = {
   arousal: number;
   valence: number;
   tick: number;
+};
+
+export type AudioFieldSample = {
+  emitterId: string;
+  soundToken: string;
+  amplitude: number;
+  valence: number;
+  arousal: number;
 };
 
 // --- Species Types ---
@@ -651,6 +658,7 @@ export type RawPercept = {
   localTemperature: number;
   lightLevel: number;
   weather: string;
+  audioField: AudioFieldSample[];
   vocalActuations: VocalActuation[];
 };
 

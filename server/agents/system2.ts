@@ -54,6 +54,7 @@ export class System2 {
     config: WorldConfig,
     tick: number,
     branchId: string,
+    options?: { urgencyOverride?: boolean },
   ): Promise<System2Output> {
     // Build Theory of Mind context from nearby agents
     let tomContext = "";
@@ -88,9 +89,9 @@ export class System2 {
 
     // Urgency override text
     let urgencyPrefix = "";
-    if (agent.body.integrityDrive > URGENCY_THRESHOLD) {
+    if (options?.urgencyOverride || agent.body.integrityDrive > URGENCY_THRESHOLD) {
       urgencyPrefix =
-        "URGENT: Your survival is at stake. You must act immediately to address your most pressing need.\n\n";
+        "URGENT: Integrity pressure is critical. Prioritize immediate survival regulation.\n\n";
     }
 
     // Look up actual species config
@@ -144,7 +145,7 @@ export class System2 {
     }) as SpeciesConfig;
 
     const systemPrompt = this.gateway.systemPromptForAgent(agent, species, config.semanticMasking);
-    const fullPrompt = `${urgencyPrefix}${qualiaText}${tomContext}\n\nWhat are your thoughts and what will you do? Response in JSON format: { "innerMonologue": "...", "decision": { "type": "...", "targetId": "..." }, "theoriesAboutOthers": [] }`;
+    const fullPrompt = `${urgencyPrefix}${qualiaText}${tomContext}\n\nRespond in JSON format: { "innerMonologue": "...", "decision": { "type": "...", "targetId": "..." }, "theoriesAboutOthers": [] }. Use sensory vectors and actuator language; do not output speech acts.`;
 
     const rawResponse = await this.gateway.complete(agent.id, fullPrompt, systemPrompt);
 
@@ -154,6 +155,13 @@ export class System2 {
       if (start === -1 || end === -1 || end <= start) throw new Error("No JSON found");
       const jsonStr = rawResponse.substring(start, end + 1);
       const output = JSON.parse(jsonStr) as System2Output;
+      const decisionType = (output.decision as { type?: string } | undefined)?.type;
+      if (decisionType === "COMMUNICATE") {
+        output.decision = { type: "IDLE" };
+      }
+      if ("utterance" in output) {
+        delete output.utterance;
+      }
 
       MerkleLogger.log(
         tick,

@@ -230,6 +230,53 @@ test("Orchestrator: uses behavior trees for wolf agents when System2 does not fi
   expect(agent.currentAction).toBe("WANDER");
 });
 
+test("Orchestrator: urgency override forces immediate System2 interrupt for behavior-tree species", async () => {
+  let thinkCalls = 0;
+  const seenEvents: EventType[] = [];
+  const eventBus = new EventBus();
+  eventBus.onAny((event) => {
+    seenEvents.push(event.type);
+  });
+
+  const system2 = {
+    shouldFire: () => false,
+    think: async () => {
+      thinkCalls++;
+      return {
+        innerMonologue: "impact spike",
+        decision: { type: "IDLE" },
+      } satisfies System2Output;
+    },
+  };
+
+  const agent = createAgent("wolf-urgency", "wolf");
+  agent.body.hunger = 0.95;
+  agent.body.bodyMap.head.pain = 0.95;
+
+  const world = new VoxelGrid(10, 10, 10);
+  const clock = new SimClock();
+  const overrideConfig = {
+    ...mockConfig,
+    freeWill: { ...mockConfig.freeWill, survivalDriveWeight: 1 },
+  } as WorldConfig;
+  const orchestrator = new Orchestrator(
+    "run1",
+    "main",
+    overrideConfig,
+    world,
+    clock,
+    eventBus,
+    new PhysicsEngine(mockConfig.physics),
+    system2 as unknown as System2,
+  );
+
+  orchestrator.addAgent(agent);
+  await orchestrator.tick();
+
+  expect(thinkCalls).toBe(1);
+  expect(seenEvents.includes(EventType.URGENCY_OVERRIDE)).toBe(true);
+});
+
 test("Orchestrator: emits AGENT_DIED and removes starved agents", async () => {
   const events: { type: EventType; agent_id?: string }[] = [];
   const eventBus = new EventBus();
@@ -317,4 +364,42 @@ test("Orchestrator: starvation causes death before tick 200 under baseline body 
   const deathEvent = events.find((event) => event.type === EventType.AGENT_DIED);
   expect(deathEvent).toBeDefined();
   expect(deathEvent?.tick ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(200);
+});
+
+test("Orchestrator: high pain reflex emits vocal_actuation event", async () => {
+  const events: EventType[] = [];
+  const eventBus = new EventBus();
+  eventBus.onAny((event) => {
+    events.push(event.type);
+  });
+
+  const system2 = {
+    shouldFire: () => false,
+    think: async () =>
+      ({
+        innerMonologue: "idle",
+        decision: { type: "IDLE" },
+      }) satisfies System2Output,
+  };
+
+  const agent = createAgent("a-pain");
+  agent.body.bodyMap.head.pain = 0.95;
+
+  const world = new VoxelGrid(10, 10, 10);
+  const clock = new SimClock();
+  const orchestrator = new Orchestrator(
+    "run1",
+    "main",
+    mockConfig,
+    world,
+    clock,
+    eventBus,
+    new PhysicsEngine(mockConfig.physics),
+    system2 as unknown as System2,
+  );
+
+  orchestrator.addAgent(agent);
+  await orchestrator.tick();
+
+  expect(events.includes(EventType.VOCAL_ACTUATION)).toBe(true);
 });

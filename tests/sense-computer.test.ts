@@ -104,4 +104,7 @@ test("SenseComputer: vocal actuation detected by nearby agents", () => {
 
   expect(percept.vocalActuations.length).toBe(1);
   expect(percept.vocalActuations[0]?.soundToken).toBe("AARGH");
+  expect(percept.audioField.length).toBe(1);
+  expect(percept.audioField[0]?.soundToken).toBe("AARGH");
+  expect(percept.audioField[0]?.amplitude ?? 0).toBeGreaterThan(0);
 });

@@ -14,6 +14,7 @@ export enum EventType {
   AGENT_DIED = "agent_died",
   AGENT_SLEPT = "agent_slept",
   AGENT_WOKE = "agent_woke",
+  VOCAL_ACTUATION = "vocal_actuation",
 
   SYSTEM2_THOUGHT = "system2_thought",
   DECISION_MADE = "decision_made",

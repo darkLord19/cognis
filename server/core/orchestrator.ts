@@ -2,6 +2,7 @@ import {
   DECAY_ENGINE_INTERVAL_TICKS,
   SALIENCE_ENCODE_THRESHOLD,
   SNAPSHOT_INTERVAL_TICKS,
+  URGENCY_THRESHOLD,
 } from "../../shared/constants";
 import type { SimEvent } from "../../shared/events";
 import { EventType } from "../../shared/events";
@@ -12,6 +13,7 @@ import { System1 } from "../agents/system1";
 import type { System2 } from "../agents/system2";
 import { EmergenceDetector } from "../analysis/emergence-detector";
 import { LanguageEmergence } from "../language/emergence";
+import { VocalActuationBroadcaster } from "../language/vocal-actuation-broadcaster";
 import { DecayEngine } from "../memory/decay-engine";
 import { EpisodicStore } from "../memory/episodic-store";
 import { SalienceGate } from "../memory/salience-gate";
@@ -176,6 +178,22 @@ export class Orchestrator {
         );
       }
 
+      const urgencyOverride = (agent.body.integrityDrive ?? bodyDelta.integrityDrive ?? 0) >
+        URGENCY_THRESHOLD;
+      if (urgencyOverride) {
+        this.emitAndTrack({
+          event_id: crypto.randomUUID(),
+          branch_id: this.branchId,
+          run_id: this.runId,
+          tick,
+          type: EventType.URGENCY_OVERRIDE,
+          agent_id: agent.id,
+          payload: {
+            integrityDrive: agent.body.integrityDrive,
+          },
+        });
+      }
+
       // 4j. Check immediate reactions (RECOIL, FLEE, COLLAPSE)
       const reaction = System1.checkImmediateReaction(agent);
       if (reaction) {
@@ -245,7 +263,7 @@ export class Orchestrator {
       const salience = SalienceGate.computeSalience(event, agent, this.config.memory);
 
       // 4i. System2 / behaviour tree
-      if (this.usesBehaviorTree(agent)) {
+      if (this.usesBehaviorTree(agent) && !urgencyOverride) {
         let decision = BehaviorTree.tick(agent, filteredPercept);
         if (decision.type !== "IDLE" && this.checkDecisionLoop(agent.id, decision)) {
           decision = this.breakDecisionLoop();
@@ -268,6 +286,7 @@ export class Orchestrator {
           totalDecisions++;
         }
       } else if (
+        urgencyOverride ||
         this.system2.shouldFire(
           agent,
           {
@@ -280,13 +299,14 @@ export class Orchestrator {
         )
       ) {
         this.clock.registerPendingMind();
+        agent.pendingSystem2 = true;
         totalDecisions++;
         pendingSystem2.push(
           this.system2
-            .think(agent, qualiaText, filteredPercept, this.config, tick, this.branchId)
+            .think(agent, qualiaText, filteredPercept, this.config, tick, this.branchId, {
+              urgencyOverride,
+            })
             .then((output) => {
-              this.clock.resolvePendingMind();
-
               if (output.innerMonologue) {
                 agent.innerMonologue = output.innerMonologue;
                 this.emitAndTrack({
@@ -342,6 +362,13 @@ export class Orchestrator {
                   };
                 }
               }
+            })
+            .catch((error) => {
+              console.error("System2 think failed:", error);
+            })
+            .finally(() => {
+              agent.pendingSystem2 = false;
+              this.clock.resolvePendingMind();
             }),
         );
       }
@@ -386,6 +413,7 @@ export class Orchestrator {
       const vocal = System1.checkVocalActuation(agent, tick);
       if (vocal) {
         this.vocalActuations.push(vocal);
+        VocalActuationBroadcaster.broadcast(vocal, this.branchId, this.runId, this.eventBus);
       }
     }
 
