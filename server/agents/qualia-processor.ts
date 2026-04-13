@@ -134,7 +134,9 @@ function externalSignalVector(agent: AgentState, filteredPercept: FilteredPercep
 }
 
 export function resolveAgentReference(targetAgentId: string, observingAgent: AgentState): string {
-  const relation = observingAgent.relationships?.find((item) => item.targetAgentId === targetAgentId);
+  const relation = observingAgent.relationships?.find(
+    (item) => item.targetAgentId === targetAgentId,
+  );
   if (!relation) return "unknown";
 
   const affinity = relation.affinity ?? 0;
