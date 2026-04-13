@@ -78,3 +78,23 @@ test("MerkleLogger: verifyChain fails when audit metadata is modified", () => {
     .query("UPDATE audit_log SET system = ?, cause_description = ?, suppressed = ? WHERE id = ?")
     .run("System1", null, 0, logToTamper.id);
 });
+
+test("MerkleLogger: coerces object old/new values to JSON strings before DB insert", () => {
+  const branchId = "main";
+
+  MerkleLogger.log(
+    5,
+    branchId,
+    "agent_3",
+    "System2",
+    "innerMonologue",
+    { previous: "state", urgency: 0.2 } as unknown as string,
+    { current: "state", urgency: 0.9 } as unknown as string,
+    "cause-obj",
+  );
+
+  const log = db.getAuditLogs(branchId).at(-1);
+  expect(log?.old_value).toBe('{"previous":"state","urgency":0.2}');
+  expect(log?.new_value).toBe('{"current":"state","urgency":0.9}');
+  expect(MerkleLogger.verifyChain(branchId).valid).toBe(true);
+});

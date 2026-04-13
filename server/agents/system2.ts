@@ -90,6 +90,17 @@ function normalizeDecision(value: unknown): System2Output["decision"] {
   return decision;
 }
 
+function extractJsonObject(rawResponse: string): string {
+  const codeFenceMatch = rawResponse.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const candidate = codeFenceMatch?.[1] ?? rawResponse;
+  const jsonMatch = candidate.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    throw new Error("No JSON found");
+  }
+
+  return jsonMatch[0].replace(/\/\/.*$/gm, "");
+}
+
 export class System2 {
   constructor(
     private gateway: LLMGateway,
@@ -231,10 +242,7 @@ export class System2 {
     const rawResponse = await this.gateway.complete(agent.id, fullPrompt, systemPrompt);
 
     try {
-      const start = rawResponse.indexOf("{");
-      const end = rawResponse.lastIndexOf("}");
-      if (start === -1 || end === -1 || end <= start) throw new Error("No JSON found");
-      const jsonStr = rawResponse.substring(start, end + 1);
+      const jsonStr = extractJsonObject(rawResponse);
       const parsed = JSON.parse(jsonStr) as Partial<System2Output>;
       const output = {
         ...parsed,

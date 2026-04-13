@@ -214,3 +214,37 @@ test("System2: coerces non-string monologue to SQLite-safe string", async () => 
   const log = db.getAuditLogs("main").at(-1);
   expect(typeof log?.new_value).toBe("string");
 });
+
+test("System2: parses JSON wrapped in markdown fences with comments", async () => {
+  const provider = {
+    completion: async () =>
+      "```json\n{\n  // keep moving\n  \"innerMonologue\": \"metallic signal\",\n  \"decision\": { \"type\": \"MOVE\" }\n}\n```",
+    embed: async () => [],
+  };
+  const gateway = new LLMGateway(provider);
+  const system2 = new System2(gateway);
+
+  const agent = {
+    id: "a1",
+    relationships: [],
+    body: { integrityDrive: 0.1 },
+  } as unknown as AgentState;
+  const percept = {
+    primaryAttention: [],
+    peripheralAwareness: { count: 0 },
+    focusedVoxels: [],
+    ownBody: {},
+  } as unknown as FilteredPercept;
+
+  const output = await system2.think(
+    agent,
+    "interoceptive_map(...)",
+    percept,
+    mockWorldConfig,
+    11,
+    "main",
+  );
+
+  expect(output.innerMonologue).toBe("metallic signal");
+  expect(output.decision.type).toBe("MOVE");
+});

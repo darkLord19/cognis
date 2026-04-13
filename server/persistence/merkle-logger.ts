@@ -7,6 +7,26 @@ function hash(data: string): string {
   return hasher.digest("hex");
 }
 
+function coerceAuditValue(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
+    return String(value);
+  }
+  if (typeof value === "object") {
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
+  }
+  return String(value);
+}
+
 function serializeEntryForHash(entry: {
   previousHash: string;
   tick: number;
@@ -42,11 +62,13 @@ export const MerkleLogger = {
     agentId: string | null,
     system: string,
     field: string,
-    oldValue: string | null,
-    newValue: string | null,
+    oldValue: unknown,
+    newValue: unknown,
     causeEventId: string | null,
     causeDescription: string | null = null,
   ): void {
+    const cleanOldValue = coerceAuditValue(oldValue);
+    const cleanNewValue = coerceAuditValue(newValue);
     const previousHash = db.getLastAuditHash(branchId);
     const data = serializeEntryForHash({
       previousHash,
@@ -55,8 +77,8 @@ export const MerkleLogger = {
       agentId,
       system,
       field,
-      oldValue,
-      newValue,
+      oldValue: cleanOldValue,
+      newValue: cleanNewValue,
       causeEventId,
       causeDescription,
       suppressed: false,
@@ -69,8 +91,8 @@ export const MerkleLogger = {
       agentId,
       system,
       field,
-      oldValue,
-      newValue,
+      oldValue: cleanOldValue,
+      newValue: cleanNewValue,
       causeEventId,
       causeDescription,
       suppressed: false,
