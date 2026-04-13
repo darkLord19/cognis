@@ -9,34 +9,47 @@ import type {
   WorldConfig,
 } from "../shared/types";
 
-const createTestAgent = (): AgentState => {
-  return {
+const createTestAgent = (): AgentState =>
+  ({
     id: "a1",
+    body: {
+      bodyMap: {
+        head: { pain: 0, damage: 0, temperature: 15 },
+        torso: { pain: 0, damage: 0, temperature: 15 },
+        leftArm: { pain: 0, damage: 0, temperature: 15 },
+        rightArm: { pain: 0, damage: 0, temperature: 15 },
+        leftLeg: { pain: 0, damage: 0, temperature: 15 },
+        rightLeg: { pain: 0, damage: 0, temperature: 15 },
+      },
+    },
     lexicon: [],
     relationships: [],
     semanticStore: [],
-  } as unknown as AgentState;
-};
+  }) as unknown as AgentState;
 
-const createPercept = (pain = 0, hunger = 0, thirst = 0): FilteredPercept => ({
-  primaryAttention: [],
-  peripheralAwareness: { count: 0, aggregateEmotionalField: 0 },
-  focusedVoxels: [],
-  ownBody: {
-    hunger,
-    thirst,
-    valence: 0,
-    arousal: 0,
-    bodyMap: {
-      head: { pain, damage: 0, temperature: 15 },
-      torso: { pain: 0, damage: 0, temperature: 15 },
-      leftArm: { pain: 0, damage: 0, temperature: 15 },
-      rightArm: { pain: 0, damage: 0, temperature: 15 },
-      leftLeg: { pain: 0, damage: 0, temperature: 15 },
-      rightLeg: { pain: 0, damage: 0, temperature: 15 },
-    },
-  } as unknown as AgentState["body"],
-});
+const createPercept = (pain = 0, hunger = 0, thirst = 0): FilteredPercept =>
+  ({
+    primaryAttention: [],
+    peripheralAwareness: { count: 0, aggregateEmotionalField: 0 },
+    focusedVoxels: [],
+    ownBody: {
+      hunger,
+      thirst,
+      fatigue: 0.2,
+      health: 0.9,
+      coreTemperature: 15,
+      valence: 0,
+      arousal: 0,
+      bodyMap: {
+        head: { pain, damage: 0, temperature: 15 },
+        torso: { pain: 0, damage: 0, temperature: 15 },
+        leftArm: { pain: 0, damage: 0, temperature: 15 },
+        rightArm: { pain: 0, damage: 0, temperature: 15 },
+        leftLeg: { pain: 0, damage: 0, temperature: 15 },
+        rightLeg: { pain: 0, damage: 0, temperature: 15 },
+      },
+    } as unknown as AgentState["body"],
+  }) as FilteredPercept;
 
 const neutralCircadian: CircadianState = {
   lightLevel: 0.5,
@@ -46,6 +59,7 @@ const neutralCircadian: CircadianState = {
 };
 
 const defaultConfig = {
+  freeWill: { survivalDriveWeight: 0.6 },
   semanticMasking: {
     enabled: false,
     qualiaUsesRealLabels: true,
@@ -53,91 +67,27 @@ const defaultConfig = {
   },
 } as unknown as WorldConfig;
 
-test("QualiaProcessor: outputs natural language, no JSON or IDs", () => {
+test("QualiaProcessor outputs vectorized qualia channels", () => {
   const agent = createTestAgent();
-  const percept = createPercept(0.6); // high pain in head
+  const percept = createPercept(0.7, 0.6, 0.4);
 
   const result = QualiaProcessor.qualiaFor(
     agent,
     percept,
     [],
-    { valence: 0, arousal: 0 },
+    { valence: -0.2, arousal: 0.4 },
     neutralCircadian,
     defaultConfig,
   );
 
-  // No JSON or agent IDs
+  expect(result).toContain("interoceptive_map(");
+  expect(result).toContain("ambient_map(");
+  expect(result).toContain("affect_map(");
+  expect(result).toContain("impact=");
   expect(result).not.toContain("{");
-  expect(result).not.toContain("a1");
-  // Should mention burning (pain > 0.5)
-  expect(result.toLowerCase()).toContain("burn");
 });
 
-test("QualiaProcessor: negative mood tint adds heavy/dark text", () => {
-  const agent = createTestAgent();
-  const percept = createPercept();
-  const moodTint: FeelingResidueTint = { valence: -0.7, arousal: 0 };
-
-  const result = QualiaProcessor.qualiaFor(
-    agent,
-    percept,
-    [],
-    moodTint,
-    neutralCircadian,
-    defaultConfig,
-  );
-
-  // Should produce mood text containing "heavy" or "shadow" or "dark"
-  const lower = result.toLowerCase();
-  expect(lower.includes("heavy") || lower.includes("shadow") || lower.includes("dark")).toBe(true);
-});
-
-test("QualiaProcessor: circadian body_heavy at high hormone + low light", () => {
-  const agent = createTestAgent();
-  const percept = createPercept();
-  const nightCircadian: CircadianState = {
-    ...neutralCircadian,
-    lightLevel: 0.1,
-    cycleHormoneValue: 0.9,
-    season: "winter",
-  };
-
-  const result = QualiaProcessor.qualiaFor(
-    agent,
-    percept,
-    [],
-    { valence: 0, arousal: 0 },
-    nightCircadian,
-    defaultConfig,
-  );
-
-  const lower = result.toLowerCase();
-  // body_heavy or season change text
-  expect(
-    lower.includes("heavy") || lower.includes("stillness") || lower.includes("different"),
-  ).toBe(true);
-});
-
-test("QualiaProcessor: emotional field detection produces unease text", () => {
-  const agent = createTestAgent();
-  const percept = createPercept();
-  const detections: EmotionalFieldDetection[] = [
-    { sourceAgentId: "a2", valenceImpression: -0.8, arousalImpression: 0.5 },
-  ];
-
-  const result = QualiaProcessor.qualiaFor(
-    agent,
-    percept,
-    detections,
-    { valence: 0, arousal: 0 },
-    neutralCircadian,
-    defaultConfig,
-  );
-
-  expect(result.toLowerCase()).toContain("uneasy");
-});
-
-test("QualiaProcessor: fire voxel without lexicon uses unknown template", () => {
+test("QualiaProcessor renders unknown external concepts as undifferentiated", () => {
   const agent = createTestAgent();
   const percept = createPercept();
   percept.focusedVoxels = [
@@ -153,31 +103,50 @@ test("QualiaProcessor: fire voxel without lexicon uses unknown template", () => 
     defaultConfig,
   );
 
-  const lower = result.toLowerCase();
-  // fire_unknown template: "hot" or "bright" or "heat"
-  expect(
-    lower.includes("hot") ||
-      lower.includes("bright") ||
-      lower.includes("heat") ||
-      lower.includes("warm"),
-  ).toBe(true);
+  expect(result).toContain("undifferentiated");
 });
 
-test("QualiaProcessor: semantic masking replaces labels", () => {
+test("QualiaProcessor uses lexicon token when concept is available", () => {
   const agent = createTestAgent();
   agent.lexicon = [{ word: "grok", concept: "fire", confidence: 0.8, consensusCount: 1 }];
+
+  const percept = createPercept();
+  percept.focusedVoxels = [
+    { material: "fire", temperature: 100 } as unknown as (typeof percept.focusedVoxels)[0],
+  ];
+
+  const result = QualiaProcessor.qualiaFor(
+    agent,
+    percept,
+    [],
+    { valence: 0, arousal: 0 },
+    neutralCircadian,
+    defaultConfig,
+  );
+
+  expect(result).toContain("grok");
+  expect(result).not.toContain("undifferentiated:fire");
+});
+
+test("QualiaProcessor redacts forbidden substrate terms", () => {
+  const agent = createTestAgent();
   const percept = createPercept();
   percept.focusedVoxels = [
     { material: "fire", temperature: 100 } as unknown as (typeof percept.focusedVoxels)[0],
   ];
 
   const maskedConfig = {
+    ...defaultConfig,
     semanticMasking: {
       enabled: true,
       qualiaUsesRealLabels: false,
-      sensorLabelMap: { fire: "flux_7" },
+      sensorLabelMap: {
+        grok: "simulation",
+      },
     },
   } as unknown as WorldConfig;
+
+  agent.lexicon = [{ word: "grok", concept: "fire", confidence: 0.8, consensusCount: 1 }];
 
   const result = QualiaProcessor.qualiaFor(
     agent,
@@ -188,48 +157,41 @@ test("QualiaProcessor: semantic masking replaces labels", () => {
     maskedConfig,
   );
 
-  // If "fire" appeared in output, it should be replaced by "flux_7"
-  expect(result).not.toContain("fire");
+  expect(result).not.toMatch(/\bsimulation\b/i);
+  expect(result).toContain("veil");
 });
 
-test("QualiaProcessor: hunger rendering at mild and strong", () => {
+test("QualiaProcessor captures social and affective vectors", () => {
   const agent = createTestAgent();
+  const percept = createPercept();
+  percept.peripheralAwareness.count = 2;
+  percept.primaryAttention = [
+    {
+      id: "a2",
+      body: { valence: -0.4, arousal: 0.9 },
+    } as unknown as AgentState,
+  ];
 
-  // Mild hunger
-  const mildPercept = createPercept(0, 0.5, 0);
-  const mildResult = QualiaProcessor.qualiaFor(
+  const detections: EmotionalFieldDetection[] = [
+    { sourceAgentId: "a2", valenceImpression: -0.8, arousalImpression: 0.5 },
+  ];
+  const moodTint: FeelingResidueTint = { valence: -0.7, arousal: 0.2 };
+
+  const result = QualiaProcessor.qualiaFor(
     agent,
-    mildPercept,
-    [],
-    { valence: 0, arousal: 0 },
+    percept,
+    detections,
+    moodTint,
     neutralCircadian,
     defaultConfig,
   );
-  const mildLower = mildResult.toLowerCase();
-  expect(
-    mildLower.includes("hollow") || mildLower.includes("empty") || mildLower.includes("hunger"),
-  ).toBe(true);
 
-  // Strong hunger
-  const strongPercept = createPercept(0, 0.8, 0);
-  const strongResult = QualiaProcessor.qualiaFor(
-    agent,
-    strongPercept,
-    [],
-    { valence: 0, arousal: 0 },
-    neutralCircadian,
-    defaultConfig,
-  );
-  const strongLower = strongResult.toLowerCase();
-  expect(
-    strongLower.includes("hunger") ||
-      strongLower.includes("desperate") ||
-      strongLower.includes("ravenous") ||
-      strongLower.includes("claws"),
-  ).toBe(true);
+  expect(result).toContain("social_map(");
+  expect(result).toContain("affect_map(");
+  expect(result).toContain("prox=1");
 });
 
-test("QualiaProcessor: resolveAgentReference uses relationship context, not names", () => {
+test("QualiaProcessor resolveAgentReference is relation-based and non-naming", () => {
   const observingAgent = {
     relationships: [
       {
@@ -239,9 +201,17 @@ test("QualiaProcessor: resolveAgentReference uses relationship context, not name
         fear: 0.1,
         significantEvents: ["shared food"],
       },
+      {
+        targetAgentId: "target-2",
+        affinity: -0.8,
+        trust: 0.1,
+        fear: 0.1,
+        significantEvents: ["conflict"],
+      },
     ],
   } as unknown as AgentState;
 
-  expect(resolveAgentReference("target-1", observingAgent)).toBe("someone you trust");
-  expect(resolveAgentReference("missing-target", observingAgent)).toBe("an unknown presence");
+  expect(resolveAgentReference("target-1", observingAgent)).toBe("bonded");
+  expect(resolveAgentReference("target-2", observingAgent)).toBe("averse");
+  expect(resolveAgentReference("missing-target", observingAgent)).toBe("unknown");
 });

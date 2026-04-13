@@ -1,19 +1,3 @@
-import {
-  BODY_COLD_THRESHOLD,
-  BODY_DAMAGE_THRESHOLD,
-  BODY_PAIN_THRESHOLD,
-  CYCLE_HORMONE_HIGH,
-  CYCLE_HORMONE_LOW,
-  EMOTIONAL_FIELD_NEGATIVE_THRESHOLD,
-  HUNGER_MILD_THRESHOLD,
-  HUNGER_STRONG_THRESHOLD,
-  LIGHT_LEVEL_HIGH,
-  LIGHT_LEVEL_LOW,
-  MOOD_NEGATIVE_THRESHOLD,
-  MOOD_POSITIVE_THRESHOLD,
-  THIRST_MILD_THRESHOLD,
-  THIRST_STRONG_THRESHOLD,
-} from "../../shared/constants";
 import type {
   AgentState,
   CircadianState,
@@ -22,266 +6,148 @@ import type {
   FilteredPercept,
   WorldConfig,
 } from "../../shared/types";
+import { enforceQualiaVeil } from "./qualia-veil";
 
-// --- Template Engine ---
-
-type LexiconTier = "pre_verbal" | "basic" | "intermediate" | "advanced";
-
-function getLexiconTier(lexiconSize: number): LexiconTier {
-  if (lexiconSize === 0) return "pre_verbal";
-  if (lexiconSize <= 5) return "basic";
-  if (lexiconSize <= 20) return "intermediate";
-  return "advanced";
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
 }
 
-type TemplateCategory =
-  | "mood_negative"
-  | "mood_positive"
-  | "body_heavy"
-  | "body_alert"
-  | "season_change"
-  | "pain"
-  | "cold"
-  | "damage"
-  | "hunger_mild"
-  | "hunger_strong"
-  | "thirst_mild"
-  | "thirst_strong"
-  | "other_uneasy"
-  | "other_familiar"
-  | "other_stranger"
-  | "peripheral"
-  | "fire_unknown"
-  | "fire_known"
-  | "fire_sacred"
-  | "fire_traumatic"
-  | "water_nearby"
-  | "food_nearby"
-  | "pleasure";
+function format(value: number): string {
+  return value.toFixed(3);
+}
 
-const QUALIA_TEMPLATES: Record<TemplateCategory, Record<LexiconTier, string[]>> = {
-  mood_negative: {
-    pre_verbal: ["A heavy shadow presses down."],
-    basic: ["A heavy shadow hangs over your perception."],
-    intermediate: ["A dark weight settles across everything you see and feel."],
-    advanced: [
-      "A pervasive heaviness colours your awareness, darkening every impression.",
-      "Something burdensome clings to your thoughts, shadowing all else.",
-    ],
-  },
-  mood_positive: {
-    pre_verbal: ["A lightness lifts through you."],
-    basic: ["A light, buoyant feeling colours your perception."],
-    intermediate: ["A gentle warmth and ease suffuses your awareness."],
-    advanced: [
-      "An uplifting clarity brightens your perception, as though a veil has lifted.",
-      "You feel a quiet elation, everything seeming open and possible.",
-    ],
-  },
-  body_heavy: {
-    pre_verbal: ["Heaviness. Drawn to stillness."],
-    basic: ["Your body feels heavy, drawn toward stillness."],
-    intermediate: ["Your limbs grow leaden, your thoughts sluggish, pulled toward rest."],
-    advanced: [
-      "A deep weariness pervades your being, each movement requiring deliberate effort.",
-      "Your body insists on stillness, as though the darkness itself weighs upon your bones.",
-    ],
-  },
-  body_alert: {
-    pre_verbal: ["Alert. Ready."],
-    basic: ["Something in your body is alert and ready."],
-    intermediate: ["Your senses sharpen, your muscles tighten with readiness."],
-    advanced: [
-      "A crisp vitality flows through you, every nerve tuned to the world.",
-      "You feel primed, aware, as if the brightness has ignited something within.",
-    ],
-  },
-  season_change: {
-    pre_verbal: ["Different. Changed."],
-    basic: ["The world feels different in a way you cannot name yet."],
-    intermediate: ["Something has shifted in the rhythm of things around you."],
-    advanced: [
-      "The quality of air, the texture of light — everything whispers of a change you cannot yet articulate.",
-    ],
-  },
-  pain: {
-    pre_verbal: ["Burning!"],
-    basic: ["A burning in your {bodyPart}."],
-    intermediate: ["A sharp, insistent burning radiates from your {bodyPart}."],
-    advanced: [
-      "A fierce, pulsing heat throbs in your {bodyPart}, demanding all your attention.",
-      "Pain lances through your {bodyPart} like hot iron, impossible to ignore.",
-    ],
-  },
-  cold: {
-    pre_verbal: ["Cold! Deep cold."],
-    basic: ["A deep chill in your {bodyPart}."],
-    intermediate: ["A biting coldness has seeped into your {bodyPart}, numbing and aching."],
-    advanced: [
-      "An invasive, bone-deep cold grips your {bodyPart}, as if warmth itself has abandoned it.",
-    ],
-  },
-  damage: {
-    pre_verbal: ["Wrong. Weak."],
-    basic: ["Your {bodyPart} feels weak and wrong."],
-    intermediate: ["Your {bodyPart} responds sluggishly, something fundamentally wrong within it."],
-    advanced: [
-      "A deep wrongness emanates from your {bodyPart} — it no longer functions as it should.",
-    ],
-  },
-  hunger_mild: {
-    pre_verbal: ["Empty inside."],
-    basic: ["A hollow feeling gnaws at your centre."],
-    intermediate: ["A quiet emptiness stirs in your belly, a slow pull toward sustenance."],
-    advanced: [
-      "An insistent hollowness echoes through your core, a steady undercurrent beneath all thought.",
-    ],
-  },
-  hunger_strong: {
-    pre_verbal: ["Hunger! Consuming."],
-    basic: ["A desperate hunger claws at your insides."],
-    intermediate: ["Hunger grips you fiercely, your body screaming for nourishment."],
-    advanced: [
-      "A ravenous void consumes your attention, every other concern shrinking before this primal demand.",
-      "Your body is devouring itself from within, an urgent, all-encompassing need.",
-    ],
-  },
-  thirst_mild: {
-    pre_verbal: ["Dry. Need."],
-    basic: ["A dryness scratches at the back of your awareness."],
-    intermediate: ["A parched tightness grips your throat, a quiet yearning for moisture."],
-    advanced: [
-      "A subtle but persistent desiccation pulls at your attention, a thirst building beneath the surface.",
-    ],
-  },
-  thirst_strong: {
-    pre_verbal: ["Thirst! Cracking."],
-    basic: ["An unbearable thirst cracks your awareness wide open."],
-    intermediate: [
-      "Your mouth is dust, your thoughts fragmenting around the consuming need for water.",
-    ],
-    advanced: [
-      "Every fibre of your being cries out for moisture, a desperate, cracking thirst that obliterates all else.",
-    ],
-  },
-  other_uneasy: {
-    pre_verbal: ["Danger? Uneasy."],
-    basic: ["Something in their bearing makes you uneasy."],
-    intermediate: ["An undercurrent of tension radiates from them, setting your nerves on edge."],
-    advanced: [
-      "You sense a disturbance in their emotional field — something dark, something unsettled.",
-    ],
-  },
-  other_familiar: {
-    pre_verbal: ["Known. Safe."],
-    basic: ["A familiar, trusted presence is nearby."],
-    intermediate: [
-      "Someone you know and trust moves within your awareness, a comforting solidity.",
-    ],
-    advanced: [
-      "A presence you have come to rely upon is near — their familiar emotional signature a quiet reassurance.",
-    ],
-  },
-  other_stranger: {
-    pre_verbal: ["Unknown. There."],
-    basic: ["An unfamiliar presence is nearby."],
-    intermediate: [
-      "An unknown being occupies the edge of your awareness, their intentions unreadable.",
-    ],
-    advanced: [
-      "A stranger moves near you, their emotional field novel and uncharted, provoking cautious curiosity.",
-    ],
-  },
-  peripheral: {
-    pre_verbal: ["Others. Edge."],
-    basic: ["At the edge of your awareness, others stir."],
-    intermediate: ["Beyond your immediate attention, you sense the dim murmur of other presences."],
-    advanced: [
-      "A penumbra of activity flickers at the margins of your consciousness — others, numerous but indistinct.",
-    ],
-  },
-  fire_unknown: {
-    pre_verbal: ["Hot! Bright!"],
-    basic: ["You sense a hot, bright substance."],
-    intermediate: [
-      "A fierce, dancing heat and blinding brightness emanates from something nearby.",
-    ],
-    advanced: ["Something radiates intense warmth and light — mesmerising, dangerous, unnamed."],
-  },
-  fire_known: {
-    pre_verbal: ["Fire!"],
-    basic: ["You sense fire nearby."],
-    intermediate: [
-      "Fire burns nearby, its familiar warmth and dance of light filling your senses.",
-    ],
-    advanced: ["The crackle and glow of fire reaches you — known, named, a force you understand."],
-  },
-  fire_sacred: {
-    pre_verbal: ["Sacred warmth."],
-    basic: ["A sacred warmth emanates from the fire."],
-    intermediate: ["The fire burns with a reverence, its warmth touched by something deeper."],
-    advanced: [
-      "The sacred fire radiates an awe you feel deep in your being, its warmth transcendent.",
-    ],
-  },
-  fire_traumatic: {
-    pre_verbal: ["Dread! Hot!"],
-    basic: ["A dreadful heat emanates from the fire."],
-    intermediate: ["The fire awakens a deep dread within you, its heat carrying echoes of pain."],
-    advanced: [
-      "Terror lances through you at the sight of flames — memory and instinct converging in visceral alarm.",
-    ],
-  },
-  water_nearby: {
-    pre_verbal: ["Wet. Cool."],
-    basic: ["You sense the cool presence of water."],
-    intermediate: ["The faint sheen and cool touch of water reaches your awareness."],
-    advanced: [
-      "Water is near — you feel its cool promise, its fluidity a contrast to the solid world.",
-    ],
-  },
-  food_nearby: {
-    pre_verbal: ["Food! There."],
-    basic: ["Something nearby promises nourishment."],
-    intermediate: ["The subtle signal of sustenance reaches you — something edible is close."],
-    advanced: [
-      "Your body responds to the proximity of food, a primal recognition stirring beneath thought.",
-    ],
-  },
-  pleasure: {
-    pre_verbal: ["Good. Warm."],
-    basic: ["A wave of warmth and contentment flows through you."],
-    intermediate: [
-      "A deep satisfaction settles through your body, muscles releasing their tension.",
-    ],
-    advanced: [
-      "Pure, unguarded pleasure radiates through every part of you, a rare and precious ease.",
-    ],
-  },
-};
+function seasonScalar(season: CircadianState["season"]): number {
+  if (season === "spring") return 0;
+  if (season === "summer") return 0.33;
+  if (season === "autumn") return 0.66;
+  return 1;
+}
 
-function pickTemplate(category: TemplateCategory, tier: LexiconTier): string {
-  const templates = QUALIA_TEMPLATES[category][tier];
-  return templates[Math.floor(Math.random() * templates.length)] ?? templates[0] ?? "";
+function materialBand(material: string): number {
+  if (material === "fire") return 780;
+  if (material === "water") return 470;
+  if (material === "food") return 620;
+  if (material === "ore") return 510;
+  if (material === "wood") return 590;
+  if (material === "stone") return 430;
+  if (material === "dirt") return 540;
+  return 0;
+}
+
+function conceptToken(agent: AgentState, concept: string): string {
+  const match = agent.lexicon.find((entry) => entry.concept === concept);
+  return match?.word ?? "undifferentiated";
+}
+
+function maxNociception(agent: AgentState): number {
+  const values = Object.values(agent.body.bodyMap ?? {}).map((part) => part.pain ?? 0);
+  return values.length === 0 ? 0 : Math.max(...values);
+}
+
+function threatLoad(body: FilteredPercept["ownBody"]): number {
+  const health = clamp01(body.health ?? 1);
+  const fatigue = clamp01(body.fatigue ?? 0);
+  const thirst = clamp01(body.thirst ?? 0);
+  const tempDelta = Math.abs((body.coreTemperature ?? 15) - 15) / 20;
+  return clamp01((1 - health + fatigue + thirst + clamp01(tempDelta)) / 4);
+}
+
+function bodyVector(body: FilteredPercept["ownBody"]): string {
+  const map = body.bodyMap;
+  return [
+    format(map.head.pain),
+    format(map.torso.pain),
+    format(map.leftArm.pain),
+    format(map.rightArm.pain),
+    format(map.leftLeg.pain),
+    format(map.rightLeg.pain),
+  ].join(",");
+}
+
+function ambientVector(circadianState: CircadianState): string {
+  return [
+    format(clamp01(circadianState.lightLevel)),
+    format(clamp01(circadianState.cycleHormoneValue)),
+    format(clamp01((circadianState.surfaceTemperatureDelta + 20) / 40)),
+    format(seasonScalar(circadianState.season)),
+  ].join(",");
+}
+
+function affectVector(
+  moodTint: FeelingResidueTint,
+  emotionalDetections: EmotionalFieldDetection[],
+): string {
+  const localValence = clamp01((moodTint.valence + 1) / 2);
+  const localArousal = clamp01((moodTint.arousal + 1) / 2);
+
+  if (emotionalDetections.length === 0) {
+    return [format(localValence), format(localArousal), "0.000", "0.000"].join(",");
+  }
+
+  const extValence =
+    emotionalDetections.reduce((sum, detection) => sum + detection.valenceImpression, 0) /
+    emotionalDetections.length;
+  const extArousal =
+    emotionalDetections.reduce((sum, detection) => sum + detection.arousalImpression, 0) /
+    emotionalDetections.length;
+
+  return [
+    format(localValence),
+    format(localArousal),
+    format(clamp01((extValence + 1) / 2)),
+    format(clamp01((extArousal + 1) / 2)),
+  ].join(",");
+}
+
+function socialSignalVector(agent: AgentState, filteredPercept: FilteredPercept): string {
+  if (filteredPercept.primaryAttention.length === 0) {
+    return `prox=0|periph=${filteredPercept.peripheralAwareness.count}`;
+  }
+
+  const packed = filteredPercept.primaryAttention
+    .map((other) => {
+      const relation = resolveAgentReference(other.id, agent);
+      const arousal = format(clamp01((other.body.arousal + 1) / 2));
+      const valence = format(clamp01((other.body.valence + 1) / 2));
+      return `${relation}:${valence}:${arousal}`;
+    })
+    .join(";");
+
+  return `prox=${filteredPercept.primaryAttention.length}|periph=${filteredPercept.peripheralAwareness.count}|field=${packed}`;
+}
+
+function externalSignalVector(agent: AgentState, filteredPercept: FilteredPercept): string {
+  if (filteredPercept.focusedVoxels.length === 0) {
+    return "exo=none";
+  }
+
+  const packed = filteredPercept.focusedVoxels
+    .map((voxel) => {
+      const wave = materialBand(voxel.material);
+      const intensity = clamp01((voxel.temperature + 30) / 120);
+      const token = conceptToken(agent, voxel.material);
+      return `${wave}:${format(intensity)}:${token}`;
+    })
+    .join(";");
+
+  return `exo=${packed}`;
 }
 
 export function resolveAgentReference(targetAgentId: string, observingAgent: AgentState): string {
-  const relationship = observingAgent.relationships?.find((r) => r.targetAgentId === targetAgentId);
+  const relation = observingAgent.relationships?.find((item) => item.targetAgentId === targetAgentId);
+  if (!relation) return "unknown";
 
-  if (!relationship) {
-    return "an unknown presence";
-  }
+  const affinity = relation.affinity ?? 0;
+  const trust = relation.trust ?? 0;
+  const fear = relation.fear ?? 0;
+  const encounters = relation.significantEvents?.length ?? 0;
 
-  const affinity = relationship.affinity ?? 0;
-  const trust = relationship.trust ?? 0;
-  const interactionCount = relationship.significantEvents?.length ?? 0;
-
-  if (interactionCount === 0) return "a stranger";
-  if (affinity > 0.7 && trust > 0.6) return "someone you trust";
-  if (affinity > 0.4) return "a familiar presence";
-  if (affinity < -0.3) return "someone whose presence unsettles you";
-  if ((relationship.fear ?? 0) > 0.5) return "someone you fear";
-  return "a known presence nearby";
+  if (fear > 0.5) return "threat";
+  if (encounters === 0) return "novel";
+  if (affinity > 0.7 && trust > 0.6) return "bonded";
+  if (affinity > 0.3) return "familiar";
+  if (affinity < -0.3) return "averse";
+  return "known";
 }
 
 export const QualiaProcessor = {
@@ -293,127 +159,30 @@ export const QualiaProcessor = {
     circadianState: CircadianState,
     worldConfig: WorldConfig,
   ): string {
-    const parts: string[] = [];
-    const tier = getLexiconTier(agent.lexicon.length);
+    const omega = worldConfig.freeWill?.survivalDriveWeight ?? 1;
+    const hunger = clamp01(filteredPercept.ownBody.hunger ?? 0);
+    const thirst = clamp01(filteredPercept.ownBody.thirst ?? 0);
+    const nociception = maxNociception(agent);
+    const threat = threatLoad(filteredPercept.ownBody);
+    const integrityImpact = omega * clamp01(hunger + nociception + threat);
 
-    // 10. MoodTint
-    if (moodTint.valence < MOOD_NEGATIVE_THRESHOLD) parts.push(pickTemplate("mood_negative", tier));
-    else if (moodTint.valence > MOOD_POSITIVE_THRESHOLD)
-      parts.push(pickTemplate("mood_positive", tier));
+    const lines = [
+      `interoceptive_map(h1=${format(hunger)},t1=${format(thirst)},n1=${format(nociception)},q=[${bodyVector(filteredPercept.ownBody)}],impact=${format(integrityImpact)})`,
+      `ambient_map(a=[${ambientVector(circadianState)}])`,
+      `affect_map(a=[${affectVector(moodTint, emotionalDetections)}])`,
+      `social_map(${socialSignalVector(agent, filteredPercept)})`,
+      `exo_map(${externalSignalVector(agent, filteredPercept)})`,
+    ];
 
-    // 5. Circadian state rendering (uses typed CircadianState)
-    const cHormone = circadianState.cycleHormoneValue;
-    const lLevel = circadianState.lightLevel;
-    const currentSeason = circadianState.season;
+    let output = lines.join(" | ");
 
-    if (cHormone > CYCLE_HORMONE_HIGH && lLevel < LIGHT_LEVEL_LOW) {
-      parts.push(pickTemplate("body_heavy", tier));
-    } else if (cHormone < CYCLE_HORMONE_LOW && lLevel > LIGHT_LEVEL_HIGH) {
-      parts.push(pickTemplate("body_alert", tier));
-    }
-
-    if (currentSeason !== "spring") {
-      parts.push(pickTemplate("season_change", tier));
-    }
-
-    // 15. Hunger / thirst rendering
-    const body = filteredPercept.ownBody;
-    if (body.hunger > HUNGER_STRONG_THRESHOLD) {
-      parts.push(pickTemplate("hunger_strong", tier));
-    } else if (body.hunger > HUNGER_MILD_THRESHOLD) {
-      parts.push(pickTemplate("hunger_mild", tier));
-    }
-
-    if (body.thirst > THIRST_STRONG_THRESHOLD) {
-      parts.push(pickTemplate("thirst_strong", tier));
-    } else if (body.thirst > THIRST_MILD_THRESHOLD) {
-      parts.push(pickTemplate("thirst_mild", tier));
-    }
-
-    // Pleasure
-    if (body.valence > MOOD_POSITIVE_THRESHOLD && body.arousal > MOOD_POSITIVE_THRESHOLD) {
-      parts.push(pickTemplate("pleasure", tier));
-    }
-
-    // 4. BodyMap values + 11. Body part attention
-    const partsArray = [
-      { name: "head", part: body.bodyMap.head },
-      { name: "chest", part: body.bodyMap.torso },
-      { name: "left arm", part: body.bodyMap.leftArm },
-      { name: "right arm", part: body.bodyMap.rightArm },
-      { name: "left leg", part: body.bodyMap.leftLeg },
-      { name: "right leg", part: body.bodyMap.rightLeg },
-    ].sort((a, b) => Math.max(b.part.pain, b.part.damage) - Math.max(a.part.pain, a.part.damage));
-
-    const intensePart = partsArray[0];
-    if (intensePart) {
-      if (intensePart.part.pain > BODY_PAIN_THRESHOLD) {
-        parts.push(pickTemplate("pain", tier).replace("{bodyPart}", intensePart.name));
-      } else if (intensePart.part.temperature < BODY_COLD_THRESHOLD) {
-        parts.push(pickTemplate("cold", tier).replace("{bodyPart}", intensePart.name));
-      } else if (intensePart.part.damage > BODY_DAMAGE_THRESHOLD) {
-        parts.push(pickTemplate("damage", tier).replace("{bodyPart}", intensePart.name));
-      }
-    }
-
-    // 9. Emotional field detections
-    for (const det of emotionalDetections) {
-      if (det.valenceImpression < EMOTIONAL_FIELD_NEGATIVE_THRESHOLD) {
-        parts.push(pickTemplate("other_uneasy", tier));
-      }
-    }
-
-    // Perception processing
-    if (filteredPercept.primaryAttention.length > 0) {
-      for (const a of filteredPercept.primaryAttention) {
-        parts.push(`${resolveAgentReference(a.id, agent)} is nearby`);
-      }
-    }
-
-    if (filteredPercept.peripheralAwareness.count > 0) {
-      parts.push(pickTemplate("peripheral", tier));
-    }
-
-    if (filteredPercept.focusedVoxels.length > 0) {
-      for (const v of filteredPercept.focusedVoxels) {
-        // 6. Lexicon constraint
-        const knowsFire = agent.lexicon.some((l) => l.concept === "fire");
-        // 8. Cultural context modifies tone
-        const fireBelief = agent.semanticStore.find((b) => b.concept === "fire_nature");
-
-        if (v.material === "fire") {
-          if (knowsFire && fireBelief?.value === "sacred") {
-            parts.push(pickTemplate("fire_sacred", tier));
-          } else if (knowsFire && fireBelief?.value === "traumatic") {
-            parts.push(pickTemplate("fire_traumatic", tier));
-          } else if (knowsFire) {
-            parts.push(pickTemplate("fire_known", tier));
-          } else {
-            parts.push(pickTemplate("fire_unknown", tier));
-          }
-        } else if (v.material === "water") {
-          parts.push(pickTemplate("water_nearby", tier));
-        } else if (v.material === "food") {
-          parts.push(pickTemplate("food_nearby", tier));
-        }
-      }
-    }
-
-    let text = parts.join(". ");
-
-    // 7. Semantic masking
     if (worldConfig.semanticMasking.enabled && !worldConfig.semanticMasking.qualiaUsesRealLabels) {
-      const map = worldConfig.semanticMasking.sensorLabelMap;
-      for (const realLabel of Object.keys(map)) {
-        const maskedToken = map[realLabel];
-        if (maskedToken) {
-          // Only replace if it's a word boundary to prevent partial matches
-          const regex = new RegExp(`\\b${realLabel}\\b`, "gi");
-          text = text.replace(regex, maskedToken);
-        }
+      for (const [source, target] of Object.entries(worldConfig.semanticMasking.sensorLabelMap)) {
+        const expression = new RegExp(`\\b${source}\\b`, "gi");
+        output = output.replace(expression, target);
       }
     }
 
-    return text;
+    return enforceQualiaVeil(output);
   },
 };
