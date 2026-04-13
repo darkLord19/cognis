@@ -3,12 +3,7 @@ import type { VocalActuation } from "../../shared/types";
 import type { EventBus } from "../core/event-bus";
 
 export const VocalActuationBroadcaster = {
-  broadcast(
-    actuation: VocalActuation,
-    branchId: string,
-    runId: string,
-    eventBus: EventBus,
-  ): void {
+  broadcast(actuation: VocalActuation, branchId: string, runId: string, eventBus: EventBus): void {
     eventBus.emit({
       event_id: crypto.randomUUID(),
       branch_id: branchId,

@@ -159,7 +159,14 @@ test("System2: strips intentional communicate decisions and utterances", async (
     ownBody: {},
   } as unknown as FilteredPercept;
 
-  const output = await system2.think(agent, "interoceptive_map(...)", percept, mockWorldConfig, 10, "main");
+  const output = await system2.think(
+    agent,
+    "interoceptive_map(...)",
+    percept,
+    mockWorldConfig,
+    10,
+    "main",
+  );
 
   expect(output.decision.type).toBe("IDLE");
   expect(output.utterance).toBeUndefined();

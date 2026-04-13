@@ -87,7 +87,8 @@ test("System1: integrity drive follows omega * (hunger + pain + threat)", () => 
   } as WorldConfig;
 
   const low = System1.tick(structuredClone(baseAgent), mockCircadian, lowOmega).integrityDrive ?? 0;
-  const high = System1.tick(structuredClone(baseAgent), mockCircadian, highOmega).integrityDrive ?? 0;
+  const high =
+    System1.tick(structuredClone(baseAgent), mockCircadian, highOmega).integrityDrive ?? 0;
 
   expect(high).toBeGreaterThan(low);
   expect(high).toBeLessThanOrEqual(1);

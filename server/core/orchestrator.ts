@@ -178,8 +178,8 @@ export class Orchestrator {
         );
       }
 
-      const urgencyOverride = (agent.body.integrityDrive ?? bodyDelta.integrityDrive ?? 0) >
-        URGENCY_THRESHOLD;
+      const urgencyOverride =
+        (agent.body.integrityDrive ?? bodyDelta.integrityDrive ?? 0) > URGENCY_THRESHOLD;
       if (urgencyOverride) {
         this.emitAndTrack({
           event_id: crypto.randomUUID(),
