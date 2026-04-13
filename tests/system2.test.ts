@@ -17,7 +17,7 @@ const mockWorldConfig = {
   semanticMasking: { enabled: false },
 } as WorldConfig;
 
-test("System2: think calls LLM and logs monologue to MerkleLogger", async () => {
+test("System2: think calls LLM and logs monologue with qualia causal link", async () => {
   const gateway = new LLMGateway(new MockLLMGateway());
   const system2 = new System2(gateway);
 
@@ -34,7 +34,12 @@ test("System2: think calls LLM and logs monologue to MerkleLogger", async () => 
     ownBody: {},
   } as unknown as FilteredPercept;
 
-  const output = await system2.think(agent, "I see a rock.", percept, mockWorldConfig, 10, "main");
+  const output = await system2.think(agent, "I see a rock.", percept, mockWorldConfig, 10, "main", {
+    causal: {
+      qualiaPacketId: "qualia-packet-1",
+      sourceTick: 10,
+    },
+  });
 
   expect(output.innerMonologue).toBeTruthy();
 
@@ -43,6 +48,8 @@ test("System2: think calls LLM and logs monologue to MerkleLogger", async () => 
   const monologueLog = logs.find((l) => l.field === "innerMonologue");
   expect(monologueLog).toBeTruthy();
   expect(monologueLog?.new_value).toBe(output.innerMonologue);
+  expect(monologueLog?.cause_event_id).toBe("qualia-packet-1");
+  expect(monologueLog?.cause_description).toContain("source_tick=10");
 });
 
 test("System2: shouldFire on integrity drive jump", () => {

@@ -4,6 +4,7 @@ import { db } from "../server/persistence/database";
 
 beforeEach(() => {
   db.db.exec("DELETE FROM run_state_events");
+  db.db.exec("DELETE FROM run_config_snapshots");
   db.db.exec("DELETE FROM runs");
 });
 

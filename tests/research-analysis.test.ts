@@ -20,6 +20,7 @@ beforeEach(() => {
   db.db.exec(`DELETE FROM findings WHERE branch_id IN (${quotedIds})`);
   db.db.exec(`DELETE FROM events WHERE branch_id IN (${quotedIds})`);
   db.db.exec(`DELETE FROM branches WHERE id IN (${quotedIds})`);
+  db.db.exec(`DELETE FROM run_config_snapshots WHERE run_id IN (${quotedIds})`);
   db.db.exec(`DELETE FROM runs WHERE id IN (${quotedIds})`);
 });
 

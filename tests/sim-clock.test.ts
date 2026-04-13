@@ -89,3 +89,23 @@ test("SimClock: elastic heartbeat proceeds after maxHeartbeatWaitMs timeout", as
   clock.pause();
   clock.resolvePendingMind(); // Clean up
 });
+
+test("SimClock: elastic heartbeat slows cadence while pending minds remain", async () => {
+  let tickCount = 0;
+  const clock = new SimClock(() => {
+    tickCount++;
+  });
+
+  clock.registerPendingMind();
+  clock.start({
+    elasticHeartbeat: true,
+    maxHeartbeatWaitMs: 0,
+    tickDurationMs: 10,
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 55));
+  clock.pause();
+  clock.resolvePendingMind();
+
+  expect(tickCount).toBeLessThanOrEqual(2);
+});

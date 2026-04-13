@@ -1,6 +1,7 @@
 import type { AgentState, RunState, WorldConfig } from "../../shared/types";
 import type { VoxelGrid } from "../world/voxel-grid";
 import type { EventBus } from "./event-bus";
+import type { MultiWorkerRuntime } from "./multi-worker-runtime";
 import type { Orchestrator } from "./orchestrator";
 import { RunStateStore } from "./run-state-store";
 import type { SimClock } from "./sim-clock";
@@ -11,6 +12,7 @@ export interface RunRuntime {
   clock: SimClock;
   eventBus: EventBus;
   orchestrator: Orchestrator | null;
+  workerRuntime?: MultiWorkerRuntime;
   worldConfig: WorldConfig;
   world: VoxelGrid | null;
   agents: AgentState[];
@@ -69,6 +71,7 @@ export class RunSupervisor {
     }
 
     runtime.clock.pause();
+    runtime.workerRuntime?.terminate();
     runtime.status = "stopped";
     RunStateStore.record(runId, "stopped", runtime.clock.getTick());
     this.runtimes.delete(runId);
@@ -78,6 +81,7 @@ export class RunSupervisor {
   shutdownAll(): void {
     for (const runtime of this.runtimes.values()) {
       runtime.clock.pause();
+      runtime.workerRuntime?.terminate();
       runtime.status = "stopped";
       RunStateStore.record(runtime.runId, "stopped", runtime.clock.getTick());
     }

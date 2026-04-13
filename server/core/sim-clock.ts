@@ -10,6 +10,7 @@ export class SimClock {
   private elasticHeartbeat = false;
   private maxHeartbeatWaitMs: number = MAX_HEARTBEAT_WAIT_MS;
   private tickDurationMs = 100;
+  private elasticSlowdownMultiplier = 4;
   private isRunning = false;
   private cycleLengthTicks: number = DEFAULT_CYCLE_LENGTH_TICKS;
   private timeoutId: ReturnType<typeof setTimeout> | null = null;
@@ -98,7 +99,10 @@ export class SimClock {
     await this.advanceTick();
 
     if (this.isRunning) {
-      const delay = this.tickDurationMs / this.speedMultiplier;
+      let delay = this.tickDurationMs / this.speedMultiplier;
+      if (this.elasticHeartbeat && this.pendingSystem2Count > 0) {
+        delay *= this.elasticSlowdownMultiplier;
+      }
       this.timeoutId = setTimeout(() => {
         this.runLoop();
       }, delay);

@@ -54,7 +54,13 @@ export class System2 {
     config: WorldConfig,
     tick: number,
     branchId: string,
-    options?: { urgencyOverride?: boolean },
+    options?: {
+      urgencyOverride?: boolean;
+      causal?: {
+        qualiaPacketId: string;
+        sourceTick: number;
+      };
+    },
   ): Promise<System2Output> {
     // Build Theory of Mind context from nearby agents
     let tomContext = "";
@@ -171,7 +177,10 @@ export class System2 {
         "innerMonologue",
         null,
         output.innerMonologue,
-        null,
+        options?.causal?.qualiaPacketId ?? null,
+        options?.causal
+          ? `qualia_packet=${options.causal.qualiaPacketId};source_tick=${options.causal.sourceTick}`
+          : null,
       );
 
       return output;

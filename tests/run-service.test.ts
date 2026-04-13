@@ -18,6 +18,7 @@ beforeEach(() => {
   db.db.exec("DELETE FROM config_mutations");
   db.db.exec("DELETE FROM audit_log");
   db.db.exec("DELETE FROM branches");
+  db.db.exec("DELETE FROM run_config_snapshots");
   db.db.exec("DELETE FROM runs");
   db.db.exec("PRAGMA foreign_keys = ON;");
 

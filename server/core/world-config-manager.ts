@@ -26,6 +26,14 @@ type ConfigMutationRow = {
   merkle_hash: string;
 };
 
+type RunConfigSnapshotRow = {
+  id: number;
+  run_id: string;
+  tick: number;
+  world_config: string;
+  world_config_hash: string;
+};
+
 function normalizeValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map(normalizeValue);
@@ -91,34 +99,50 @@ export const WorldConfigManager = {
     const hash = hashString(canonical);
 
     const run = database.db
-      .query<{ world_config: string | null; world_config_hash: string | null }, [string]>(
-        "SELECT world_config, world_config_hash FROM runs WHERE id = ?",
-      )
+      .query<{ id: string }, [string]>("SELECT id FROM runs WHERE id = ?")
       .get(runId);
 
     if (!run) {
       throw new Error(`Run ${runId} must exist before persisting world config.`);
     }
 
-    if (run.world_config && run.world_config_hash) {
+    const existing = database.db
+      .query<RunConfigSnapshotRow, [string]>(
+        `SELECT id, run_id, tick, world_config, world_config_hash
+         FROM run_config_snapshots
+         WHERE run_id = ?
+         ORDER BY id DESC
+         LIMIT 1`,
+      )
+      .get(runId);
+
+    if (existing) {
       return;
     }
 
     database.db
-      .query("UPDATE runs SET world_config = ?, world_config_hash = ? WHERE id = ?")
-      .run(canonical, hash, runId);
+      .query(
+        "INSERT INTO run_config_snapshots (run_id, tick, world_config, world_config_hash) VALUES (?, ?, ?, ?)",
+      )
+      .run(runId, 0, canonical, hash);
   },
 
   load(runId: string, branchId: string, tick: number, database: Database): WorldConfig {
-    const run = database.db
-      .query<{ world_config: string }, [string]>("SELECT world_config FROM runs WHERE id = ?")
-      .get(runId);
+    const snapshot = database.db
+      .query<RunConfigSnapshotRow, [string, number]>(
+        `SELECT id, run_id, tick, world_config, world_config_hash
+         FROM run_config_snapshots
+         WHERE run_id = ? AND tick <= ?
+         ORDER BY tick DESC, id DESC
+         LIMIT 1`,
+      )
+      .get(runId, tick);
 
-    if (!run?.world_config) {
-      throw new Error(`Run ${runId} does not have a persisted world config.`);
+    if (!snapshot?.world_config) {
+      throw new Error(`Run ${runId} does not have a persisted world config snapshot.`);
     }
 
-    const config = JSON.parse(run.world_config) as WorldConfig;
+    const config = JSON.parse(snapshot.world_config) as WorldConfig;
     const mutations = database.db
       .query<ConfigMutationRow, [string, number]>(
         "SELECT * FROM config_mutations WHERE branch_id = ? AND tick <= ? ORDER BY tick ASC, id ASC",
@@ -175,17 +199,21 @@ export const WorldConfigManager = {
   },
 
   verify(runId: string, database: Database): boolean {
-    const run = database.db
-      .query<{ world_config: string; world_config_hash: string }, [string]>(
-        "SELECT world_config, world_config_hash FROM runs WHERE id = ?",
+    const snapshot = database.db
+      .query<RunConfigSnapshotRow, [string]>(
+        `SELECT id, run_id, tick, world_config, world_config_hash
+         FROM run_config_snapshots
+         WHERE run_id = ?
+         ORDER BY tick DESC, id DESC
+         LIMIT 1`,
       )
       .get(runId);
 
-    if (!run?.world_config || !run.world_config_hash) {
+    if (!snapshot?.world_config || !snapshot.world_config_hash) {
       return false;
     }
 
-    const canonical = stableStringify(JSON.parse(run.world_config));
-    return hashString(canonical) === run.world_config_hash;
+    const canonical = stableStringify(JSON.parse(snapshot.world_config));
+    return hashString(canonical) === snapshot.world_config_hash;
   },
 };

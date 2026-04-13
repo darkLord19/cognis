@@ -8,6 +8,7 @@ import { TerrainGenerator } from "../world/terrain-generator";
 import type { VoxelGrid } from "../world/voxel-grid";
 import { BranchManager } from "./branch-manager";
 import type { EventBus } from "./event-bus";
+import type { MultiWorkerRuntime } from "./multi-worker-runtime";
 import { Orchestrator } from "./orchestrator";
 import { RunManager } from "./run-manager";
 import type { RunSupervisor } from "./run-supervisor";
@@ -23,6 +24,7 @@ type BootstrapDependencies = {
   speciesRegistry: SpeciesRegistry;
   database: Database;
   runSupervisor: RunSupervisor;
+  multiWorkerRuntime?: MultiWorkerRuntime;
 };
 
 type BootstrapResult = {
@@ -190,6 +192,7 @@ export function bootstrapSimulation(
     deps.eventBus,
     physics,
     system2,
+    deps.multiWorkerRuntime,
   );
   deps.runSupervisor.registerRuntime({
     runId,
@@ -197,6 +200,7 @@ export function bootstrapSimulation(
     clock: deps.clock,
     eventBus: deps.eventBus,
     orchestrator,
+    ...(deps.multiWorkerRuntime ? { workerRuntime: deps.multiWorkerRuntime } : {}),
     worldConfig: config,
     world,
     agents: [],

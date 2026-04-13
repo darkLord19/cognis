@@ -31,7 +31,14 @@ import { SpatialIndex } from "../world/spatial-index";
 import { TechTree } from "../world/tech-tree";
 import type { VoxelGrid } from "../world/voxel-grid";
 import type { EventBus } from "./event-bus";
+import type { MultiWorkerRuntime } from "./multi-worker-runtime";
 import type { SimClock } from "./sim-clock";
+
+function hashQualiaPacket(agentId: string, tick: number, qualiaText: string): string {
+  const hasher = new Bun.CryptoHasher("sha256");
+  hasher.update(`${agentId}|${tick}|${qualiaText}`);
+  return hasher.digest("hex");
+}
 
 export class Orchestrator {
   public agents: AgentState[] = [];
@@ -55,6 +62,7 @@ export class Orchestrator {
     private eventBus: EventBus,
     private physics: PhysicsEngine,
     system2: System2,
+    private multiWorkerRuntime?: MultiWorkerRuntime,
   ) {
     this.techTree = new TechTree(eventBus);
     this.system2 = system2;
@@ -131,6 +139,8 @@ export class Orchestrator {
 
   public async tick(): Promise<void> {
     const tick = this.clock.getTick();
+    this.multiWorkerRuntime?.syncAgents(this.agents);
+
     let positionsChanged = false;
     const deadAgentIds: string[] = [];
 
@@ -301,10 +311,15 @@ export class Orchestrator {
         this.clock.registerPendingMind();
         agent.pendingSystem2 = true;
         totalDecisions++;
+        const qualiaPacketId = hashQualiaPacket(agent.id, tick, qualiaText);
         pendingSystem2.push(
           this.system2
             .think(agent, qualiaText, filteredPercept, this.config, tick, this.branchId, {
               urgencyOverride,
+              causal: {
+                qualiaPacketId,
+                sourceTick: tick,
+              },
             })
             .then((output) => {
               if (output.innerMonologue) {
@@ -531,6 +546,13 @@ export class Orchestrator {
           null,
         );
       }
+    }
+
+    this.multiWorkerRuntime?.syncAgents(this.agents);
+    try {
+      await this.multiWorkerRuntime?.runTick(tick);
+    } catch (error) {
+      console.warn("Multi-worker phase execution failed; continuing inline.", error);
     }
 
     console.log(`[tick ${tick}] agents: ${this.agents.length}, system2_calls: ${totalDecisions}`);

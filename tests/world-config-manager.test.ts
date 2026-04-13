@@ -9,6 +9,7 @@ import type { WorldConfig } from "../shared/types";
 
 beforeEach(() => {
   db.db.exec("PRAGMA foreign_keys = OFF;");
+  db.db.exec("DELETE FROM run_config_snapshots");
   db.db.exec("DELETE FROM config_mutations");
   db.db.exec("DELETE FROM audit_log");
   db.db.exec("DELETE FROM branches");
@@ -66,7 +67,9 @@ test("WorldConfigManager: verify fails when stored config snapshot is tampered w
   RunManager.createRun(runId, config.meta.name, 0);
   WorldConfigManager.create(config, runId, db);
 
-  db.db.query("UPDATE runs SET world_config = ? WHERE id = ?").run('{"tampered":true}', runId);
+  db.db
+    .query("UPDATE run_config_snapshots SET world_config = ? WHERE run_id = ?")
+    .run('{"tampered":true}', runId);
 
   expect(WorldConfigManager.verify(runId, db)).toBe(false);
 });

@@ -11,6 +11,7 @@ import { validateWorldConfig } from "../validation/config-validator";
 import { bootstrapSimulation } from "./bootstrap";
 import { BranchManager } from "./branch-manager";
 import { EventBus } from "./event-bus";
+import { MultiWorkerRuntime } from "./multi-worker-runtime";
 import { RunManager } from "./run-manager";
 import { RunStateStore } from "./run-state-store";
 import type { RunRuntime, RunSupervisor } from "./run-supervisor";
@@ -36,6 +37,7 @@ const DEFAULT_TIME_CONFIG = {
   elasticHeartbeat: false,
   maxHeartbeatWaitMs: 5000,
   tickDurationMs: 100,
+  multiWorkerEnabled: true,
 };
 
 export class RunService {
@@ -298,7 +300,11 @@ export class RunService {
     clock.setTick(resumeTick);
 
     const config = WorldConfigManager.load(runId, "main", resumeTick, this.deps.database);
-    const { orchestrator, agents, world } = bootstrapSimulation(config, {
+    const workerRuntime =
+      (config.time?.multiWorkerEnabled ?? DEFAULT_TIME_CONFIG.multiWorkerEnabled)
+        ? new MultiWorkerRuntime(Math.max(config.agents.count ?? 1, 1))
+        : undefined;
+    const bootstrapDeps = {
       runId,
       branchId: "main",
       eventBus,
@@ -307,7 +313,9 @@ export class RunService {
       speciesRegistry: this.deps.speciesRegistry,
       database: this.deps.database,
       runSupervisor: this.deps.runSupervisor,
-    });
+      ...(workerRuntime ? { multiWorkerRuntime: workerRuntime } : {}),
+    };
+    const { orchestrator, agents, world } = bootstrapSimulation(config, bootstrapDeps);
 
     const registeredRuntime = this.deps.runSupervisor.getRuntime(runId);
     if (!registeredRuntime) {

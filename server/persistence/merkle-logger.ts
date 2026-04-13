@@ -45,6 +45,7 @@ export const MerkleLogger = {
     oldValue: string | null,
     newValue: string | null,
     causeEventId: string | null,
+    causeDescription: string | null = null,
   ): void {
     const previousHash = db.getLastAuditHash(branchId);
     const data = serializeEntryForHash({
@@ -57,7 +58,7 @@ export const MerkleLogger = {
       oldValue,
       newValue,
       causeEventId,
-      causeDescription: null,
+      causeDescription,
       suppressed: false,
     });
     const entryHash = hash(data);
@@ -71,7 +72,7 @@ export const MerkleLogger = {
       oldValue,
       newValue,
       causeEventId,
-      causeDescription: null,
+      causeDescription,
       suppressed: false,
       previousHash,
       entryHash,

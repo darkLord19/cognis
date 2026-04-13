@@ -182,6 +182,7 @@ export type TimeConfig = {
   elasticHeartbeat: boolean;
   maxHeartbeatWaitMs: number;
   tickDurationMs: number;
+  multiWorkerEnabled?: boolean;
 };
 
 export type ElementConfig = {

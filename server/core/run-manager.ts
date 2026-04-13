@@ -1,5 +1,6 @@
 import type { RunState } from "../../shared/types";
 import { db } from "../persistence/database";
+import { RunStateStore } from "./run-state-store";
 
 export interface RunRecord {
   id: string;
@@ -29,31 +30,56 @@ export const RunManager = {
   },
 
   getRun(id: string): RunRecord | null {
-    return db.db.query("SELECT * FROM runs WHERE id = ?").get(id) as RunRecord | null;
+    const run = db.db.query("SELECT * FROM runs WHERE id = ?").get(id) as RunRecord | null;
+    if (!run) {
+      return null;
+    }
+
+    const latest = RunStateStore.getLatest(id);
+    const status = latest?.status ?? run.status;
+    const currentTick = latest?.tick ?? run.current_tick;
+    const endTick =
+      status === "stopped" || status === "completed"
+        ? (latest?.tick ?? run.end_tick)
+        : run.end_tick;
+
+    return {
+      ...run,
+      status,
+      current_tick: currentTick,
+      end_tick: endTick,
+    };
   },
 
   listRuns(): RunRecord[] {
-    return db.db.query("SELECT * FROM runs ORDER BY start_tick DESC").all() as RunRecord[];
+    const runs = db.db.query("SELECT * FROM runs ORDER BY start_tick DESC").all() as RunRecord[];
+    return runs
+      .map((row) => RunManager.getRun((row as RunRecord).id))
+      .filter((row): row is RunRecord => Boolean(row));
   },
 
   updateRunStatus(id: string, status: RunState): void {
-    db.db.query("UPDATE runs SET status = ? WHERE id = ?").run(status, id);
+    const currentTick = RunManager.getCurrentTick(id);
+    RunStateStore.record(id, status, currentTick);
   },
 
   updateCurrentTick(id: string, tick: number): void {
-    db.db.query("UPDATE runs SET current_tick = ? WHERE id = ?").run(tick, id);
+    const currentStatus = RunStateStore.getLatest(id)?.status ?? "running";
+    RunStateStore.record(id, currentStatus, tick);
   },
 
   getCurrentTick(id: string): number {
-    const row = db.db
-      .query<{ current_tick: number }, [string]>("SELECT current_tick FROM runs WHERE id = ?")
+    const latest = RunStateStore.getLatest(id);
+    if (latest) {
+      return latest.tick;
+    }
+    const run = db.db
+      .query<{ start_tick: number }, [string]>("SELECT start_tick FROM runs WHERE id = ?")
       .get(id);
-    return row?.current_tick ?? 0;
+    return run?.start_tick ?? 0;
   },
 
   stopRun(id: string, endTick: number): void {
-    db.db
-      .query("UPDATE runs SET status = ?, end_tick = ?, current_tick = ? WHERE id = ?")
-      .run("stopped", endTick, endTick, id);
+    RunStateStore.record(id, "stopped", endTick);
   },
 };
