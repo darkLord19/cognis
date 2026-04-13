@@ -218,7 +218,7 @@ test("System2: coerces non-string monologue to SQLite-safe string", async () => 
 test("System2: parses JSON wrapped in markdown fences with comments", async () => {
   const provider = {
     completion: async () =>
-      "```json\n{\n  // keep moving\n  \"innerMonologue\": \"metallic signal\",\n  \"decision\": { \"type\": \"MOVE\" }\n}\n```",
+      '```json\n{\n  // keep moving\n  "innerMonologue": "metallic signal",\n  "decision": { "type": "MOVE" }\n}\n```',
     embed: async () => [],
   };
   const gateway = new LLMGateway(provider);
