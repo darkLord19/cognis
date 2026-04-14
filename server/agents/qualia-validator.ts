@@ -1,54 +1,76 @@
-import type { QualiaFrame } from "../../shared/types";
+import type { LexiconEntry } from "../../shared/types";
+import type { QualiaFrame } from "./qualia-types";
 
-/**
- * QualiaValidator ensures that the epistemological wall is not breached.
- * It scans the output for any data leaks from the operator layer.
- */
-const FORBIDDEN_PATTERNS = [
-  /simulation/i,
-  /code/i,
-  /data/i,
-  /tick/i,
-  /op-id/i,
-  /agent_id/i,
-  /operator_id/i,
-  /coordinate/i,
-  /voxel_type/i,
-  /material_type/i,
-  /tech_node/i,
-  /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i, // UUIDs
-  /\d+\.\d+/, // Decimal numbers
+const ALWAYS_FORBIDDEN = [
+  /\bsimulation\b/i,
+  /\bcode\b/i,
+  /\bdatabase\b/i,
+  /\btick\b/i,
+  /\bop-id\b/i,
+  /\bMaterialType\b/i,
+  /\bVoxelType\b/i,
+  /\bTechNode\b/i,
+  /\bcycleHormone\b/i,
+  /\bintegrityDrive\b/i,
+  /\b\d+\.\d{2,}\b/,
+  /\bx\s*:/i,
+  /\by\s*:/i,
+  /\bz\s*:/i,
 ];
 
-/**
- * Validates a complete QualiaFrame.
- * Returns false if ANY forbidden pattern is found.
- */
-export function validateQualia(frame: QualiaFrame): boolean {
-  const allText = [
-    ...frame.foreground,
-    ...frame.body,
-    ...frame.peripheral,
-    ...frame.social,
-    ...frame.urges,
-    ...frame.atmosphere,
-  ].join(" ");
+const CONCEPT_SPOILERS = [
+  "hunger",
+  "hungry",
+  "thirst",
+  "thirsty",
+  "drink",
+  "water",
+  "eat",
+  "food",
+  "oxygen",
+  "breathe",
+  "fire",
+  "death",
+  "dead",
+  "sleep",
+];
 
-  const failedPattern = FORBIDDEN_PATTERNS.find((pattern) => pattern.test(allText));
-  if (failedPattern) {
-    console.error(`QualiaValidator: Forbidden pattern detected: ${failedPattern}`);
-    return false;
+export type ValidationResult = {
+  valid: boolean;
+  reason?: string;
+  violations: string[];
+};
+
+export function validateQualiaOutput(text: string, lexicon: LexiconEntry[]): ValidationResult {
+  const violations: string[] = [];
+
+  for (const pattern of ALWAYS_FORBIDDEN) {
+    if (pattern.test(text)) {
+      violations.push(`forbidden_pattern:${pattern.source}`);
+    }
   }
 
-  return true;
+  const lexiconWords = new Set(lexicon.map((entry) => entry.word.toLowerCase()));
+  const lexiconConcepts = new Set(lexicon.map((entry) => entry.concept.toLowerCase()));
+  const allowsConcept = (concept: string): boolean =>
+    lexiconWords.has(concept.toLowerCase()) || lexiconConcepts.has(concept.toLowerCase());
+
+  for (const spoiler of CONCEPT_SPOILERS) {
+    if (!allowsConcept(spoiler) && new RegExp(`\\b${spoiler}\\b`, "i").test(text)) {
+      violations.push(`spoiler:${spoiler}`);
+    }
+  }
+
+  const result: ValidationResult = {
+    valid: violations.length === 0,
+    violations,
+  };
+  if (violations.length > 0) {
+    result.reason = "qualia_veil_violation";
+  }
+  return result;
 }
 
-/**
- * Cleans text to remove common forbidden patterns.
- * This is a fallback; the templates themselves should be clean.
- */
-export function sanitizeQualia(text: string): string {
-  const sanitized = text;
-  // ... logic for cleaning common leaks if necessary
-  return sanitized;
+export function validateQualia(frame: QualiaFrame, lexicon: LexiconEntry[] = []): boolean {
+  return validateQualiaOutput(frame.narratableText, lexicon).valid;
 }
