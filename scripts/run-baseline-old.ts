@@ -17,7 +17,7 @@ type BaselineDump = {
   branchId: string;
   ticksSimulated: number;
   survivalTicks: number;
-  legacyActionDistribution: Record<"EAT" | "REST" | "WANDER", number>;
+  legacyActionDistribution: Record<"MOVE" | "REST" | "WANDER", number>;
   actionDistribution: Record<string, number>;
   qualiaSamples: string[];
   eventCounts: Record<string, number>;
@@ -122,7 +122,7 @@ async function main(): Promise<void> {
     ticksSimulated: N_TICKS,
     survivalTicks,
     legacyActionDistribution: {
-      EAT: actionDistribution.EAT ?? 0,
+      MOVE: actionDistribution.MOVE ?? 0,
       REST: actionDistribution.REST ?? 0,
       WANDER: actionDistribution.WANDER ?? 0,
     },

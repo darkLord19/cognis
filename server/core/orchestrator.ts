@@ -15,14 +15,11 @@ import type {
 } from "../../shared/types";
 import { ActionArbiter } from "../agents/action-arbiter";
 import { ActionExecutor } from "../agents/action-executor";
-import {
-  ActuationType,
-  type MotorPlan,
-  translateLegacyActionToMotorPlan,
-} from "../agents/action-grammar";
+import { ActuationType, type MotorPlan } from "../agents/action-grammar";
 import { ActionOutcomeMemory } from "../agents/action-outcome-memory";
 import { AffordanceLearner } from "../agents/affordance-learner";
 import { AttentionFilter } from "../agents/attention-filter";
+import { legacyAdapter } from "../agents/legacy-action-adapter";
 import { ProceduralPolicy } from "../agents/procedural-policy";
 import { QualiaProcessor } from "../agents/qualia-processor";
 import { System0 } from "../agents/system0";
@@ -151,11 +148,7 @@ export class Orchestrator {
   }
 
   private applyAction(agent: AgentState, action: PrimitiveAction, tick: number): void {
-    const translated = translateLegacyActionToMotorPlan(
-      action.type,
-      tick,
-      Boolean(agent.body.mouthItem),
-    );
+    const translated = legacyAdapter.translate(action.type, tick, Boolean(agent.body.mouthItem));
     if (translated) {
       this.recordActionTrace(agent.id, translated);
     }
@@ -432,7 +425,7 @@ export class Orchestrator {
 
               const system2Plan =
                 output.decision && output.decision.type !== "DEFER"
-                  ? (translateLegacyActionToMotorPlan(
+                  ? (legacyAdapter.translate(
                       output.decision.type,
                       tick,
                       Boolean(agent.body.mouthItem),

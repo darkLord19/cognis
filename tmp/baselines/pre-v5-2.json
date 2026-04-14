@@ -5,7 +5,7 @@
   "ticksSimulated": 200,
   "survivalTicks": 96,
   "legacyActionDistribution": {
-    "EAT": 0,
+    "MOVE": 0,
     "REST": 96,
     "WANDER": 0
   },

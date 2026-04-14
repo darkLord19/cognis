@@ -164,3 +164,36 @@ test("System2: parses strict motor-plan JSON wrapped in markdown fences", async 
   expect(output.innerMonologue).toBe("metallic signal");
   expect(output.decision.type).toBe("MOVE");
 });
+
+test("System2: rejects legacy symbolic EAT output and defers", async () => {
+  const provider = {
+    completion: async () =>
+      '{"thought":"I should eat","motorPlan":{"primitives":[{"type":"EAT","target":{"type":"none"},"intensity":1,"durationTicks":1}]}}',
+    embed: async () => [],
+  };
+  const gateway = new LLMGateway(provider);
+  const system2 = new System2(gateway);
+
+  const agent = {
+    id: "a1",
+    relationships: [],
+    body: { integrityDrive: 0.1 },
+  } as unknown as AgentState;
+  const percept = {
+    primaryAttention: [],
+    peripheralAwareness: { count: 0 },
+    focusedVoxels: [],
+    ownBody: {},
+  } as unknown as FilteredPercept;
+
+  const output = await system2.think(
+    agent,
+    "a hollow pull gathers inside you",
+    percept,
+    mockWorldConfig,
+    12,
+    "main",
+  );
+
+  expect(output.decision.type).toBe("DEFER");
+});
