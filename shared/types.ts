@@ -232,25 +232,69 @@ export type WorldConfig = {
 
 // --- Agent Types ---
 
+export type AgentId = string;
+export type HostId = AgentId;
+
+export type NormalizedFloat = number;
+
 export type Vec3 = { x: number; y: number; z: number };
 
-export type BodyPart = {
+export type BodyPartId = "head" | "torso" | "leftArm" | "rightArm" | "leftLeg" | "rightLeg";
+
+export type BodyPartState = {
   pain: number;
   temperature: number;
   damage: number;
-  label: string;
+  contactPressure?: number;
+  label?: string;
 };
 
-export type BodyMap = {
-  head: BodyPart;
-  torso: BodyPart;
-  leftArm: BodyPart;
-  rightArm: BodyPart;
-  leftLeg: BodyPart;
-  rightLeg: BodyPart;
+export type BodyPart = BodyPartState;
+
+export type BodyMap = Record<BodyPartId, BodyPartState>;
+
+export type MouthItem = {
+  perceptualRef: string;
+  materialId: string; // operator only, never leaves physics/action layer
+  quantity: number;
+  enteredMouthAtTick: number;
+};
+
+export type HeldItem = {
+  perceptualRef: string;
+  materialId: string; // operator only
+  quantity: number;
+  graspedAtTick: number;
+};
+
+export type ConsumptionRecord = {
+  materialId: string;
+  quantity: number;
+  consumedAtTick: number;
+  onsetTick: number;
+  applied: boolean;
 };
 
 export type PhysiologyState = {
+  energyReserves: number;
+  hydration: number;
+  oxygenSaturation: number;
+  toxinLoad: number;
+  immuneBurden: number;
+  health: number;
+  fatigue: number;
+  coreTemperature: number;
+  actuationEnergyRecent: number;
+
+  // Legacy compatibility fields (deprecated).
+  energy?: number;
+  oxygenation?: number;
+  inflammation?: number;
+  painLoad?: number;
+};
+
+export type BodyState = {
+  physiology?: PhysiologyState;
   energy: number;
   hydration: number;
   toxinLoad: number;
@@ -260,16 +304,23 @@ export type PhysiologyState = {
   inflammation: number;
   painLoad: number;
   health: number;
-};
-
-export type BodyState = PhysiologyState & {
+  /**
+   * Deprecated compatibility fields.
+   * Use physiology.energyReserves and physiology.hydration.
+   */
+  hunger?: number;
+  thirst?: number;
   bodyMap: BodyMap;
   arousal: number;
   valence: number;
   cycleHormone: number;
+  cycleFlux?: number;
   circadianPhase: number;
   immediateReaction?: ImmediateReactionType;
   integrityDrive: number;
+  heldItem?: HeldItem;
+  mouthItem?: MouthItem;
+  recentConsumptions?: ConsumptionRecord[];
 };
 
 export type MuscleStats = {
@@ -346,7 +397,7 @@ export type PrimitiveAction =
 export type ActionType = PrimitiveAction["type"];
 
 export type AgentState = {
-  id: string;
+  id: AgentId;
   speciesId: string;
   name: string;
   generation: number;
@@ -374,6 +425,8 @@ export type AgentState = {
   inheritedMemoryFragments: SemanticBelief[];
   baselineConfig?: "A" | "B" | "C";
 };
+
+export type HostState = AgentState;
 
 // --- Memory Types ---
 
@@ -676,6 +729,79 @@ export type ParamSweep = {
 };
 
 // --- System Types ---
+
+export type PerceptualRefKind =
+  | "visible_entity"
+  | "audible_source"
+  | "olfactory_source"
+  | "tactile_contact"
+  | "held_item"
+  | "mouth_item"
+  | "self"
+  | "unknown";
+
+export type PerceptualRef = {
+  ref: string; // e.g. "foreground_0", "held_item", "warm_right_0"
+  kind: PerceptualRefKind;
+  operatorEntityId?: string;
+  operatorMaterialId?: string;
+  approximateDirection?: "front" | "left" | "right" | "behind" | "above" | "below";
+  salience: number;
+};
+
+export enum SensorSchemaVersion {
+  V1 = 1,
+}
+
+export enum SensorIndex {
+  VisualBand0 = 0,
+  VisualBand1 = 1,
+  VisualBand2 = 2,
+  VisualMotion = 3,
+
+  OlfactoryOrganic = 4,
+  OlfactoryThreat = 5,
+  OlfactoryDecay = 6,
+
+  AuditoryBand0 = 7,
+  AuditoryBand1 = 8,
+  AuditoryBand2 = 9,
+
+  AmbientThermalDeviation = 10,
+  RadiantHeat = 11,
+
+  VisceralContraction = 12,
+  OralDryness = 13,
+  ChestPressure = 14,
+  MuscleWeakness = 15,
+  CoreThermalStress = 16,
+
+  PainHead = 17,
+  PainTorso = 18,
+  PainLeftArm = 19,
+  PainRightArm = 20,
+  PainLeftLeg = 21,
+  PainRightLeg = 22,
+
+  CycleFlux = 23,
+  SocialIsolation = 24,
+
+  Taste0 = 25,
+  Taste1 = 26,
+  Taste2 = 27,
+  Taste3 = 28,
+  Taste4 = 29,
+}
+
+export const SENSOR_BUNDLE_LENGTH = 64 as const;
+
+export type RawSensorBundle = {
+  schemaVersion: SensorSchemaVersion;
+  agentId: AgentId;
+  tick: number;
+  readings: Float32Array;
+  perceptualRefs: PerceptualRef[];
+};
 
 export type QualiaFrame = {
   foreground: string[];

@@ -20,6 +20,8 @@ export enum EventType {
   ACTION_ATTEMPTED = "action_attempted",
   ACTION_SUCCEEDED = "action_succeeded",
   ACTION_FAILED = "action_failed",
+  SENSOR_THRESHOLD_CROSSED = "sensor_threshold_crossed",
+  REFLEX_FIRED = "reflex_fired",
   MOUTH_CONTACTED = "mouth_contacted",
   INGESTION_OCCURRED = "ingestion_occurred",
   TOXIN_EXPOSURE = "toxin_exposure",
@@ -67,6 +69,8 @@ export enum EventType {
   INTERVENTION_RESISTED = "intervention_resisted",
   GLASS_ROOM_ENTERED = "glass_room_entered",
   GLASS_ROOM_EXITED = "glass_room_exited",
+  VEIL_BREACH = "veil_breach",
+  IMPOSSIBLE_KNOWLEDGE_REJECTED = "impossible_knowledge_rejected",
   MERKLE_CHAIN_VERIFIED = "merkle_chain_verified",
 }
 

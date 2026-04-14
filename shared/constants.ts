@@ -98,3 +98,11 @@ export const CONFLICT_DAMAGE_MULTIPLIER = 5;
 export const CONFLICT_MIN_DEFENSE = 0.05;
 export const BIOMASS_INTEGRITY_FLUX = 0.4;
 export const BIOMASS_DECAY_TICKS = 60;
+
+// v5.2 migration guardrails
+export const LEGACY_SYMBOLIC_SURVIVAL_ACTIONS = [
+  "EAT",
+  "DRINK",
+  "FIND_FOOD",
+  "FIND_WATER",
+] as const;

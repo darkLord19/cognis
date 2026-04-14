@@ -68,12 +68,12 @@ export const System1 = {
     // 1. Latent Physiology Update
     const nextPhys = calculateNextPhysiology(body);
     const delta: BodyStateDelta = {
-      energy: nextPhys.energy,
+      energy: nextPhys.energyReserves,
       hydration: nextPhys.hydration,
       fatigue: nextPhys.fatigue,
       health: nextPhys.health,
       toxinLoad: nextPhys.toxinLoad,
-      inflammation: nextPhys.inflammation,
+      inflammation: nextPhys.immuneBurden,
     };
 
     if (delta.health === 0 && (body.health ?? 1) > 0) {

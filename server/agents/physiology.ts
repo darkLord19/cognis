@@ -47,6 +47,10 @@ export function calculateNextPhysiology(current: BodyState, tickDelta = 1): Phys
   const nextInflammation = Math.max(0, current.inflammation - 0.005 * tickDelta);
 
   return {
+    energyReserves: nextEnergy,
+    oxygenSaturation: current.oxygenation,
+    immuneBurden: nextInflammation,
+    actuationEnergyRecent: 0,
     energy: nextEnergy,
     hydration: nextHydration,
     toxinLoad: nextToxinLoad,
