@@ -543,7 +543,7 @@ export default function App() {
                   >
                     <span className="text-[11px] tracking-wide truncate">{agent.name}</span>
                     <span className="text-[9px] font-mono opacity-30 uppercase">
-                      {agent.currentAction}
+                      {agent.currentAction?.type || "NONE"}
                     </span>
                   </button>
                 ))}

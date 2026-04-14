@@ -1,5 +1,11 @@
 import type { SimEvent } from "../../shared/events";
-import type { EpisodicMemory, EpisodicMemoryRow, MemoryConfig } from "../../shared/types";
+import type {
+  BodyStateDelta,
+  EpisodicMemory,
+  EpisodicMemoryRow,
+  MemoryConfig,
+  PrimitiveAction,
+} from "../../shared/types";
 import { db } from "../persistence/database";
 import { MerkleLogger } from "../persistence/merkle-logger";
 
@@ -22,11 +28,14 @@ export const EpisodicStore = {
       suppressed: false,
       contextTags: [],
       source: "real",
+      actionTaken: event.payload.actionTaken as PrimitiveAction | undefined,
+      outcomeSummary: event.payload.outcomeSummary as string | undefined,
+      bodyShift: event.payload.bodyShift as BodyStateDelta | undefined,
     };
 
     db.db
       .query(
-        "INSERT INTO episodic_memories (id, agent_id, branch_id, tick, qualia_text, salience, emotional_valence, emotional_arousal, suppressed, source, context_tags) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO episodic_memories (id, agent_id, branch_id, tick, qualia_text, salience, emotional_valence, emotional_arousal, suppressed, source, context_tags, action_taken, outcome_summary, body_shift) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
       )
       .run(
         memory.id,
@@ -40,6 +49,9 @@ export const EpisodicStore = {
         memory.suppressed ? 1 : 0,
         memory.source,
         JSON.stringify(memory.contextTags),
+        memory.actionTaken ? JSON.stringify(memory.actionTaken) : null,
+        memory.outcomeSummary || null,
+        memory.bodyShift ? JSON.stringify(memory.bodyShift) : null,
       );
 
     return memory;
@@ -100,7 +112,7 @@ export const EpisodicStore = {
       )
       .all(agentId, branchId, k) as EpisodicMemoryRow[];
 
-    const memories = rows.map((r) => ({
+    const memories = rows.map((r: EpisodicMemoryRow) => ({
       id: r.id,
       tick: r.tick,
       qualiaText: r.qualia_text,
@@ -110,6 +122,9 @@ export const EpisodicStore = {
       suppressed: r.suppressed === 1,
       contextTags: JSON.parse(r.context_tags || "[]") as string[],
       source: r.source,
+      actionTaken: r.action_taken ? JSON.parse(r.action_taken) : undefined,
+      outcomeSummary: r.outcome_summary || undefined,
+      bodyShift: r.body_shift ? JSON.parse(r.body_shift) : undefined,
     }));
 
     // Apply suppression events (append-only pattern)
@@ -197,6 +212,9 @@ export const EpisodicStore = {
       suppressed: r.suppressed === 1,
       contextTags: JSON.parse(r.context_tags || "[]") as string[],
       source: r.source,
+      actionTaken: r.action_taken ? JSON.parse(r.action_taken) : undefined,
+      outcomeSummary: r.outcome_summary || undefined,
+      bodyShift: r.body_shift ? JSON.parse(r.body_shift) : undefined,
     }));
   },
 };

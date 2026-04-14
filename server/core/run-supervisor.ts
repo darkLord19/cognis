@@ -71,6 +71,7 @@ export class RunSupervisor {
     }
 
     runtime.clock.pause();
+    runtime.eventBus.flush();
     runtime.workerRuntime?.terminate();
     runtime.status = "stopped";
     RunStateStore.record(runId, "stopped", runtime.clock.getTick());
@@ -81,6 +82,7 @@ export class RunSupervisor {
   shutdownAll(): void {
     for (const runtime of this.runtimes.values()) {
       runtime.clock.pause();
+      runtime.eventBus.flush();
       runtime.workerRuntime?.terminate();
       runtime.status = "stopped";
       RunStateStore.record(runtime.runId, "stopped", runtime.clock.getTick());

@@ -250,13 +250,20 @@ export type BodyMap = {
   rightLeg: BodyPart;
 };
 
-export type BodyState = {
-  hunger: number;
-  thirst: number;
+export type PhysiologyState = {
+  energy: number;
+  hydration: number;
+  toxinLoad: number;
+  oxygenation: number;
   fatigue: number;
-  health: number;
-  bodyMap: BodyMap;
   coreTemperature: number;
+  inflammation: number;
+  painLoad: number;
+  health: number;
+};
+
+export type BodyState = PhysiologyState & {
+  bodyMap: BodyMap;
   arousal: number;
   valence: number;
   cycleHormone: number;
@@ -323,19 +330,20 @@ export type ConflictFlag = {
 
 export type ImmediateReactionType = "RECOIL" | "FLEE" | "COLLAPSE" | "NONE";
 
-export type ActionType =
-  | "IDLE"
-  | "MOVE"
-  | "WANDER"
-  | "REST"
-  | "FLEE"
-  | "STALK"
-  | "REPRODUCE"
-  | "EAT"
-  | "SLEEP"
-  | "BUILD"
-  | "COLLECT"
-  | "ATTACK";
+export type PrimitiveAction =
+  | { type: "TURN"; deltaYaw: number }
+  | { type: "MOVE"; forward: number }
+  | { type: "STOP" }
+  | { type: "REACH"; targetId: string }
+  | { type: "GRASP"; targetId: string }
+  | { type: "DROP"; targetId: string }
+  | { type: "MOUTH_CONTACT"; targetId: string }
+  | { type: "INGEST_ATTEMPT"; targetId: string }
+  | { type: "VOCALIZE"; token: string; intensity: number }
+  | { type: "REST" }
+  | { type: "DEFER" };
+
+export type ActionType = PrimitiveAction["type"];
 
 export type AgentState = {
   id: string;
@@ -346,7 +354,7 @@ export type AgentState = {
   position: Vec3;
   facing: Vec3;
   muscleStats: MuscleStats;
-  currentAction: ActionType;
+  currentAction?: PrimitiveAction | undefined;
   pendingSystem2: boolean;
   innerMonologue: string;
   selfNarrative: string;
@@ -369,6 +377,43 @@ export type AgentState = {
 
 // --- Memory Types ---
 
+export type ActionOutcomeRecord = {
+  contextSignature: string;
+  actionType: PrimitiveAction["type"];
+  targetSignature?: string;
+  deltaPain: number;
+  deltaHydration: number;
+  deltaEnergy: number;
+  deltaToxin: number;
+  deltaThreat: number;
+  success: boolean;
+  tick: number;
+};
+
+export type EpisodicMemorySource =
+  | "real"
+  | "dream_prophetic"
+  | "nightmare"
+  | "dream_healing"
+  | "dream_chaos";
+
+export type EpisodicMemoryRow = {
+  id: string;
+  agent_id: string;
+  branch_id: string;
+  tick: number;
+  qualia_text: string;
+  salience: number;
+  emotional_valence: number;
+  emotional_arousal: number;
+  suppressed: number;
+  source: EpisodicMemorySource;
+  context_tags: string;
+  action_taken?: string;
+  outcome_summary?: string;
+  body_shift?: string;
+};
+
 export type EpisodicMemory = {
   id: string;
   tick: number;
@@ -378,7 +423,10 @@ export type EpisodicMemory = {
   emotionalArousal: number;
   suppressed: boolean;
   contextTags: string[];
-  source: "real" | "dream_prophetic" | "nightmare" | "dream_healing" | "dream_chaos";
+  source: EpisodicMemorySource;
+  actionTaken?: PrimitiveAction | undefined;
+  outcomeSummary?: string | undefined;
+  bodyShift?: BodyStateDelta | undefined;
 };
 
 export type SemanticBelief = {
@@ -483,6 +531,7 @@ export type SpeciesConfig = {
     speed: number;
     strength: number;
     metabolism: number;
+    reachRange: number;
     lifespanTicks: number;
     reproductionAge: number;
     gestationTicks: number;
@@ -628,8 +677,19 @@ export type ParamSweep = {
 
 // --- System Types ---
 
+export type QualiaFrame = {
+  foreground: string[];
+  body: string[];
+  peripheral: string[];
+  social: string[];
+  urges: string[];
+  atmosphere: string[];
+};
+
 export type System2Output = {
   innerMonologue: string;
+  intention: string;
+  reflection: string;
   decision: ActionDecision;
   utterance?: string;
   memoryInstruction?: MemoryInstruction;
@@ -647,10 +707,7 @@ export type TheoryOfMindEntry = {
   confidence: number;
 };
 
-export type ActionDecision = {
-  type: ActionType;
-  targetId?: string;
-  position?: Vec3;
+export type ActionDecision = PrimitiveAction & {
   params?: Record<string, unknown>;
 };
 
@@ -799,13 +856,6 @@ export type BodyStateDelta = Partial<BodyState> & {
   biomassConsumed?: number;
 };
 
-export type EpisodicMemorySource =
-  | "real"
-  | "dream_prophetic"
-  | "nightmare"
-  | "dream_healing"
-  | "dream_chaos";
-
 export type AuditLogEntry = {
   id: number;
   tick: number;
@@ -820,18 +870,6 @@ export type AuditLogEntry = {
   suppressed: number;
   previous_hash: string;
   entry_hash: string;
-};
-
-export type EpisodicMemoryRow = {
-  id: string;
-  tick: number;
-  qualia_text: string;
-  salience: number;
-  emotional_valence: number;
-  emotional_arousal: number;
-  suppressed: number;
-  source: EpisodicMemorySource;
-  context_tags: string;
 };
 
 export type SemanticBeliefRow = {

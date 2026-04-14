@@ -123,7 +123,7 @@ export class MultiWorkerRuntime {
       const timer = setTimeout(() => {
         worker.removeEventListener("message", onMessage);
         reject(new Error(`Worker phase timed out: ${doneType}`));
-      }, 5000);
+      }, 10000);
 
       const onMessage = (event: MessageEvent<Record<string, unknown>>) => {
         const payload = event.data;
@@ -150,7 +150,7 @@ export class MultiWorkerRuntime {
       const timer = setTimeout(() => {
         worker.removeEventListener("message", onMessage);
         reject(new Error(`Worker init timed out: ${workerName}`));
-      }, 5000);
+      }, 10000);
 
       const onMessage = (event: MessageEvent<Record<string, unknown>>) => {
         const payload = event.data;

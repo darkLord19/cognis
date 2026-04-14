@@ -11,24 +11,24 @@ function distanceBetween(a: AgentState["position"], b: AgentState["position"]): 
 export const BehaviorTree = {
   tick(agent: AgentState, percept?: FilteredPercept): ActionDecision {
     if (agent.speciesId === "wolf") {
-      const hunger = agent.body.hunger ?? 0;
+      const energy = agent.body.energy ?? 1;
       const health = agent.body.health ?? 1;
       const fatigue = agent.body.fatigue ?? 0;
 
       if (health < 0.2) {
-        return { type: "FLEE", params: { direction: "away_from_threat" } };
+        return { type: "TURN", deltaYaw: 3.14 }; // Turn away
       }
 
       if (fatigue > 0.85) {
-        return { type: "REST", params: { duration: 30 } };
+        return { type: "REST" };
       }
 
       const adjacentFood = percept?.focusedVoxels?.find((v) => v.material === "food");
-      if (adjacentFood && hunger > 0.3) {
-        return { type: "EAT", params: { target: adjacentFood } };
+      if (adjacentFood && energy < 0.7) {
+        return { type: "INGEST_ATTEMPT", targetId: "adjacent_food" };
       }
 
-      if (hunger > 0.5) {
+      if (energy < 0.5) {
         const nearestPrey = (percept?.primaryAttention ?? [])
           .filter((other) => other.speciesId !== "wolf")
           .sort(
@@ -40,28 +40,22 @@ export const BehaviorTree = {
         if (nearestPrey) {
           const distance = distanceBetween(agent.position, nearestPrey.position);
           if (distance < 3) {
-            return { type: "ATTACK", targetId: nearestPrey.id };
+            return { type: "INGEST_ATTEMPT", targetId: nearestPrey.id };
           }
-          if (distance < 15) {
-            return { type: "STALK", targetId: nearestPrey.id };
-          }
-          return {
-            type: "MOVE",
-            params: { goal: "hunt", toward: nearestPrey.position },
-          };
+          return { type: "MOVE", forward: 1.0 };
         }
 
-        return { type: "WANDER", params: { radius: 20, bias: "toward_open_terrain" } };
+        return { type: "MOVE", forward: 0.5 };
       }
 
-      return { type: "WANDER", params: { radius: 10 } };
+      return { type: "TURN", deltaYaw: 0.5 };
     }
 
     if (agent.speciesId === "deer") {
       if (agent.body.integrityDrive > 0.5) {
-        return { type: "MOVE", params: { goal: "flee" } };
+        return { type: "MOVE", forward: 1.0 };
       }
     }
-    return { type: "IDLE" };
+    return { type: "DEFER" };
   },
 };

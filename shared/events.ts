@@ -17,6 +17,18 @@ export enum EventType {
   AGENT_WOKE = "agent_woke",
   VOCAL_ACTUATION = "vocal_actuation",
 
+  ACTION_ATTEMPTED = "action_attempted",
+  ACTION_SUCCEEDED = "action_succeeded",
+  ACTION_FAILED = "action_failed",
+  MOUTH_CONTACTED = "mouth_contacted",
+  INGESTION_OCCURRED = "ingestion_occurred",
+  TOXIN_EXPOSURE = "toxin_exposure",
+  HYDRATION_IMPROVED = "hydration_improved",
+  ENERGY_IMPROVED = "energy_improved",
+  PAIN_AVOIDANCE_LEARNED = "pain_avoidance_learned",
+  AFFORDANCE_CONFIDENCE_CHANGED = "affordance_confidence_changed",
+  PROCEDURAL_PATTERN_FORMED = "procedural_pattern_formed",
+
   SYSTEM2_THOUGHT = "system2_thought",
   DECISION_MADE = "decision_made",
   INNER_CONFLICT = "inner_conflict",

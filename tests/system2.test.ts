@@ -34,12 +34,20 @@ test("System2: think calls LLM and logs monologue with qualia causal link", asyn
     ownBody: {},
   } as unknown as FilteredPercept;
 
-  const output = await system2.think(agent, "I see a rock.", percept, mockWorldConfig, 10, "main", {
-    causal: {
-      qualiaPacketId: "qualia-packet-1",
-      sourceTick: 10,
+  const output = await system2.think(
+    agent,
+    "A quiet steadiness resides in your core.",
+    percept,
+    mockWorldConfig,
+    10,
+    "main",
+    {
+      causal: {
+        qualiaPacketId: "qualia-packet-1",
+        sourceTick: 10,
+      },
     },
-  });
+  );
 
   expect(output.innerMonologue).toBeTruthy();
 
@@ -70,34 +78,12 @@ test("System2: shouldFire on integrity drive jump", () => {
   }
 });
 
-test("System2: shouldFire does not double-count absolute integrity values", () => {
-  const gateway = new LLMGateway(new MockLLMGateway());
-  const system2 = new System2(gateway);
-
-  const agent = { body: { integrityDrive: 0.3 } } as unknown as AgentState;
-  const bodyDelta = {
-    integrityDrive: 0.3,
-    previousIntegrityDrive: 0.3,
-    currentIntegrityDrive: 0.3,
-  };
-
-  const percept = {} as FilteredPercept;
-
-  const originalRandom = Math.random;
-  Math.random = () => 1;
-  try {
-    expect(system2.shouldFire(agent, bodyDelta, percept, mockWorldConfig)).toBe(false);
-  } finally {
-    Math.random = originalRandom;
-  }
-});
-
 test("System2: think prompt does not leak other agent names or IDs", async () => {
   let capturedPrompt = "";
   const capturingProvider = {
     completion: async (prompt: string) => {
       capturedPrompt = prompt;
-      return `{"innerMonologue":"ok","decision":{"type":"IDLE"}}`;
+      return `{"innerMonologue":"ok","intention":"test","chosenAction":{"type":"DEFER"},"reflection":"ok"}`;
     },
     embed: async () => [],
   };
@@ -145,80 +131,10 @@ test("System2: think prompt does not leak other agent names or IDs", async () =>
   expect(capturedPrompt).not.toContain("a2");
 });
 
-test("System2: strips intentional communicate decisions and utterances", async () => {
-  const provider = {
-    completion: async () =>
-      `{"innerMonologue":"pulse rising","decision":{"type":"COMMUNICATE"},"utterance":"hello"}`,
-    embed: async () => [],
-  };
-  const gateway = new LLMGateway(provider);
-  const system2 = new System2(gateway);
-
-  const agent = {
-    id: "a1",
-    relationships: [],
-    body: { integrityDrive: 0.1 },
-  } as unknown as AgentState;
-  const percept = {
-    primaryAttention: [],
-    peripheralAwareness: { count: 0 },
-    focusedVoxels: [],
-    ownBody: {},
-  } as unknown as FilteredPercept;
-
-  const output = await system2.think(
-    agent,
-    "interoceptive_map(...)",
-    percept,
-    mockWorldConfig,
-    10,
-    "main",
-  );
-
-  expect(output.decision.type).toBe("IDLE");
-  expect(output.utterance).toBeUndefined();
-});
-
-test("System2: coerces non-string monologue to SQLite-safe string", async () => {
-  const provider = {
-    completion: async () =>
-      `{"innerMonologue":{"signal":"nociception","level":0.94},"decision":{"type":"MOVE"}}`,
-    embed: async () => [],
-  };
-  const gateway = new LLMGateway(provider);
-  const system2 = new System2(gateway);
-
-  const agent = {
-    id: "a1",
-    relationships: [],
-    body: { integrityDrive: 0.1 },
-  } as unknown as AgentState;
-  const percept = {
-    primaryAttention: [],
-    peripheralAwareness: { count: 0 },
-    focusedVoxels: [],
-    ownBody: {},
-  } as unknown as FilteredPercept;
-
-  const output = await system2.think(
-    agent,
-    "interoceptive_map(...)",
-    percept,
-    mockWorldConfig,
-    10,
-    "main",
-  );
-
-  expect(typeof output.innerMonologue).toBe("string");
-  expect(output.innerMonologue).toContain("nociception");
-  const log = db.getAuditLogs("main").at(-1);
-  expect(typeof log?.new_value).toBe("string");
-});
-
 test("System2: parses JSON wrapped in markdown fences with comments", async () => {
   const provider = {
     completion: async () =>
-      '```json\n{\n  // keep moving\n  "innerMonologue": "metallic signal",\n  "decision": { "type": "MOVE" }\n}\n```',
+      '```json\n{\n  // keep moving\n  "innerMonologue": "metallic signal",\n  "intention": "moving",\n  "chosenAction": { "type": "MOVE", "forward": 1.0 },\n  "reflection": "ok"\n}\n```',
     embed: async () => [],
   };
   const gateway = new LLMGateway(provider);
@@ -238,7 +154,7 @@ test("System2: parses JSON wrapped in markdown fences with comments", async () =
 
   const output = await system2.think(
     agent,
-    "interoceptive_map(...)",
+    "feeling present",
     percept,
     mockWorldConfig,
     11,

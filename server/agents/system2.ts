@@ -4,7 +4,6 @@ import {
   URGENCY_THRESHOLD,
 } from "../../shared/constants";
 import type {
-  ActionType,
   AgentState,
   FilteredPercept,
   SpeciesConfig,
@@ -14,92 +13,10 @@ import type {
 import type { LLMGateway } from "../llm/gateway";
 import { MerkleLogger } from "../persistence/merkle-logger";
 import type { SpeciesRegistry } from "../species/registry";
+import { validateImpossibleKnowledge } from "./impossible-knowledge-check";
+import { buildSystemPrompt } from "./prompt-contract";
 import { resolveAgentReference } from "./qualia-processor";
-
-const ALLOWED_ACTIONS = new Set<ActionType>([
-  "IDLE",
-  "MOVE",
-  "WANDER",
-  "REST",
-  "FLEE",
-  "STALK",
-  "REPRODUCE",
-  "EAT",
-  "SLEEP",
-  "BUILD",
-  "COLLECT",
-  "ATTACK",
-]);
-
-function normalizeMonologue(value: unknown): string {
-  if (typeof value === "string" && value.length > 0) {
-    return value;
-  }
-  if (typeof value === "number" || typeof value === "boolean" || typeof value === "bigint") {
-    return String(value);
-  }
-  if (value === null || value === undefined) {
-    return "I am confused.";
-  }
-
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return "I am confused.";
-  }
-}
-
-function normalizeDecision(value: unknown): System2Output["decision"] {
-  if (!value || typeof value !== "object") {
-    return { type: "IDLE" };
-  }
-
-  const record = value as Record<string, unknown>;
-  const rawType = typeof record.type === "string" ? record.type : "IDLE";
-  const type =
-    rawType === "COMMUNICATE"
-      ? "IDLE"
-      : ALLOWED_ACTIONS.has(rawType as ActionType)
-        ? rawType
-        : "IDLE";
-  const decision: System2Output["decision"] = { type: type as ActionType };
-
-  if (typeof record.targetId === "string") {
-    decision.targetId = record.targetId;
-  }
-
-  if (record.position && typeof record.position === "object") {
-    const position = record.position as Record<string, unknown>;
-    if (
-      typeof position.x === "number" &&
-      typeof position.y === "number" &&
-      typeof position.z === "number"
-    ) {
-      decision.position = {
-        x: position.x,
-        y: position.y,
-        z: position.z,
-      };
-    }
-  }
-
-  if (record.params && typeof record.params === "object" && !Array.isArray(record.params)) {
-    decision.params = record.params as Record<string, unknown>;
-  }
-
-  return decision;
-}
-
-function extractJsonObject(rawResponse: string): string {
-  const codeFenceMatch = rawResponse.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const candidate = codeFenceMatch?.[1] ?? rawResponse;
-  const jsonMatch = candidate.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("No JSON found");
-  }
-
-  return jsonMatch[0].replace(/\/\/.*$/gm, "");
-}
+import { parseSystem2Output } from "./system2-parser";
 
 export class System2 {
   constructor(
@@ -153,17 +70,8 @@ export class System2 {
     if (filteredPercept.primaryAttention.length > 0) {
       tomContext = "\nOthers in your immediate attention:\n";
       for (const other of filteredPercept.primaryAttention) {
-        const rel = agent.relationships.find((r) => r.targetAgentId === other.id);
+        const _rel = agent.relationships.find((r) => r.targetAgentId === other.id);
         const reference = resolveAgentReference(other.id, agent);
-
-        // Include behavioural patterns from relationship history
-        let behaviourNote = "";
-        if (rel && rel.significantEvents.length > 0) {
-          const lastEvent = rel.significantEvents[rel.significantEvents.length - 1];
-          if (lastEvent) {
-            behaviourNote = ` You recall a past encounter with them.`;
-          }
-        }
 
         // Include emotional field impressions
         const emotionNote =
@@ -175,7 +83,7 @@ export class System2 {
                 ? " They seem distressed."
                 : " Their state is unclear.";
 
-        tomContext += `- ${reference}.${emotionNote}${behaviourNote}\n`;
+        tomContext += `- ${reference}.${emotionNote}\n`;
       }
     }
 
@@ -223,6 +131,7 @@ export class System2 {
         speed: 1,
         strength: 1,
         metabolism: 1,
+        reachRange: 2,
         lifespanTicks: 1000,
         reproductionAge: 100,
         gestationTicks: 50,
@@ -235,44 +144,32 @@ export class System2 {
       },
     }) as SpeciesConfig;
 
-    const systemPrompt = this.gateway.systemPromptForAgent(agent, species, config.semanticMasking);
-    const fullPrompt = `${urgencyPrefix}${qualiaText}${tomContext}\n\nRespond in JSON format: { "innerMonologue": "...", "decision": { "type": "...", "targetId": "..." }, "theoriesAboutOthers": [] }. Use sensory vectors and actuator language; do not output speech acts.`;
+    const systemPrompt = buildSystemPrompt(agent, species, config.semanticMasking);
+    const fullPrompt = `${urgencyPrefix}${qualiaText}${tomContext}\n\nDecision Required.`;
 
     const rawResponse = await this.gateway.complete(agent.id, fullPrompt, systemPrompt);
 
-    try {
-      const jsonStr = extractJsonObject(rawResponse);
-      const parsed = JSON.parse(jsonStr) as Partial<System2Output>;
-      const output = {
-        ...parsed,
-        innerMonologue: normalizeMonologue(parsed.innerMonologue),
-        decision: normalizeDecision(parsed.decision),
-      } as System2Output;
-      if ("utterance" in output) {
-        delete output.utterance;
-      }
+    const output = parseSystem2Output(rawResponse);
 
-      MerkleLogger.log(
-        tick,
-        branchId,
-        agent.id,
-        "System2",
-        "innerMonologue",
-        null,
-        output.innerMonologue,
-        options?.causal?.qualiaPacketId ?? null,
-        options?.causal
-          ? `qualia_packet=${options.causal.qualiaPacketId};source_tick=${options.causal.sourceTick}`
-          : null,
-      );
-
-      return output;
-    } catch (e) {
-      console.error("Failed to parse System2 output:", e);
-      return {
-        innerMonologue: "I am confused.",
-        decision: { type: "IDLE" },
-      };
+    // Validate against impossible knowledge
+    if (!validateImpossibleKnowledge(agent, output, filteredPercept)) {
+      output.decision = { type: "DEFER" };
     }
+
+    MerkleLogger.log(
+      tick,
+      branchId,
+      agent.id,
+      "System2",
+      "innerMonologue",
+      null,
+      output.innerMonologue,
+      options?.causal?.qualiaPacketId ?? null,
+      options?.causal
+        ? `qualia_packet=${options.causal.qualiaPacketId};source_tick=${options.causal.sourceTick}`
+        : null,
+    );
+
+    return output;
   }
 }

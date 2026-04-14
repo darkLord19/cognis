@@ -2,24 +2,18 @@ import {
   ALARM_AROUSAL_THRESHOLD,
   ALARM_VALENCE_THRESHOLD,
   AMBIENT_TEMPERATURE,
-  BASE_FATIGUE_RATE,
   BIOMASS_INTEGRITY_FLUX,
   BODY_TEMP_CONVERGENCE_RATE,
   COLLAPSE_HEALTH_THRESHOLD,
   CONFLICT_MIN_DEFENSE,
   CYCLE_HORMONE_INERTIA,
   CYCLE_HORMONE_REACTIVITY,
-  FATIGUE_HORMONE_MULTIPLIER,
   FLEE_THRESHOLD,
-  HUNGER_RATE,
   PAIN_DECAY_RATE,
   PAIN_VOCAL_THRESHOLD,
   PLEASURE_AROUSAL_THRESHOLD,
   PLEASURE_VALENCE_THRESHOLD,
   RECOIL_PAIN_THRESHOLD,
-  STARVATION_DAMAGE_RATE,
-  STARVATION_HUNGER_THRESHOLD,
-  THIRST_RATE,
 } from "../../shared/constants";
 import type {
   AgentState,
@@ -32,6 +26,7 @@ import type {
   VocalActuation,
   WorldConfig,
 } from "../../shared/types";
+import { calculateNextPhysiology } from "./physiology";
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
@@ -69,30 +64,26 @@ export const System1 = {
     },
   ): BodyStateDelta {
     const body = agent.body;
-    const delta: BodyStateDelta = {};
 
-    // 1. Homeostasis
-    delta.hunger = clamp01((body.hunger || 0) + HUNGER_RATE);
-    delta.thirst = clamp01((body.thirst || 0) + THIRST_RATE);
+    // 1. Latent Physiology Update
+    const nextPhys = calculateNextPhysiology(body);
+    const delta: BodyStateDelta = {
+      energy: nextPhys.energy,
+      hydration: nextPhys.hydration,
+      fatigue: nextPhys.fatigue,
+      health: nextPhys.health,
+      toxinLoad: nextPhys.toxinLoad,
+      inflammation: nextPhys.inflammation,
+    };
 
-    const healthScale = getHealthScale(body.health);
-    const currentHealth = Math.max(0, body.health ?? healthScale);
-    if ((delta.hunger ?? body.hunger ?? 0) > STARVATION_HUNGER_THRESHOLD) {
-      delta.health = Math.max(0, currentHealth - STARVATION_DAMAGE_RATE * healthScale);
-      if (delta.health <= 0 && currentHealth > 0) {
-        delta.shouldDie = true;
-      }
+    if (delta.health === 0 && (body.health ?? 1) > 0) {
+      delta.shouldDie = true;
     }
 
     // 2. Circadian integration
-    const hormoneTarget = circadianState.cycleHormoneValue;
+    const hormoneTarget = circadianState.lightLevel < 0.3 ? 1.0 : 0.0; // Simple inverse for now
     delta.cycleHormone =
       (body.cycleHormone || 0) * CYCLE_HORMONE_INERTIA + hormoneTarget * CYCLE_HORMONE_REACTIVITY;
-
-    // Fatigue accumulates faster when hormone is high
-    const fatigueRate =
-      BASE_FATIGUE_RATE * (1 + (delta.cycleHormone ?? 0) * FATIGUE_HORMONE_MULTIPLIER);
-    delta.fatigue = clamp01((body.fatigue || 0) + fatigueRate);
 
     // 3. Body schema
     const newBodyMap = { ...body.bodyMap };
@@ -110,8 +101,7 @@ export const System1 = {
 
     // 4. IntegrityDrive (ω)
     const omega = worldConfig.freeWill.survivalDriveWeight;
-    const effectiveHealth = delta.health ?? currentHealth;
-    const healthDeficit = clamp01(1 - effectiveHealth / healthScale);
+    const healthDeficit = clamp01(1 - (delta.health ?? body.health ?? 1));
     const temperatureStress = clamp01(
       Math.max(
         Math.abs((body.coreTemperature ?? AMBIENT_TEMPERATURE) - AMBIENT_TEMPERATURE),
@@ -119,21 +109,26 @@ export const System1 = {
       ) / 20,
     );
     const fatigueStress = clamp01(delta.fatigue ?? body.fatigue ?? 0);
-    const thirstStress = clamp01(delta.thirst ?? body.thirst ?? 0);
-    const threat = clamp01((healthDeficit + temperatureStress + fatigueStress + thirstStress) / 4);
-    let integrityDrive = omega * clamp01((delta.hunger || 0) + maxPain + threat);
+    const hydrationStress = clamp01(1 - (delta.hydration ?? body.hydration ?? 1));
+    const energyStress = clamp01(1 - (delta.energy ?? body.energy ?? 1));
+
+    const threat = clamp01(
+      (healthDeficit + temperatureStress + fatigueStress + hydrationStress) / 4,
+    );
+    let integrityDrive = omega * clamp01(energyStress + maxPain + threat);
 
     const canConsumeBiomass =
       context?.localMaterial === "biomass" &&
-      (agent.currentAction === "EAT" ||
-        agent.currentAction === "COLLECT" ||
-        agent.currentAction === "ATTACK");
+      (agent.currentAction?.type === "INGEST_ATTEMPT" ||
+        agent.currentAction?.type === "MOUTH_CONTACT");
+
     if (canConsumeBiomass) {
       const available = Math.max(0, context?.biomassAvailable ?? 0);
       const consumed = Math.min(BIOMASS_INTEGRITY_FLUX, available);
       if (consumed > 0) {
         delta.biomassConsumed = consumed;
         integrityDrive = Math.max(0, integrityDrive - consumed);
+        delta.energy = clamp01((delta.energy ?? body.energy) + consumed);
       }
     }
 

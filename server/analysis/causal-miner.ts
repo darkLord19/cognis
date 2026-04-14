@@ -18,6 +18,15 @@ const successorMap: Map<EventType, EventType[]> = new Map([
   [EventType.DEATH_CONCEPT_DISCOVERED, [EventType.TECH_DISCOVERED]],
   [EventType.BRANCH_CREATED, [EventType.BASELINE_DIVERGENCE_FOUND]],
   [EventType.INTERVENTION_APPLIED, [EventType.INTERVENTION_RESISTED]],
+  [EventType.ACTION_ATTEMPTED, [EventType.ACTION_SUCCEEDED, EventType.ACTION_FAILED]],
+  [EventType.MOUTH_CONTACTED, [EventType.INGESTION_OCCURRED]],
+  [
+    EventType.INGESTION_OCCURRED,
+    [EventType.ENERGY_IMPROVED, EventType.HYDRATION_IMPROVED, EventType.TOXIN_EXPOSURE],
+  ],
+  [EventType.ENERGY_IMPROVED, [EventType.AFFORDANCE_CONFIDENCE_CHANGED]],
+  [EventType.HYDRATION_IMPROVED, [EventType.AFFORDANCE_CONFIDENCE_CHANGED]],
+  [EventType.PAIN_AVOIDANCE_LEARNED, [EventType.PROCEDURAL_PATTERN_FORMED]],
 ]);
 
 function extractEvents(branchIdOrEvents: string | SimEvent[]): SimEvent[] {

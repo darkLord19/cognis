@@ -84,10 +84,13 @@ test("RunService rejects configs with deprecated schema fields", () => {
 });
 
 test("RunService persists emitted events to the events table", async () => {
-  const created = service.createRun({ config: "earth-default", seed: 7777 });
+  const baseConfig = JSON.parse(readFileSync("./data/world-configs/earth-default.json", "utf8"));
+  baseConfig.time = { ...baseConfig.time, multiWorkerEnabled: false };
+
+  const created = service.createRun({ inlineConfig: baseConfig, seed: 7777 });
   service.startRun(created.id);
 
-  await new Promise((resolve) => setTimeout(resolve, 250));
+  await new Promise((resolve) => setTimeout(resolve, 500));
   service.stopRun(created.id);
 
   const count = db.db

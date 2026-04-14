@@ -19,9 +19,9 @@ function maxPain(agent: AgentState): number {
 function threatLoad(agent: AgentState): number {
   const healthScale = (agent.body.health ?? 1) > 1 ? 100 : 1;
   const healthDeficit = Math.max(0, 1 - (agent.body.health ?? healthScale) / healthScale);
-  const thirst = Math.max(0, Math.min(1, agent.body.thirst ?? 0));
+  const hydrationStress = Math.max(0, 1 - (agent.body.hydration ?? 1));
   const fatigue = Math.max(0, Math.min(1, agent.body.fatigue ?? 0));
-  return Math.max(0, Math.min(1, (healthDeficit + thirst + fatigue) / 3));
+  return Math.max(0, Math.min(1, (healthDeficit + hydrationStress + fatigue) / 3));
 }
 
 export class SharedAgentState {
@@ -64,7 +64,8 @@ export class SharedAgentState {
       this.positions[p + 2] = agent.position.z;
 
       const b = index * BODY_STRIDE;
-      this.body[b] = agent.body.hunger ?? 0;
+      const energyStress = Math.max(0, 1 - (agent.body.energy ?? 1));
+      this.body[b] = energyStress;
       this.body[b + 1] = maxPain(agent);
       this.body[b + 2] = threatLoad(agent);
       this.body[b + 3] = agent.body.integrityDrive ?? 0;

@@ -1,6 +1,6 @@
+import type { EventBus } from "../../server/core/event-bus";
 import { EventType } from "../../shared/events";
 import type { AgentState, VoxelMarking } from "../../shared/types";
-import type { EventBus } from "../core/event-bus";
 import type { VoxelGrid } from "./voxel-grid";
 
 export type DiscoveredMarking = {

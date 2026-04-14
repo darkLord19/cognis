@@ -420,7 +420,7 @@ export function createManagementApiHandler(deps: ApiDependencies) {
         return jsonResponse({ error: "Runtime or agent not found" }, 404);
       }
 
-      agent.currentAction = "SLEEP";
+      agent.currentAction = { type: "REST" };
       const session = deps.glassRoomManager.enterGlassRoom(runId, agentId, runtime.clock.getTick());
       runtime.eventBus.emit({
         event_id: crypto.randomUUID(),

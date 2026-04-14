@@ -68,8 +68,8 @@ test("bootstrapSimulation: initializes non-zero baseline body state", () => {
 
   const [agent] = bootstrapSimulation(config, deps).agents;
   expect(agent).toBeDefined();
-  expect(agent?.body.hunger).toBeGreaterThan(0);
-  expect(agent?.body.thirst).toBeGreaterThan(0);
+  expect(agent?.body.energy).toBeLessThan(1);
+  expect(agent?.body.hydration).toBeLessThan(1);
   expect(agent?.body.fatigue).toBeGreaterThan(0);
   expect(agent?.body.health).toBe(1);
   expect(agent?.body.coreTemperature).toBe(18);

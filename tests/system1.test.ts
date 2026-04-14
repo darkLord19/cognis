@@ -15,17 +15,22 @@ const createAgent = (id: string, pain: number): AgentState => {
   return {
     id,
     body: {
-      hunger: 0.1,
-      thirst: 0.1,
+      energy: 0.9,
+      hydration: 0.9,
       fatigue: 0.1,
+      health: 1.0,
+      toxinLoad: 0,
+      inflammation: 0,
+      painLoad: 0,
+      coreTemperature: 15,
       cycleHormone: 0.5,
       bodyMap: {
-        head: { pain, damage: 0, temperature: 15 },
-        torso: { pain: 0, damage: 0, temperature: 15 },
-        leftArm: { pain: 0, damage: 0, temperature: 15 },
-        rightArm: { pain: 0, damage: 0, temperature: 15 },
-        leftLeg: { pain: 0, damage: 0, temperature: 15 },
-        rightLeg: { pain: 0, damage: 0, temperature: 15 },
+        head: { pain, damage: 0, temperature: 15, label: "head" },
+        torso: { pain: 0, damage: 0, temperature: 15, label: "torso" },
+        leftArm: { pain: 0, damage: 0, temperature: 15, label: "leftArm" },
+        rightArm: { pain: 0, damage: 0, temperature: 15, label: "rightArm" },
+        leftLeg: { pain: 0, damage: 0, temperature: 15, label: "leftLeg" },
+        rightLeg: { pain: 0, damage: 0, temperature: 15, label: "rightLeg" },
       },
     },
     muscleStats: { strength: 0.5, speed: 0.5, endurance: 0.5 },
@@ -36,8 +41,8 @@ test("System1: tick updates homeostasis and integrity drive", () => {
   const agent = createAgent("a1", 0.5);
   const delta = System1.tick(agent, mockCircadian, mockWorldConfig);
 
-  expect(delta.hunger).toBeGreaterThan(0.1);
-  expect(delta.cycleHormone).toBeGreaterThan(0.5); // should move toward 0.8
+  expect(delta.energy).toBeLessThan(0.9);
+  expect(delta.cycleHormone).toBeGreaterThan(0.5); // should move toward 1.0 because light is low
   expect(delta.integrityDrive).toBeGreaterThan(0);
 });
 
@@ -63,7 +68,7 @@ test("System1: conflict outcome based on muscle stats", () => {
 
 test("System1: starvation drains health and marks death when health reaches zero", () => {
   const agent = createAgent("a1", 0);
-  agent.body.hunger = 0.95;
+  agent.body.energy = 0.01; // starving
   agent.body.health = 0.002;
 
   const delta = System1.tick(agent, mockCircadian, mockWorldConfig);
@@ -72,10 +77,10 @@ test("System1: starvation drains health and marks death when health reaches zero
   expect(delta.shouldDie).toBe(true);
 });
 
-test("System1: integrity drive follows omega * (hunger + pain + threat)", () => {
+test("System1: integrity drive follows omega * (energyStress + pain + threat)", () => {
   const baseAgent = createAgent("a1", 0.4);
-  baseAgent.body.hunger = 0.5;
-  baseAgent.body.thirst = 0.3;
+  baseAgent.body.energy = 0.5;
+  baseAgent.body.hydration = 0.7;
   baseAgent.body.health = 0.7;
   baseAgent.body.coreTemperature = 5;
 
@@ -111,8 +116,8 @@ test("System1: conflict outcome follows strength over defender speed+endurance",
 
 test("System1: consuming biomass reduces integrity pressure", () => {
   const agent = createAgent("a1", 0.2);
-  agent.body.hunger = 0.9;
-  agent.currentAction = "EAT";
+  agent.body.energy = 0.1;
+  agent.currentAction = { type: "INGEST_ATTEMPT", targetId: "target" };
 
   const withoutBiomass =
     System1.tick(structuredClone(agent), mockCircadian, mockWorldConfig).integrityDrive ?? 0;

@@ -6,8 +6,13 @@ import {
 } from "../../shared/constants";
 import type { SimEvent } from "../../shared/events";
 import { EventType } from "../../shared/events";
-import type { AgentState, VocalActuation, WorldConfig } from "../../shared/types";
+import type { AgentState, PrimitiveAction, VocalActuation, WorldConfig } from "../../shared/types";
+import { ActionExecutor } from "../agents/action-executor";
+import { PRIMITIVE_ACTIONS } from "../agents/action-grammar";
+import { ActionOutcomeMemory } from "../agents/action-outcome-memory";
+import { AffordanceLearner } from "../agents/affordance-learner";
 import { AttentionFilter } from "../agents/attention-filter";
+import { ProceduralPolicy } from "../agents/procedural-policy";
 import { QualiaProcessor } from "../agents/qualia-processor";
 import { System1 } from "../agents/system1";
 import type { System2 } from "../agents/system2";
@@ -25,6 +30,7 @@ import { MerkleLogger } from "../persistence/merkle-logger";
 import { CircadianEngine } from "../world/circadian-engine";
 import { DeltaStream } from "../world/delta-stream";
 import { ElementEngine } from "../world/element-engine";
+import { IngestionSystem } from "../world/ingestion";
 import type { PhysicsEngine } from "../world/physics-engine";
 import { SpatialIndex } from "../world/spatial-index";
 import { TechTree } from "../world/tech-tree";
@@ -47,8 +53,18 @@ export class Orchestrator {
   private spatialIndex: SpatialIndex = new SpatialIndex();
   private techTree: TechTree;
   private system2: System2;
+  private actionExecutor: ActionExecutor;
+  private ingestionSystem: IngestionSystem;
+  private agentLearning = new Map<
+    string,
+    {
+      memory: ActionOutcomeMemory;
+      learner: AffordanceLearner;
+      policy: ProceduralPolicy;
+    }
+  >();
+
   private vocalActuations: VocalActuation[] = [];
-  private recentDecisions = new Map<string, string[]>();
   private emergenceDetector = new EmergenceDetector();
   private recentEventsWindow: SimEvent[] = [];
 
@@ -65,82 +81,33 @@ export class Orchestrator {
   ) {
     this.techTree = new TechTree(eventBus);
     this.system2 = system2;
+    this.actionExecutor = new ActionExecutor(eventBus);
+    this.ingestionSystem = new IngestionSystem(eventBus);
   }
 
   public addAgent(agent: AgentState): void {
     this.agents.push(agent);
+
+    // Initialize learning layer for this agent
+    const memory = new ActionOutcomeMemory();
+    const learner = new AffordanceLearner(memory);
+    const policy = new ProceduralPolicy(learner);
+    this.agentLearning.set(agent.id, { memory, learner, policy });
+
     this.spatialIndex.rebuildIndex(this.agents);
   }
 
-  private applyDecision(
-    agent: AgentState,
-    decision: { type: string; position: AgentState["position"] | undefined },
-  ): boolean {
-    agent.currentAction = decision.type as AgentState["currentAction"];
-
-    if (decision.type === "MOVE" && decision.position) {
-      agent.position = { ...decision.position };
-      return true;
-    }
-
-    if (decision.type === "MOVE") {
-      const goal = typeof agent.currentAction === "string" ? agent.currentAction : "MOVE";
-      const deltaX = goal === "MOVE" && agent.speciesId === "deer" ? -1 : 1;
-      agent.position = {
-        x: agent.position.x + deltaX,
-        y: agent.position.y,
-        z: agent.position.z,
-      };
-      return true;
-    }
-
-    return false;
-  }
-
-  private checkDecisionLoop(
-    agentId: string,
-    decision: { type: string; params?: unknown },
-  ): boolean {
-    const history = this.recentDecisions.get(agentId) ?? [];
-    const decisionStr = JSON.stringify(decision);
-    history.push(decisionStr);
-    if (history.length > 5) history.shift();
-    this.recentDecisions.set(agentId, history);
-
-    if (history.length === 5 && history.every((entry) => entry === decisionStr)) {
-      console.warn(`[LOOP DETECTED] Agent ${agentId} looping on: ${decisionStr}`);
-      return true;
-    }
-
-    return false;
-  }
-
-  private breakDecisionLoop(): { type: "MOVE"; params: { goal: string; jitter: number } } {
-    const options = ["wander", "patrol", "probe"];
-    const goal = options[Math.floor(Math.random() * options.length)] ?? "wander";
-    return {
-      type: "MOVE",
-      params: { goal, jitter: Number(Math.random().toFixed(3)) },
-    };
-  }
-
-  private emitAndTrack(event: SimEvent): void {
-    this.recentEventsWindow.push(event);
-    if (this.recentEventsWindow.length > 500) {
-      this.recentEventsWindow.shift();
-    }
-    this.eventBus.emit(event);
+  private applyAction(agent: AgentState, action: PrimitiveAction, tick: number): void {
+    this.actionExecutor.execute(agent, action, tick, this.runId, this.branchId);
   }
 
   public async tick(): Promise<void> {
     const tick = this.clock.getTick();
     this.multiWorkerRuntime?.syncAgents(this.agents);
 
-    let positionsChanged = false;
     const deadAgentIds: string[] = [];
 
     let totalDecisions = 0;
-    let _vocalizations = 0;
 
     // 1. Circadian
     const circadianState = CircadianEngine.tick(tick, this.world, this.config.circadian);
@@ -175,31 +142,38 @@ export class Orchestrator {
       const oldBody = { ...agent.body };
       Object.assign(agent.body, bodyStateDelta);
 
-      if (biomassConsumed > 0 && localVoxel?.material === "biomass") {
+      if (biomassConsumed > 0 && localVoxel?.material) {
+        // Handle ingestion result
+        this.ingestionSystem.process(agent, localVoxel.material, tick, this.runId, this.branchId);
+
+        // Record for learning
+        const learning = this.agentLearning.get(agent.id);
+        if (learning) {
+          learning.memory.record({
+            contextSignature: localVoxel.material, // Simplified signature
+            actionType: agent.currentAction?.type ?? "DEFER",
+            deltaEnergy: (agent.body.energy ?? 0) - (oldBody.energy ?? 0),
+            deltaHydration: (agent.body.hydration ?? 0) - (oldBody.hydration ?? 0),
+            deltaPain: (agent.body.bodyMap.head.pain ?? 0) - (oldBody.bodyMap.head.pain ?? 0),
+            deltaToxin: (agent.body.toxinLoad ?? 0) - (oldBody.toxinLoad ?? 0),
+            deltaThreat: 0,
+            success: true,
+            tick,
+          });
+        }
+
+        // Deplete resource in voxel
         const currentQuality = localVoxel.metadata?.resourceQuality ?? 1;
         const nextQuality = Math.max(0, currentQuality - biomassConsumed);
 
         if (nextQuality === 0) {
           this.world.set(localX, localY, localZ, {
             ...localVoxel,
-            type: 2,
+            type: 2, // Assuming dirt type
             material: "dirt",
             metadata: {
               ...(localVoxel.metadata ?? {}),
               resourceQuality: 0,
-            },
-          });
-          this.emitAndTrack({
-            event_id: crypto.randomUUID(),
-            branch_id: this.branchId,
-            run_id: this.runId,
-            tick,
-            type: EventType.RESOURCE_DEPLETED,
-            agent_id: agent.id,
-            payload: {
-              material: "biomass",
-              position: { x: localX, y: localY, z: localZ },
-              consumed: biomassConsumed,
             },
           });
         } else {
@@ -218,55 +192,8 @@ export class Orchestrator {
         continue;
       }
 
-      // Log significant body state changes to MerkleLogger
-      if (bodyDelta.integrityDrive !== undefined) {
-        MerkleLogger.log(
-          tick,
-          this.branchId,
-          agent.id,
-          "System1",
-          "integrityDrive",
-          String(oldBody.integrityDrive || 0),
-          String(bodyDelta.integrityDrive),
-          null,
-        );
-      }
-
       const urgencyOverride =
         (agent.body.integrityDrive ?? bodyDelta.integrityDrive ?? 0) > URGENCY_THRESHOLD;
-      if (urgencyOverride) {
-        this.emitAndTrack({
-          event_id: crypto.randomUUID(),
-          branch_id: this.branchId,
-          run_id: this.runId,
-          tick,
-          type: EventType.URGENCY_OVERRIDE,
-          agent_id: agent.id,
-          payload: {
-            integrityDrive: agent.body.integrityDrive,
-          },
-        });
-      }
-
-      // 4j. Check immediate reactions (RECOIL, FLEE, COLLAPSE)
-      const reaction = System1.checkImmediateReaction(agent);
-      if (reaction) {
-        this.emitAndTrack({
-          event_id: crypto.randomUUID(),
-          branch_id: this.branchId,
-          run_id: this.runId,
-          tick,
-          type: EventType.DECISION_MADE,
-          agent_id: agent.id,
-          payload: { reaction: reaction.type, intensity: reaction.intensity },
-        });
-        totalDecisions++;
-        // Apply immediate reaction — skip System2 for this tick
-        if (reaction.type === "COLLAPSE") {
-          agent.body.fatigue = 1.0;
-          continue; // Skip rest of agent pipeline
-        }
-      }
 
       // 4b. Sense
       const rawPercept = SenseComputer.computePerception(
@@ -281,39 +208,46 @@ export class Orchestrator {
       // 4c. Attention
       const filteredPercept = AttentionFilter.filter(rawPercept, agent, this.config.perception);
 
-      // 4d. Emotional Field
-      const emotionalDetections = EmotionalField.detectFields(
-        agent,
-        filteredPercept.primaryAttention,
-        tick,
-        this.branchId,
-      );
-
-      // 4e. Mood Tint
-      const moodTint = FeelingResidueSystem.getMoodTint(agent.feelingResidues);
-
       // 4f. Qualia
       const qualiaText = QualiaProcessor.qualiaFor(
         agent,
         filteredPercept,
-        emotionalDetections,
-        moodTint,
+        EmotionalField.detectFields(agent, filteredPercept.primaryAttention, tick, this.branchId),
+        FeelingResidueSystem.getMoodTint(agent.feelingResidues),
         circadianState,
         this.config,
       );
 
-      // 4g. Episodic retrieval (for System2 context)
-      const _recentMemories = EpisodicStore.retrieve(agent.id, this.branchId, 5);
+      // --- PROCEDURAL LEARNING LAYER ---
+      const learning = this.agentLearning.get(agent.id);
+      let proceduralAction: PrimitiveAction | null = null;
+      if (learning) {
+        const contextSignature = localVoxel?.material ?? "void";
+        proceduralAction = learning.policy.proposeAction(
+          agent,
+          contextSignature,
+          PRIMITIVE_ACTIONS,
+        );
+      }
 
-      // 4h. Salience
+      if (proceduralAction) {
+        this.applyAction(agent, proceduralAction, tick);
+        totalDecisions++;
+        continue; // Skip System2 for this tick
+      }
+
+      // 4h. Salience & Persistence
       const event: SimEvent = {
         event_id: crypto.randomUUID(),
         branch_id: this.branchId,
         run_id: this.runId,
         tick,
         type: EventType.TICK,
+        agent_id: agent.id,
         payload: { qualia: qualiaText },
       };
+      this.eventBus.emit(event);
+
       const salience = SalienceGate.computeSalience(event, agent, this.config.memory);
 
       // 4i. System2
@@ -346,58 +280,11 @@ export class Orchestrator {
             .then((output) => {
               if (output.innerMonologue) {
                 agent.innerMonologue = output.innerMonologue;
-                this.emitAndTrack({
-                  event_id: crypto.randomUUID(),
-                  branch_id: this.branchId,
-                  run_id: this.runId,
-                  tick,
-                  type: EventType.SYSTEM2_THOUGHT,
-                  agent_id: agent.id,
-                  payload: { innerMonologue: output.innerMonologue },
-                });
               }
 
-              // 4l. Apply decision / update position
-              if (output.decision && output.decision.type !== "IDLE") {
-                if (this.checkDecisionLoop(agent.id, output.decision)) {
-                  output.decision = this.breakDecisionLoop();
-                }
-                positionsChanged =
-                  this.applyDecision(agent, {
-                    type: output.decision.type,
-                    position: output.decision.position,
-                  }) || positionsChanged;
-                this.emitAndTrack({
-                  event_id: crypto.randomUUID(),
-                  branch_id: this.branchId,
-                  run_id: this.runId,
-                  tick,
-                  type: EventType.DECISION_MADE,
-                  agent_id: agent.id,
-                  payload: { decision: output.decision },
-                });
+              if (output.decision && output.decision.type !== "DEFER") {
+                this.applyAction(agent, output.decision as PrimitiveAction, tick);
                 totalDecisions++;
-              }
-
-              // Update self-narrative
-              if (output.selfNarrativeUpdate) {
-                agent.selfNarrative += `\n${output.selfNarrativeUpdate}`;
-              }
-
-              // Store theory of mind entries
-              if (output.theoriesAboutOthers) {
-                for (const tom of output.theoriesAboutOthers) {
-                  agent.mentalModels[tom.targetAgentId] = {
-                    inferred: true,
-                    estimatedValence: tom.estimatedValence,
-                    estimatedArousal: tom.estimatedArousal,
-                    ...(tom.estimatedIntent !== undefined
-                      ? { estimatedIntent: tom.estimatedIntent }
-                      : {}),
-                    confidence: tom.confidence,
-                    lastUpdatedTick: tick,
-                  };
-                }
               }
             })
             .catch((error) => {
@@ -424,7 +311,6 @@ export class Orchestrator {
 
       // 4n. Death observation tracking
       for (const other of filteredPercept.primaryAttention) {
-        // Check for dead agents (no emotional field, low body temp, no movement)
         if (other.body.valence === 0 && other.body.arousal === 0 && other.body.fatigue >= 1.0) {
           SemanticStore.trackDeathObservation(agent.id, this.branchId, "observed_agent_stillness");
           SemanticStore.trackDeathObservation(
@@ -432,7 +318,6 @@ export class Orchestrator {
             this.branchId,
             "observed_absent_emotional_field",
           );
-          // Check body temperature for coldness
           const headTemp = other.body.bodyMap?.head?.temperature ?? 15;
           if (headTemp < 10) {
             SemanticStore.trackDeathObservation(agent.id, this.branchId, "observed_cold_body");
@@ -454,10 +339,6 @@ export class Orchestrator {
       }
     }
 
-    if (positionsChanged) {
-      this.spatialIndex.rebuildIndex(this.agents);
-    }
-
     if (deadAgentIds.length > 0) {
       for (const deadAgentId of deadAgentIds) {
         const deadAgent = this.agents.find((agent) => agent.id === deadAgentId);
@@ -466,7 +347,7 @@ export class Orchestrator {
           .getAgentsInRadius(deadAgent.position, 15)
           .filter((agent) => agent.id !== deadAgentId).length;
         const deathEventId = crypto.randomUUID();
-        this.emitAndTrack({
+        this.eventBus.emit({
           event_id: deathEventId,
           branch_id: this.branchId,
           run_id: this.runId,
@@ -481,7 +362,7 @@ export class Orchestrator {
         });
 
         const biomassPosition = this.physics.convertDeadAgentToBiomass(deadAgent, this.world, tick);
-        this.emitAndTrack({
+        this.eventBus.emit({
           event_id: crypto.randomUUID(),
           branch_id: this.branchId,
           run_id: this.runId,
@@ -512,32 +393,18 @@ export class Orchestrator {
       }
 
       this.agents = this.agents.filter((agent) => !deadAgentIds.includes(agent.id));
-      for (const deadAgentId of deadAgentIds) {
-        this.recentDecisions.delete(deadAgentId);
-      }
       this.spatialIndex.rebuildIndex(this.agents);
     }
 
     // 5. Language
     for (const va of this.vocalActuations) {
-      _vocalizations++;
       const emitter = this.agents.find((a) => a.id === va.emitterId);
       const emitterPos = emitter?.position ?? { x: 0, y: 0, z: 0 };
       const listeners = this.spatialIndex.getAgentsInRadius(emitterPos, 50);
-      const nearbyVoxels = emitter
-        ? SenseComputer.computePerception(
-            emitter,
-            this.world,
-            this.spatialIndex,
-            this.config.perception,
-            circadianState,
-            [],
-          ).nearbyVoxels
-        : [];
       LanguageEmergence.processVocalActuation(
         va,
         listeners,
-        nearbyVoxels,
+        [],
         this.branchId,
         this.eventBus,
         this.runId,
@@ -555,7 +422,7 @@ export class Orchestrator {
       this.recentEventsWindow.slice(-200),
     );
     for (const finding of emergenceFindings) {
-      this.emitAndTrack({
+      this.eventBus.emit({
         event_id: crypto.randomUUID(),
         branch_id: this.branchId,
         run_id: this.runId,
@@ -578,8 +445,6 @@ export class Orchestrator {
       DecayEngine.tickAll(this.agents, this.branchId, this.config.memory, tick);
     }
 
-    // 13. WebSocket broadcast — handled via EventBus (events are automatically dispatched)
-
     // 14. Snapshot agents periodically
     if (tick % SNAPSHOT_INTERVAL_TICKS === 0) {
       for (const agent of this.agents) {
@@ -591,8 +456,8 @@ export class Orchestrator {
           "state",
           null,
           JSON.stringify({
-            hunger: agent.body.hunger,
-            thirst: agent.body.thirst,
+            energy: agent.body.energy,
+            hydration: agent.body.hydration,
             fatigue: agent.body.fatigue,
             integrityDrive: agent.body.integrityDrive,
           }),
@@ -602,15 +467,6 @@ export class Orchestrator {
     }
 
     this.multiWorkerRuntime?.syncAgents(this.agents);
-    try {
-      await this.multiWorkerRuntime?.runTick(tick);
-    } catch (error) {
-      console.warn("Multi-worker phase execution failed; continuing inline.", error);
-    }
-
-    console.log(`[tick ${tick}] agents: ${this.agents.length}, system2_calls: ${totalDecisions}`);
-
-    // Wait for async system2 if desired, but PRD says non-blocking tick.
-    // However, for tests we might want to wait.
+    console.log(`[tick ${tick}] agents: ${this.agents.length}, decisions: ${totalDecisions}`);
   }
 }

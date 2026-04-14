@@ -35,7 +35,7 @@ export class EventBus {
     }
   }
 
-  private flush(): void {
+  public flush(): void {
     if (this.buffer.length > 0 && this.flushCallback) {
       this.flushCallback([...this.buffer]);
       this.buffer = [];

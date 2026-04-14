@@ -1,0 +1,37 @@
+export type EpisodicMemorySource = "real" | "dream_prophetic" | "nightmare" | "dream_healing" | "dream_chaos";
+
+export type EpisodicMemoryRow = {
+  id: string;
+  agent_id: string;
+  branch_id: string;
+  tick: number;
+  qualia_text: string;
+  salience: number;
+  emotional_valence: number;
+  emotional_arousal: number;
+  suppressed: number;
+  source: EpisodicMemorySource;
+  context_tags: string;
+  action_taken?: string;
+  outcome_summary?: string;
+  body_shift?: string;
+};
+
+export type EpisodicMemory = {
+  id: string;
+  tick: number;
+  qualiaText: string;
+  salience: number;
+  emotionalValence: number;
+  emotionalArousal: number;
+  suppressed: boolean;
+  contextTags: string[];
+  source: EpisodicMemorySource;
+  actionTaken?: PrimitiveAction;
+  outcomeSummary?: string;
+  bodyShift?: {
+    relief: number;
+    harm: number;
+    confusion: number;
+  };
+};

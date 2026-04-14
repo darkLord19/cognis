@@ -1,7 +1,7 @@
+import type { EventBus } from "../../server/core/event-bus";
 import { DEATH_CONCEPT_OBSERVATIONS_REQUIRED } from "../../shared/constants";
 import { EventType } from "../../shared/events";
 import type { AgentState, TechNode } from "../../shared/types";
-import type { EventBus } from "../core/event-bus";
 
 export class TechTree {
   private nodes: Map<string, TechNode> = new Map();
