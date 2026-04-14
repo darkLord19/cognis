@@ -102,6 +102,10 @@ export class AffordanceLearner {
       .sort((a, b) => b.confidence - a.confidence);
   }
 
+  public getAllAffordances(): LearnedAffordance[] {
+    return [...this.affordances.values()].sort((a, b) => b.confidence - a.confidence);
+  }
+
   // Compatibility adapters for existing procedural policy call sites.
   public getLearnedValue(
     contextSignature: string,

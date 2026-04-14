@@ -6,7 +6,13 @@ import {
 } from "../../shared/constants";
 import type { SimEvent } from "../../shared/events";
 import { EventType } from "../../shared/events";
-import type { AgentState, PrimitiveAction, VocalActuation, WorldConfig } from "../../shared/types";
+import type {
+  AgentState,
+  PrimitiveAction,
+  RawSensorBundle,
+  VocalActuation,
+  WorldConfig,
+} from "../../shared/types";
 import { ActionArbiter } from "../agents/action-arbiter";
 import { ActionExecutor } from "../agents/action-executor";
 import {
@@ -75,6 +81,17 @@ export class Orchestrator {
   private vocalActuations: VocalActuation[] = [];
   private emergenceDetector = new EmergenceDetector();
   private recentEventsWindow: SimEvent[] = [];
+  private latestSensorBundles = new Map<string, RawSensorBundle>();
+  private latestQualiaByAgent = new Map<string, { tick: number; text: string }>();
+  private actionTraceByAgent = new Map<
+    string,
+    Array<{
+      tick: number;
+      source: MotorPlan["source"];
+      primitives: MotorPlan["primitives"];
+      reason?: string;
+    }>
+  >();
 
   constructor(
     private runId: string,
@@ -107,12 +124,58 @@ export class Orchestrator {
     this.spatialIndex.rebuildIndex(this.agents);
   }
 
+  public getLatestSensorBundle(agentId: string): RawSensorBundle | null {
+    return this.latestSensorBundles.get(agentId) ?? null;
+  }
+
+  public getLatestQualia(agentId: string): { tick: number; text: string } | null {
+    return this.latestQualiaByAgent.get(agentId) ?? null;
+  }
+
+  public getActionTrace(
+    agentId: string,
+    limit = 50,
+  ): Array<{
+    tick: number;
+    source: MotorPlan["source"];
+    primitives: MotorPlan["primitives"];
+    reason?: string;
+  }> {
+    const trace = this.actionTraceByAgent.get(agentId) ?? [];
+    return trace.slice(-Math.max(1, limit));
+  }
+
+  public getProceduralMemory(agentId: string) {
+    const learning = this.agentLearning.get(agentId);
+    return learning ? learning.learner.getAllAffordances() : [];
+  }
+
   private applyAction(agent: AgentState, action: PrimitiveAction, tick: number): void {
+    const translated = translateLegacyActionToMotorPlan(
+      action.type,
+      tick,
+      Boolean(agent.body.mouthItem),
+    );
+    if (translated) {
+      this.recordActionTrace(agent.id, translated);
+    }
     this.actionExecutor.execute(agent, action, tick, this.runId, this.branchId);
   }
 
   private applyMotorPlan(agent: AgentState, plan: MotorPlan, tick: number): void {
+    this.recordActionTrace(agent.id, plan);
     this.actionExecutor.executeMotorPlan(agent, plan, tick, this.runId, this.branchId);
+  }
+
+  private recordActionTrace(agentId: string, plan: MotorPlan): void {
+    const trace = this.actionTraceByAgent.get(agentId) ?? [];
+    trace.push({
+      tick: plan.createdAtTick,
+      source: plan.source,
+      primitives: plan.primitives,
+      ...(plan.reason ? { reason: plan.reason } : {}),
+    });
+    this.actionTraceByAgent.set(agentId, trace.slice(-200));
   }
 
   public async tick(): Promise<void> {
@@ -270,6 +333,7 @@ export class Orchestrator {
         circadianState,
         this.config,
       );
+      this.latestQualiaByAgent.set(agent.id, { tick, text: qualiaText });
 
       // --- PROCEDURAL LEARNING LAYER ---
       const sensorBundle = SenseComputer.computeSensorBundle(
@@ -281,6 +345,7 @@ export class Orchestrator {
         this.vocalActuations,
         tick,
       );
+      this.latestSensorBundles.set(agent.id, sensorBundle);
 
       const learning = this.agentLearning.get(agent.id);
       const contextSignature = localVoxel?.material ?? "void";

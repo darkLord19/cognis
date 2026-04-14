@@ -1,4 +1,4 @@
-import type { BaselineInterpretation } from "../../shared/types";
+import type { BaselineInterpretation, EmbodiedDiscoveryMetrics } from "../../shared/types";
 
 /**
  * PRD Section 8.1 — Triple Baseline Interpretation Matrix:
@@ -23,5 +23,32 @@ export const BaselineComparator = {
 
   generateReport(phenomenonName: string): string {
     return `Analysis of ${phenomenonName} complete across all baseline configurations.`;
+  },
+
+  compareEmbodied(
+    candidate: EmbodiedDiscoveryMetrics,
+    randomBaseline: EmbodiedDiscoveryMetrics,
+  ): {
+    survivalImprovement: number;
+    beatsRandomBaseline: boolean;
+    repeatedReliefImprovement: number;
+    toxinAvoidanceImprovement: number;
+  } {
+    const baselineSurvival = Math.max(1, randomBaseline.survivalTicks);
+    const survivalImprovement = candidate.survivalTicks / baselineSurvival;
+    const repeatedReliefImprovement =
+      candidate.repeatedReliefActionRate - randomBaseline.repeatedReliefActionRate;
+    const toxinAvoidanceImprovement =
+      candidate.toxinAvoidanceAfterExposure - randomBaseline.toxinAvoidanceAfterExposure;
+
+    const beatsRandomBaseline =
+      survivalImprovement > 1.25 && repeatedReliefImprovement > 0 && toxinAvoidanceImprovement > 0;
+
+    return {
+      survivalImprovement,
+      beatsRandomBaseline,
+      repeatedReliefImprovement,
+      toxinAvoidanceImprovement,
+    };
   },
 };

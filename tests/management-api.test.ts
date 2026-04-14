@@ -214,6 +214,45 @@ test("management api returns config templates, metrics, findings, and audit veri
   expect(verify.valid).toBe(true);
 });
 
+test("management api exposes agent debug surfaces for v5.2", async () => {
+  const created = service.createRun({ config: "earth-default", seed: 808 });
+  service.startRun(created.id);
+  const runtime = supervisor.getRuntime(created.id);
+  const agentId = runtime?.agents[0]?.id;
+  expect(agentId).toBeDefined();
+  if (!runtime?.orchestrator || !agentId) {
+    throw new Error("runtime or agent missing");
+  }
+
+  const sensorsResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/agents/${agentId}/sensors`),
+  );
+  const sensors = await readJson(sensorsResponse);
+  expect(sensorsResponse.status).toBe(200);
+  expect("sensors" in sensors).toBe(true);
+
+  const qualiaResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/agents/${agentId}/qualia`),
+  );
+  const qualia = await readJson(qualiaResponse);
+  expect(qualiaResponse.status).toBe(200);
+  expect("qualia" in qualia).toBe(true);
+
+  const traceResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/agents/${agentId}/action-trace`),
+  );
+  const trace = await readJson(traceResponse);
+  expect(traceResponse.status).toBe(200);
+  expect(Array.isArray(trace.trace)).toBe(true);
+
+  const memoryResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/agents/${agentId}/procedural-memory`),
+  );
+  const memory = await readJson(memoryResponse);
+  expect(memoryResponse.status).toBe(200);
+  expect(Array.isArray(memory.affordances)).toBe(true);
+});
+
 test("management api creates branches and exposes a watcher stream", async () => {
   const created = service.createRun({ config: "earth-default", seed: 81 });
   service.startRun(created.id);

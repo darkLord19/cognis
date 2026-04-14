@@ -245,6 +245,52 @@ export function createManagementApiHandler(deps: ApiDependencies) {
       return jsonResponse(agent);
     }
 
+    const sensorsMatch = path.match(/^\/runs\/([^/]+)\/agents\/([^/]+)\/sensors$/);
+    if (sensorsMatch && method === "GET") {
+      const runId = requirePathParam(sensorsMatch[1]);
+      const agentId = requirePathParam(sensorsMatch[2]);
+      const runtime = deps.runService.getRuntime(runId);
+      if (!runtime?.orchestrator) {
+        return jsonResponse({ error: "Run not active" }, 404);
+      }
+      return jsonResponse({ sensors: runtime.orchestrator.getLatestSensorBundle(agentId) });
+    }
+
+    const qualiaMatch = path.match(/^\/runs\/([^/]+)\/agents\/([^/]+)\/qualia$/);
+    if (qualiaMatch && method === "GET") {
+      const runId = requirePathParam(qualiaMatch[1]);
+      const agentId = requirePathParam(qualiaMatch[2]);
+      const runtime = deps.runService.getRuntime(runId);
+      if (!runtime?.orchestrator) {
+        return jsonResponse({ error: "Run not active" }, 404);
+      }
+      return jsonResponse({ qualia: runtime.orchestrator.getLatestQualia(agentId) });
+    }
+
+    const actionTraceMatch = path.match(/^\/runs\/([^/]+)\/agents\/([^/]+)\/action-trace$/);
+    if (actionTraceMatch && method === "GET") {
+      const runId = requirePathParam(actionTraceMatch[1]);
+      const agentId = requirePathParam(actionTraceMatch[2]);
+      const runtime = deps.runService.getRuntime(runId);
+      if (!runtime?.orchestrator) {
+        return jsonResponse({ error: "Run not active" }, 404);
+      }
+      return jsonResponse({ trace: runtime.orchestrator.getActionTrace(agentId, 100) });
+    }
+
+    const proceduralMemoryMatch = path.match(
+      /^\/runs\/([^/]+)\/agents\/([^/]+)\/procedural-memory$/,
+    );
+    if (proceduralMemoryMatch && method === "GET") {
+      const runId = requirePathParam(proceduralMemoryMatch[1]);
+      const agentId = requirePathParam(proceduralMemoryMatch[2]);
+      const runtime = deps.runService.getRuntime(runId);
+      if (!runtime?.orchestrator) {
+        return jsonResponse({ error: "Run not active" }, 404);
+      }
+      return jsonResponse({ affordances: runtime.orchestrator.getProceduralMemory(agentId) });
+    }
+
     const findingsMatch = path.match(/^\/runs\/([^/]+)\/findings$/);
     if (findingsMatch && method === "GET") {
       try {

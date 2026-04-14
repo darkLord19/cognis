@@ -1044,6 +1044,17 @@ export type BaselineInterpretation =
   | "physical_substrate"
   | "semantic_dependent";
 
+export type EmbodiedDiscoveryMetrics = {
+  survivalTicks: number;
+  firstHydrationImprovementTick?: number;
+  firstEnergyImprovementTick?: number;
+  repeatedReliefActionRate: number;
+  toxinAvoidanceAfterExposure: number;
+  proceduralActionRatio: number;
+  system2ActionRatio: number;
+  veilBreachCount: number;
+};
+
 export type ConflictDelta = {
   damageA: number;
   damageB: number;

@@ -73,6 +73,25 @@ test("CausalMiner mines likely event chains from a branch", () => {
   expect(candidate.confidence).toBeGreaterThan(0.55);
 });
 
+test("CausalMiner extracts embodied discovery metrics from event streams", () => {
+  seedAnalysisRun("analysis-causal");
+  insertEvent("analysis-causal", 3, EventType.ACTION_ATTEMPTED, { source: "procedural" }, 1);
+  insertEvent("analysis-causal", 4, EventType.HYDRATION_IMPROVED, {}, 2);
+  insertEvent("analysis-causal", 5, EventType.ACTION_SUCCEEDED, {}, 1);
+  insertEvent("analysis-causal", 6, EventType.TOXIN_EXPOSURE, {}, 2);
+  insertEvent("analysis-causal", 7, EventType.ACTION_ATTEMPTED, { source: "system2" }, 1);
+  insertEvent("analysis-causal", 8, EventType.ACTION_ATTEMPTED, { source: "procedural" }, 1);
+  insertEvent("analysis-causal", 9, EventType.VEIL_BREACH, {}, 2);
+
+  const metrics = CausalMiner.extractEmbodiedDiscoveryMetrics("analysis-causal");
+
+  expect(metrics.survivalTicks).toBe(9);
+  expect(metrics.firstHydrationImprovementTick).toBe(4);
+  expect(metrics.proceduralActionRatio).toBeGreaterThan(0.6);
+  expect(metrics.system2ActionRatio).toBeLessThan(0.5);
+  expect(metrics.veilBreachCount).toBe(1);
+});
+
 test("TippingPointDetector spots a density spike in a branch", () => {
   seedAnalysisRun("analysis-tipping");
   insertEvent("analysis-tipping", 1, EventType.TICK, { label: "baseline" }, 1);

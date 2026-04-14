@@ -28,3 +28,27 @@ test("BaselineComparator: generateReport returns string", () => {
   const report = BaselineComparator.generateReport("fire_discovery");
   expect(report).toContain("fire_discovery");
 });
+
+test("BaselineComparator: compares embodied metrics against random baseline", () => {
+  const result = BaselineComparator.compareEmbodied(
+    {
+      survivalTicks: 250,
+      repeatedReliefActionRate: 0.62,
+      toxinAvoidanceAfterExposure: 0.8,
+      proceduralActionRatio: 0.7,
+      system2ActionRatio: 0.3,
+      veilBreachCount: 0,
+    },
+    {
+      survivalTicks: 160,
+      repeatedReliefActionRate: 0.35,
+      toxinAvoidanceAfterExposure: 0.45,
+      proceduralActionRatio: 0.5,
+      system2ActionRatio: 0.5,
+      veilBreachCount: 0,
+    },
+  );
+
+  expect(result.beatsRandomBaseline).toBe(true);
+  expect(result.survivalImprovement).toBeGreaterThan(1.25);
+});

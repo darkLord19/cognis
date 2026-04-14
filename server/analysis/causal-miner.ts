@@ -1,4 +1,5 @@
 import { EventType, type SimEvent } from "../../shared/events";
+import type { EmbodiedDiscoveryMetrics } from "../../shared/types";
 import { loadBranchEvents } from "./event-queries";
 
 export type CausalCandidate = {
@@ -101,5 +102,74 @@ export const CausalMiner = {
     }
 
     return candidates;
+  },
+
+  extractEmbodiedDiscoveryMetrics(branchIdOrEvents: string | SimEvent[]): EmbodiedDiscoveryMetrics {
+    const events = extractEvents(branchIdOrEvents);
+
+    const firstHydration = events.find((event) => event.type === EventType.HYDRATION_IMPROVED);
+    const firstEnergy = events.find((event) => event.type === EventType.ENERGY_IMPROVED);
+    const firstToxinExposure = events.find((event) => event.type === EventType.TOXIN_EXPOSURE);
+
+    let proceduralActions = 0;
+    let system2Actions = 0;
+    let reliefWindowActions = 0;
+    let reliefWindowTotal = 0;
+    let postToxinIngestions = 0;
+    let totalPostToxinActions = 0;
+
+    for (const event of events) {
+      if (event.type === EventType.ACTION_ATTEMPTED) {
+        const source = (event.payload?.source as string | undefined) ?? "";
+        if (source === "procedural") {
+          proceduralActions += 1;
+        } else if (source === "system2") {
+          system2Actions += 1;
+        }
+      }
+
+      if (
+        firstHydration &&
+        event.type === EventType.ACTION_SUCCEEDED &&
+        event.tick >= firstHydration.tick
+      ) {
+        reliefWindowTotal += 1;
+        if (event.tick - firstHydration.tick <= 25) {
+          reliefWindowActions += 1;
+        }
+      }
+
+      if (firstToxinExposure && event.tick >= firstToxinExposure.tick) {
+        if (event.type === EventType.ACTION_ATTEMPTED) {
+          totalPostToxinActions += 1;
+        }
+        if (event.type === EventType.INGESTION_OCCURRED) {
+          const toxic = Number(event.payload?.toxicity ?? 0) > 0;
+          if (toxic) {
+            postToxinIngestions += 1;
+          }
+        }
+      }
+    }
+
+    const totalActions = Math.max(1, proceduralActions + system2Actions);
+    const survivalTicks = events.length === 0 ? 0 : Math.max(...events.map((event) => event.tick));
+
+    return {
+      survivalTicks,
+      ...(firstHydration ? { firstHydrationImprovementTick: firstHydration.tick } : {}),
+      ...(firstEnergy ? { firstEnergyImprovementTick: firstEnergy.tick } : {}),
+      repeatedReliefActionRate:
+        reliefWindowTotal === 0
+          ? 0
+          : Math.max(0, Math.min(1, reliefWindowActions / reliefWindowTotal)),
+      toxinAvoidanceAfterExposure:
+        totalPostToxinActions === 0
+          ? 1
+          : Math.max(0, Math.min(1, 1 - postToxinIngestions / totalPostToxinActions)),
+      proceduralActionRatio: proceduralActions / totalActions,
+      system2ActionRatio: system2Actions / totalActions,
+      veilBreachCount: events.filter((event) => event.type === EventType.VEIL_BREACH).length,
+    };
   },
 };
