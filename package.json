@@ -8,8 +8,11 @@
     "web": "vite",
     "server": "bun run index.ts",
     "test": "bun test",
+    "test:v5": "bun test tests/*v5*.test.ts tests/integration/hydration-discovery.test.ts",
     "lint": "biome check .",
-    "typecheck": "bunx tsc --noEmit"
+    "typecheck": "bunx tsc --noEmit",
+    "veil-check": "bun run scripts/veil-check.ts",
+    "no-symbolic-actions": "bun run scripts/no-symbolic-actions.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.11",
