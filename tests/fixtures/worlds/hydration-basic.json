@@ -1,0 +1,9 @@
+{
+  "id": "hydration-basic",
+  "description": "Minimal hydration discovery fixture",
+  "materials": ["fresh_water", "edible_soft_plant", "toxic_bitter_plant", "soil", "rock"],
+  "spawn": {
+    "hostCount": 1,
+    "nearWater": true
+  }
+}

@@ -244,6 +244,8 @@ export class ActionExecutor {
     const distance = Math.max(0.05, primitive.intensity) * 0.5;
     agent.position.x += baseDirection.x * distance;
     agent.position.z += baseDirection.z * distance;
+    const forward = primitive.type === ActuationType.LOCOMOTE_AWAY ? -distance : distance;
+    agent.currentAction = { type: "MOVE", forward };
     return this.success(primitive, undefined, ["locomotion applied"]);
   }
 

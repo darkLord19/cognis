@@ -7,8 +7,13 @@ import {
 import type { SimEvent } from "../../shared/events";
 import { EventType } from "../../shared/events";
 import type { AgentState, PrimitiveAction, VocalActuation, WorldConfig } from "../../shared/types";
+import { ActionArbiter } from "../agents/action-arbiter";
 import { ActionExecutor } from "../agents/action-executor";
-import { type MotorPlan, PRIMITIVE_ACTIONS } from "../agents/action-grammar";
+import {
+  ActuationType,
+  type MotorPlan,
+  translateLegacyActionToMotorPlan,
+} from "../agents/action-grammar";
 import { ActionOutcomeMemory } from "../agents/action-outcome-memory";
 import { AffordanceLearner } from "../agents/affordance-learner";
 import { AttentionFilter } from "../agents/attention-filter";
@@ -56,6 +61,7 @@ export class Orchestrator {
   private system2: System2;
   private system0: System0;
   private actionExecutor: ActionExecutor;
+  private actionArbiter: ActionArbiter;
   private ingestionSystem: IngestionSystem;
   private agentLearning = new Map<
     string,
@@ -85,6 +91,7 @@ export class Orchestrator {
     this.system2 = system2;
     this.system0 = new System0();
     this.actionExecutor = new ActionExecutor(eventBus);
+    this.actionArbiter = new ActionArbiter();
     this.ingestionSystem = new IngestionSystem(eventBus);
   }
 
@@ -265,22 +272,51 @@ export class Orchestrator {
       );
 
       // --- PROCEDURAL LEARNING LAYER ---
-      const learning = this.agentLearning.get(agent.id);
-      let proceduralAction: PrimitiveAction | null = null;
-      if (learning) {
-        const contextSignature = localVoxel?.material ?? "void";
-        proceduralAction = learning.policy.proposeAction(
-          agent,
-          contextSignature,
-          PRIMITIVE_ACTIONS,
-        );
-      }
+      const sensorBundle = SenseComputer.computeSensorBundle(
+        agent,
+        this.world,
+        this.spatialIndex,
+        this.config.perception,
+        circadianState,
+        this.vocalActuations,
+        tick,
+      );
 
-      if (proceduralAction) {
-        this.applyAction(agent, proceduralAction, tick);
-        totalDecisions++;
-        continue; // Skip System2 for this tick
-      }
+      const learning = this.agentLearning.get(agent.id);
+      const contextSignature = localVoxel?.material ?? "void";
+      const proceduralPlan = learning
+        ? learning.policy.propose({
+            agent,
+            qualiaFrame: {
+              agentId: agent.id,
+              tick,
+              body: [],
+              world: [],
+              social: [],
+              urges: [],
+              memories: [],
+              narratableText: qualiaText,
+            },
+            sensorBundle,
+            learnedAffordances: learning.learner.getCandidates(contextSignature),
+            tick,
+          })
+        : undefined;
+
+      const fallbackPlan: MotorPlan = {
+        source: "fallback",
+        urgency: 0.2,
+        createdAtTick: tick,
+        primitives: [
+          {
+            type: ActuationType.REST_POSTURE,
+            target: { type: "self" },
+            intensity: 0.3,
+            durationTicks: 1,
+          },
+        ],
+        reason: "fallback_idle",
+      };
 
       // 4h. Salience & Persistence
       const event: SimEvent = {
@@ -297,7 +333,7 @@ export class Orchestrator {
       const salience = SalienceGate.computeSalience(event, agent, this.config.memory);
 
       // 4i. System2
-      if (
+      const shouldCallSystem2 =
         urgencyOverride ||
         this.system2.shouldFire(
           agent,
@@ -308,8 +344,9 @@ export class Orchestrator {
           } as Record<string, unknown>,
           filteredPercept,
           this.config,
-        )
-      ) {
+        );
+
+      if (shouldCallSystem2) {
         this.clock.registerPendingMind();
         agent.pendingSystem2 = true;
         totalDecisions++;
@@ -328,10 +365,33 @@ export class Orchestrator {
                 agent.innerMonologue = output.innerMonologue;
               }
 
-              if (output.decision && output.decision.type !== "DEFER") {
-                this.applyAction(agent, output.decision as PrimitiveAction, tick);
-                totalDecisions++;
+              const system2Plan =
+                output.decision && output.decision.type !== "DEFER"
+                  ? (translateLegacyActionToMotorPlan(
+                      output.decision.type,
+                      tick,
+                      Boolean(agent.body.mouthItem),
+                    ) ?? undefined)
+                  : undefined;
+              const arbitrationInput: {
+                fallbackPlan: MotorPlan;
+                proceduralPlan?: MotorPlan;
+                system2Plan?: MotorPlan;
+              } = { fallbackPlan };
+              if (proceduralPlan) {
+                arbitrationInput.proceduralPlan = proceduralPlan;
               }
+              if (system2Plan) {
+                arbitrationInput.system2Plan = system2Plan;
+              }
+              const finalPlan = this.actionArbiter.choose(arbitrationInput);
+
+              if (!system2Plan && output.decision && output.decision.type !== "DEFER") {
+                this.applyAction(agent, output.decision as PrimitiveAction, tick);
+              } else {
+                this.applyMotorPlan(agent, finalPlan, tick);
+              }
+              totalDecisions++;
             })
             .catch((error) => {
               console.error("System2 think failed:", error);
@@ -341,6 +401,16 @@ export class Orchestrator {
               this.clock.resolvePendingMind();
             }),
         );
+      } else {
+        const arbitrationInput: { fallbackPlan: MotorPlan; proceduralPlan?: MotorPlan } = {
+          fallbackPlan,
+        };
+        if (proceduralPlan) {
+          arbitrationInput.proceduralPlan = proceduralPlan;
+        }
+        const finalPlan = this.actionArbiter.choose(arbitrationInput);
+        this.applyMotorPlan(agent, finalPlan, tick);
+        totalDecisions++;
       }
 
       // 4m. Episodic encode
