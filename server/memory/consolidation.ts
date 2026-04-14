@@ -8,6 +8,17 @@ import type { EventBus } from "../core/event-bus";
 import { EpisodicStore } from "./episodic-store";
 import { SemanticStore } from "./semantic-store";
 
+type OutcomeAggregate = {
+  attempts: number;
+  reliefHits: number;
+  harmHits: number;
+};
+
+function getPrimaryPrimitiveType(ep: AgentState["episodicStore"][number]): string {
+  const primitive = ep.motorPlan?.primitives?.[0];
+  return primitive?.type ?? "unknown";
+}
+
 export const Consolidation = {
   consolidate(agent: AgentState, branchId: string, eventBus: EventBus): ConsolidationResult {
     // 1. Standard CLS transfer (high salience episodic -> semantic)
@@ -43,6 +54,61 @@ export const Consolidation = {
       if (conflictDetected) {
         // Log conflict but don't block — the newer memory co-exists
         // This is append-only: both versions stay in the store
+      }
+    }
+
+    // 1b. Procedural outcome consolidation (unnamed relief/aversion beliefs)
+    const outcomeEpisodes = episodes.filter(
+      (ep) => !ep.suppressed && ep.outcome && ep.motorPlan?.primitives?.length,
+    );
+    const aggregateByPattern = new Map<string, OutcomeAggregate>();
+    for (const ep of outcomeEpisodes) {
+      const primitiveType = getPrimaryPrimitiveType(ep);
+      const cue = ep.contextTags[0] ?? "felt_state";
+      const key = `${cue}::${primitiveType}`;
+      const current = aggregateByPattern.get(key) ?? {
+        attempts: 0,
+        reliefHits: 0,
+        harmHits: 0,
+      };
+
+      current.attempts += 1;
+      if ((ep.outcome?.reliefScore ?? 0) > (ep.outcome?.harmScore ?? 0)) {
+        current.reliefHits += 1;
+      }
+      if (
+        (ep.outcome?.harmScore ?? 0) > (ep.outcome?.reliefScore ?? 0) ||
+        (ep.outcome?.deltaToxinLoad ?? 0) > 0
+      ) {
+        current.harmHits += 1;
+      }
+      aggregateByPattern.set(key, current);
+    }
+
+    for (const aggregate of aggregateByPattern.values()) {
+      if (aggregate.attempts < 2) continue;
+
+      const reliefConfidence = aggregate.reliefHits / aggregate.attempts;
+      const harmConfidence = aggregate.harmHits / aggregate.attempts;
+
+      if (reliefConfidence >= 0.6) {
+        SemanticStore.addProceduralPatternBelief(
+          agent.id,
+          branchId,
+          "relief",
+          reliefConfidence,
+          aggregate.attempts,
+        );
+      }
+
+      if (harmConfidence >= 0.6) {
+        SemanticStore.addProceduralPatternBelief(
+          agent.id,
+          branchId,
+          "aversion",
+          harmConfidence,
+          aggregate.attempts,
+        );
       }
     }
 

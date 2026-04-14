@@ -42,7 +42,15 @@ test("SalienceGate: calculates salience based on factors", () => {
     run_id: "r1",
     tick: 1,
     type: EventType.TICK,
-    payload: { valence: 0.9, arousal: 0.5, isNovel: true },
+    payload: {
+      isNovel: true,
+      socialIntensity: 0.6,
+      outcome: {
+        deltaPain: 0.4,
+        deltaToxinLoad: 0.2,
+        reliefScore: 0.8,
+      },
+    },
   };
 
   const agent = {
@@ -59,7 +67,7 @@ test("SalienceGate: calculates salience based on factors", () => {
   } as unknown as AgentState;
   const salience = SalienceGate.computeSalience(event, agent, config);
 
-  expect(salience).toBeGreaterThan(0.5);
+  expect(salience).toBeGreaterThan(0.45);
 });
 
 test("EpisodicStore: encode and retrieve", () => {

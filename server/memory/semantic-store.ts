@@ -51,4 +51,26 @@ export const SemanticStore = {
       .get(agentId, branchId, concept);
     return row?.count || 0;
   },
+
+  addProceduralPatternBelief(
+    agentId: string,
+    branchId: string,
+    kind: "relief" | "aversion",
+    confidence: number,
+    sourceCount: number,
+  ): void {
+    const concept = kind === "relief" ? "procedural_relief_pattern" : "procedural_aversion_pattern";
+    const value =
+      kind === "relief"
+        ? "when this feeling and nearby presence recur, this action often eases the feeling"
+        : "when this feeling and nearby presence recur, this action often worsens the feeling";
+
+    SemanticStore.addBelief(agentId, branchId, {
+      id: crypto.randomUUID(),
+      concept,
+      value,
+      confidence: Math.max(0, Math.min(1, confidence)),
+      sourceCount: Math.max(1, sourceCount),
+    });
+  },
 };

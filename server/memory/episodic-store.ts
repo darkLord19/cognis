@@ -9,6 +9,119 @@ import type {
 import { db } from "../persistence/database";
 import { MerkleLogger } from "../persistence/merkle-logger";
 
+type MotorPlanSnapshot = NonNullable<EpisodicMemory["motorPlan"]>;
+type OutcomeSnapshot = NonNullable<EpisodicMemory["outcome"]>;
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
+}
+
+function parseJsonValue(input: string | null | undefined): unknown {
+  if (!input) return undefined;
+  try {
+    return JSON.parse(input);
+  } catch {
+    return undefined;
+  }
+}
+
+function toStringArray(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const refs = value.filter((item): item is string => typeof item === "string" && item.length > 0);
+  return refs.length > 0 ? refs : undefined;
+}
+
+function decodeActionColumn(raw: string | null | undefined): {
+  actionTaken?: PrimitiveAction;
+  motorPlan?: MotorPlanSnapshot;
+  perceptualRefs?: string[];
+} {
+  const parsed = parseJsonValue(raw);
+  const obj = asRecord(parsed);
+  if (!obj) return {};
+
+  if ("type" in obj && typeof obj.type === "string") {
+    return { actionTaken: obj as unknown as PrimitiveAction };
+  }
+
+  const decoded: {
+    actionTaken?: PrimitiveAction;
+    motorPlan?: MotorPlanSnapshot;
+    perceptualRefs?: string[];
+  } = {};
+  if (asRecord(obj.actionTaken)) {
+    decoded.actionTaken = obj.actionTaken as unknown as PrimitiveAction;
+  }
+  if (asRecord(obj.motorPlan)) {
+    decoded.motorPlan = obj.motorPlan as MotorPlanSnapshot;
+  }
+  const refs = toStringArray(obj.perceptualRefs);
+  if (refs) {
+    decoded.perceptualRefs = refs;
+  }
+  return decoded;
+}
+
+function decodeOutcomeColumn(raw: string | null | undefined): {
+  outcomeSummary?: string;
+  outcome?: OutcomeSnapshot;
+} {
+  if (!raw) return {};
+  const parsed = parseJsonValue(raw);
+  const obj = asRecord(parsed);
+  if (!obj) {
+    return { outcomeSummary: raw };
+  }
+
+  const outcomeSummary =
+    typeof obj.outcomeSummary === "string" && obj.outcomeSummary.length > 0
+      ? obj.outcomeSummary
+      : undefined;
+
+  const decoded: {
+    outcomeSummary?: string;
+    outcome?: OutcomeSnapshot;
+  } = {};
+  if (outcomeSummary) {
+    decoded.outcomeSummary = outcomeSummary;
+  }
+  if (asRecord(obj.outcome)) {
+    decoded.outcome = obj.outcome as OutcomeSnapshot;
+  }
+  return decoded;
+}
+
+function encodeActionColumn(memory: EpisodicMemory): string | null {
+  if (!memory.actionTaken && !memory.motorPlan && !memory.perceptualRefs) {
+    return null;
+  }
+
+  if (!memory.motorPlan && !memory.perceptualRefs && memory.actionTaken) {
+    return JSON.stringify(memory.actionTaken);
+  }
+
+  return JSON.stringify({
+    actionTaken: memory.actionTaken,
+    motorPlan: memory.motorPlan,
+    perceptualRefs: memory.perceptualRefs,
+  });
+}
+
+function encodeOutcomeColumn(memory: EpisodicMemory): string | null {
+  if (!memory.outcomeSummary && !memory.outcome) {
+    return null;
+  }
+
+  if (!memory.outcome && memory.outcomeSummary) {
+    return memory.outcomeSummary;
+  }
+
+  return JSON.stringify({
+    outcomeSummary: memory.outcomeSummary,
+    outcome: memory.outcome,
+  });
+}
+
 export const EpisodicStore = {
   encode(
     agentId: string,
@@ -18,20 +131,36 @@ export const EpisodicStore = {
     salience: number,
     _config: MemoryConfig,
   ): EpisodicMemory {
+    const payload = (event.payload ?? {}) as Record<string, unknown>;
+    const rawMotorPlan = asRecord(payload.motorPlan);
+    const rawOutcome = asRecord(payload.outcome);
+    const perceptualRefs = toStringArray(payload.perceptualRefs);
+
     const memory: EpisodicMemory = {
       id: crypto.randomUUID(),
       tick: event.tick,
       qualiaText,
       salience,
-      emotionalValence: (event.payload.valence as number) || 0,
-      emotionalArousal: (event.payload.arousal as number) || 0,
+      emotionalValence: (payload.valence as number) || 0,
+      emotionalArousal: (payload.arousal as number) || 0,
       suppressed: false,
       contextTags: [],
       source: "real",
-      actionTaken: event.payload.actionTaken as PrimitiveAction | undefined,
-      outcomeSummary: event.payload.outcomeSummary as string | undefined,
-      bodyShift: event.payload.bodyShift as BodyStateDelta | undefined,
+      actionTaken: asRecord(payload.actionTaken)
+        ? (payload.actionTaken as unknown as PrimitiveAction)
+        : undefined,
+      motorPlan: rawMotorPlan ? (rawMotorPlan as MotorPlanSnapshot) : undefined,
+      outcome: rawOutcome ? (rawOutcome as OutcomeSnapshot) : undefined,
+      perceptualRefs,
+      outcomeSummary:
+        typeof payload.outcomeSummary === "string" ? (payload.outcomeSummary as string) : undefined,
+      bodyShift: asRecord(payload.bodyShift)
+        ? (payload.bodyShift as unknown as BodyStateDelta)
+        : undefined,
     };
+
+    const encodedAction = encodeActionColumn(memory);
+    const encodedOutcome = encodeOutcomeColumn(memory);
 
     db.db
       .query(
@@ -49,8 +178,8 @@ export const EpisodicStore = {
         memory.suppressed ? 1 : 0,
         memory.source,
         JSON.stringify(memory.contextTags),
-        memory.actionTaken ? JSON.stringify(memory.actionTaken) : null,
-        memory.outcomeSummary || null,
+        encodedAction,
+        encodedOutcome,
         memory.bodyShift ? JSON.stringify(memory.bodyShift) : null,
       );
 
@@ -112,20 +241,27 @@ export const EpisodicStore = {
       )
       .all(agentId, branchId, k) as EpisodicMemoryRow[];
 
-    const memories = rows.map((r: EpisodicMemoryRow) => ({
-      id: r.id,
-      tick: r.tick,
-      qualiaText: r.qualia_text,
-      salience: r.salience,
-      emotionalValence: r.emotional_valence,
-      emotionalArousal: r.emotional_arousal,
-      suppressed: r.suppressed === 1,
-      contextTags: JSON.parse(r.context_tags || "[]") as string[],
-      source: r.source,
-      actionTaken: r.action_taken ? JSON.parse(r.action_taken) : undefined,
-      outcomeSummary: r.outcome_summary || undefined,
-      bodyShift: r.body_shift ? JSON.parse(r.body_shift) : undefined,
-    }));
+    const memories = rows.map((r: EpisodicMemoryRow) => {
+      const action = decodeActionColumn(r.action_taken);
+      const outcome = decodeOutcomeColumn(r.outcome_summary);
+      return {
+        id: r.id,
+        tick: r.tick,
+        qualiaText: r.qualia_text,
+        salience: r.salience,
+        emotionalValence: r.emotional_valence,
+        emotionalArousal: r.emotional_arousal,
+        suppressed: r.suppressed === 1,
+        contextTags: JSON.parse(r.context_tags || "[]") as string[],
+        source: r.source,
+        actionTaken: action.actionTaken,
+        motorPlan: action.motorPlan,
+        perceptualRefs: action.perceptualRefs,
+        outcomeSummary: outcome.outcomeSummary,
+        outcome: outcome.outcome,
+        bodyShift: r.body_shift ? JSON.parse(r.body_shift) : undefined,
+      };
+    });
 
     // Apply suppression events (append-only pattern)
     const memoryIds = memories.map((m) => m.id);
@@ -202,19 +338,26 @@ export const EpisodicStore = {
       )
       .all(agentId, branchId, minSalience) as EpisodicMemoryRow[];
 
-    return rows.map((r) => ({
-      id: r.id,
-      tick: r.tick,
-      qualiaText: r.qualia_text,
-      salience: r.salience,
-      emotionalValence: r.emotional_valence,
-      emotionalArousal: r.emotional_arousal,
-      suppressed: r.suppressed === 1,
-      contextTags: JSON.parse(r.context_tags || "[]") as string[],
-      source: r.source,
-      actionTaken: r.action_taken ? JSON.parse(r.action_taken) : undefined,
-      outcomeSummary: r.outcome_summary || undefined,
-      bodyShift: r.body_shift ? JSON.parse(r.body_shift) : undefined,
-    }));
+    return rows.map((r) => {
+      const action = decodeActionColumn(r.action_taken);
+      const outcome = decodeOutcomeColumn(r.outcome_summary);
+      return {
+        id: r.id,
+        tick: r.tick,
+        qualiaText: r.qualia_text,
+        salience: r.salience,
+        emotionalValence: r.emotional_valence,
+        emotionalArousal: r.emotional_arousal,
+        suppressed: r.suppressed === 1,
+        contextTags: JSON.parse(r.context_tags || "[]") as string[],
+        source: r.source,
+        actionTaken: action.actionTaken,
+        motorPlan: action.motorPlan,
+        perceptualRefs: action.perceptualRefs,
+        outcomeSummary: outcome.outcomeSummary,
+        outcome: outcome.outcome,
+        bodyShift: r.body_shift ? JSON.parse(r.body_shift) : undefined,
+      };
+    });
   },
 };

@@ -478,6 +478,36 @@ export type EpisodicMemory = {
   contextTags: string[];
   source: EpisodicMemorySource;
   actionTaken?: PrimitiveAction | undefined;
+  motorPlan?:
+    | {
+        source?: string;
+        urgency?: number;
+        createdAtTick?: number;
+        primitives: Array<{
+          type: string;
+          target:
+            | { type: "self" }
+            | { type: "none" }
+            | { type: "direction"; direction: "front" | "left" | "right" | "behind" }
+            | { type: "perceptual_ref"; ref: string };
+          intensity: number;
+          durationTicks: number;
+        }>;
+      }
+    | undefined;
+  outcome?:
+    | {
+        deltaVisceralContraction?: number;
+        deltaOralDryness?: number;
+        deltaPain: number;
+        deltaToxinLoad: number;
+        deltaHealth?: number;
+        deltaArousal?: number;
+        reliefScore: number;
+        harmScore: number;
+      }
+    | undefined;
+  perceptualRefs?: string[] | undefined;
   outcomeSummary?: string | undefined;
   bodyShift?: BodyStateDelta | undefined;
 };
