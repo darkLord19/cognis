@@ -6,17 +6,161 @@ import {
 import type {
   AgentState,
   FilteredPercept,
-  SpeciesConfig,
+  LexiconEntry,
+  PerceptualRef,
+  PrimitiveAction,
   System2Output,
   WorldConfig,
 } from "../../shared/types";
 import type { LLMGateway } from "../llm/gateway";
 import { MerkleLogger } from "../persistence/merkle-logger";
 import type { SpeciesRegistry } from "../species/registry";
-import { validateImpossibleKnowledge } from "./impossible-knowledge-check";
-import { buildSystemPrompt } from "./prompt-contract";
-import { resolveAgentReference } from "./qualia-processor";
-import { parseSystem2Output } from "./system2-parser";
+import { ActuationType, type MotorPlan, type MotorPrimitive } from "./action-grammar";
+import { checkImpossibleKnowledge } from "./impossible-knowledge-check";
+import { buildSystem2Prompt, type System2PromptInput } from "./prompt-contract";
+import type { QualiaFrame } from "./qualia-types";
+import { parseSystem2Output, type System2JsonOutput } from "./system2-parser";
+
+function toFallbackOutput(reason: string): System2Output {
+  return {
+    innerMonologue: reason,
+    intention: "defer",
+    decision: { type: "DEFER" },
+    reflection: reason,
+  };
+}
+
+function extractTargetRef(primitive: MotorPrimitive): string | null {
+  if (primitive.target.type === "perceptual_ref") return primitive.target.ref;
+  return null;
+}
+
+function firstPrimitiveToLegacyAction(
+  primitive: MotorPrimitive | undefined,
+  vocalization?: string,
+): PrimitiveAction {
+  if (!primitive) return { type: "DEFER" };
+  const targetRef = extractTargetRef(primitive);
+
+  switch (primitive.type) {
+    case ActuationType.LOCOMOTE_TOWARD:
+      return { type: "MOVE", forward: 1 };
+    case ActuationType.LOCOMOTE_AWAY:
+      return { type: "MOVE", forward: -1 };
+    case ActuationType.LOCOMOTE_IDLE:
+      return { type: "STOP" };
+    case ActuationType.REACH_TOWARD:
+      return targetRef ? { type: "REACH", targetId: targetRef } : { type: "DEFER" };
+    case ActuationType.GRASP:
+      return targetRef ? { type: "GRASP", targetId: targetRef } : { type: "DEFER" };
+    case ActuationType.RELEASE:
+    case ActuationType.PLACE:
+      return targetRef ? { type: "DROP", targetId: targetRef } : { type: "DEFER" };
+    case ActuationType.OPEN_MOUTH:
+    case ActuationType.BITE:
+    case ActuationType.CHEW:
+    case ActuationType.SPIT:
+    case ActuationType.LICK:
+      return targetRef ? { type: "MOUTH_CONTACT", targetId: targetRef } : { type: "DEFER" };
+    case ActuationType.SWALLOW:
+      return targetRef ? { type: "INGEST_ATTEMPT", targetId: targetRef } : { type: "DEFER" };
+    case ActuationType.REST_POSTURE:
+    case ActuationType.LIE_DOWN:
+    case ActuationType.CROUCH:
+      return { type: "REST" };
+    case ActuationType.VOCALIZE:
+      return {
+        type: "VOCALIZE",
+        token: vocalization && vocalization.length > 0 ? vocalization : "uh",
+        intensity: primitive.intensity,
+      };
+    default:
+      return { type: "DEFER" };
+  }
+}
+
+function buildQualiaFrame(agent: AgentState, tick: number, text: string): QualiaFrame {
+  return {
+    agentId: agent.id,
+    tick,
+    body: [],
+    world: [],
+    social: [],
+    urges: [],
+    memories: [],
+    narratableText: text,
+  };
+}
+
+function buildPerceptualRefs(percept: FilteredPercept): PerceptualRef[] {
+  const refs: PerceptualRef[] = [
+    {
+      ref: "self",
+      kind: "self",
+      salience: 1,
+    },
+  ];
+
+  for (const [index] of percept.primaryAttention.entries()) {
+    refs.push({
+      ref: `foreground_${index}`,
+      kind: "visible_entity",
+      approximateDirection: "front",
+      salience: Math.max(0.2, 1 - index * 0.2),
+    });
+  }
+
+  return refs;
+}
+
+function asMotorPlan(output: System2JsonOutput, tick: number): MotorPlan {
+  return {
+    source: "system2",
+    urgency: 0.6,
+    createdAtTick: tick,
+    primitives: output.motorPlan.primitives,
+    reason: "llm_system2_decision",
+  };
+}
+
+function buildPromptInput(
+  agent: AgentState,
+  percept: FilteredPercept,
+  tick: number,
+  qualiaText: string,
+): System2PromptInput {
+  const qualia = buildQualiaFrame(agent, tick, qualiaText);
+  const recentMemories = (Array.isArray(agent.episodicStore) ? agent.episodicStore : [])
+    .slice(-5)
+    .map((memory) => memory.qualiaText)
+    .filter((item) => item.trim().length > 0);
+  const semanticBeliefs = (Array.isArray(agent.semanticStore) ? agent.semanticStore : [])
+    .slice(-5)
+    .map((belief) => `${belief.concept}:${String(belief.value)}`);
+  const availablePerceptualRefs = buildPerceptualRefs(percept);
+
+  return {
+    qualia,
+    recentMemories,
+    semanticBeliefs,
+    availablePerceptualRefs,
+    allowedActuations: Object.values(ActuationType),
+  };
+}
+
+function toSystem2Output(parsed: System2JsonOutput, tick: number): System2Output {
+  const motorPlan = asMotorPlan(parsed, tick);
+  const output: System2Output = {
+    innerMonologue: parsed.thought,
+    intention: "act",
+    decision: firstPrimitiveToLegacyAction(motorPlan.primitives[0], parsed.vocalization),
+    reflection: parsed.memoryNote ?? "noted",
+  };
+  if (parsed.vocalization) {
+    output.utterance = parsed.vocalization;
+  }
+  return output;
+}
 
 export class System2 {
   constructor(
@@ -44,9 +188,7 @@ export class System2 {
 
     if (integrityDelta > INTEGRITY_DELTA_THRESHOLD) return true;
     if (newIntegrity > URGENCY_THRESHOLD) return true;
-
     if (Math.random() < SYSTEM2_RANDOM_FIRE_CHANCE) return true;
-
     return false;
   }
 
@@ -54,7 +196,7 @@ export class System2 {
     agent: AgentState,
     qualiaText: string,
     filteredPercept: FilteredPercept,
-    config: WorldConfig,
+    _config: WorldConfig,
     tick: number,
     branchId: string,
     options?: {
@@ -65,95 +207,28 @@ export class System2 {
       };
     },
   ): Promise<System2Output> {
-    // Build Theory of Mind context from nearby agents
-    let tomContext = "";
-    if (filteredPercept.primaryAttention.length > 0) {
-      tomContext = "\nOthers in your immediate attention:\n";
-      for (const other of filteredPercept.primaryAttention) {
-        const _rel = agent.relationships.find((r) => r.targetAgentId === other.id);
-        const reference = resolveAgentReference(other.id, agent);
-
-        // Include emotional field impressions
-        const emotionNote =
-          other.body.arousal > 0.6
-            ? " They seem agitated."
-            : other.body.valence > 0.5
-              ? " They seem content."
-              : other.body.valence < -0.5
-                ? " They seem distressed."
-                : " Their state is unclear.";
-
-        tomContext += `- ${reference}.${emotionNote}\n`;
-      }
+    const species = this.speciesRegistry?.get(agent.speciesId);
+    const promptInput = buildPromptInput(agent, filteredPercept, tick, qualiaText);
+    if (species?.name) {
+      promptInput.semanticBeliefs.push(`species:${species.name}`);
     }
 
-    // Urgency override text
-    let urgencyPrefix = "";
-    if (options?.urgencyOverride || agent.body.integrityDrive > URGENCY_THRESHOLD) {
-      urgencyPrefix =
-        "URGENT: Integrity pressure is critical. Prioritize immediate survival regulation.\n\n";
-    }
+    const prompt = buildSystem2Prompt(promptInput);
+    const systemPrompt =
+      "Return strict JSON only. Use perceptual references exactly as provided. Never output symbolic actions.";
+    const rawResponse = await this.gateway.complete(agent.id, prompt, systemPrompt);
+    const parsed = parseSystem2Output(rawResponse);
 
-    // Look up actual species config
-    const species = (this.speciesRegistry?.get(agent.speciesId) ?? {
-      id: agent.speciesId || "unknown",
-      name: "being",
-      cognitiveTier: "full_llm" as const,
-      emotionalFieldEnabled: true,
-      socialCapacity: "full" as const,
-      canLearnLanguage: true,
-      canBedomesticated: false,
-      threatLevel: 0,
-      ecologicalRole: "neutral" as const,
-      survivalDriveWeight: 1.0,
-      circadianSensitivity: 1.0,
-      sleepConfig: {
-        mode: "natural_sleep",
-        fatigueEnabled: true,
-        fatigueRate: 0.01,
-        recoveryRate: 0.05,
-        minRestDuration: 10,
-        maxWakeDuration: 100,
-        cognitivePenaltyNoSleep: 0.1,
-        emotionalPenaltyNoSleep: 0.1,
-        healthPenaltyNoSleep: 0.1,
-        consolidationDuringSleep: true,
-        consolidationWhileAwake: false,
-        consolidationIntervalTicks: 10,
-        dreamsEnabled: true,
-        nightmaresEnabled: true,
-        sleepSchedule: "synchronized",
-      },
-      memoryConfig: {},
-      dnaTraits: [],
-      baseStats: {
-        maxHealth: 100,
-        speed: 1,
-        strength: 1,
-        metabolism: 1,
-        reachRange: 2,
-        lifespanTicks: 1000,
-        reproductionAge: 100,
-        gestationTicks: 50,
-      },
-      senseProfile: { sight: 30, hearing: 50, smell: 15, touch: 5, taste: 3 },
-      muscleStatRanges: {
-        strength: [0, 1] as [number, number],
-        speed: [0, 1] as [number, number],
-        endurance: [0, 1] as [number, number],
-      },
-    }) as SpeciesConfig;
-
-    const systemPrompt = buildSystemPrompt(agent, species, config.semanticMasking);
-    const fullPrompt = `${urgencyPrefix}${qualiaText}${tomContext}\n\nDecision Required.`;
-
-    const rawResponse = await this.gateway.complete(agent.id, fullPrompt, systemPrompt);
-
-    const output = parseSystem2Output(rawResponse);
-
-    // Validate against impossible knowledge
-    if (!validateImpossibleKnowledge(agent, output, filteredPercept)) {
-      output.decision = { type: "DEFER" };
+    let output = toFallbackOutput("invalid_output");
+    if (parsed.ok) {
+      const checked = checkImpossibleKnowledge({
+        output: parsed.value,
+        promptInput,
+        lexicon: (Array.isArray(agent.lexicon) ? agent.lexicon : []) as LexiconEntry[],
+      });
+      output = checked.ok
+        ? toSystem2Output(parsed.value, tick)
+        : toFallbackOutput("knowledge_rejected");
     }
 
     MerkleLogger.log(

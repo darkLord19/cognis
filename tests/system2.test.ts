@@ -131,10 +131,10 @@ test("System2: think prompt does not leak other agent names or IDs", async () =>
   expect(capturedPrompt).not.toContain("a2");
 });
 
-test("System2: parses JSON wrapped in markdown fences with comments", async () => {
+test("System2: parses strict motor-plan JSON wrapped in markdown fences", async () => {
   const provider = {
     completion: async () =>
-      '```json\n{\n  // keep moving\n  "innerMonologue": "metallic signal",\n  "intention": "moving",\n  "chosenAction": { "type": "MOVE", "forward": 1.0 },\n  "reflection": "ok"\n}\n```',
+      '```json\n{\n  "thought": "metallic signal",\n  "motorPlan": { "primitives": [ { "type": "locomote_toward", "target": { "type": "direction", "direction": "front" }, "intensity": 0.7, "durationTicks": 1 } ] }\n}\n```',
     embed: async () => [],
   };
   const gateway = new LLMGateway(provider);

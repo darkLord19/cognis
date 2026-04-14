@@ -1,46 +1,79 @@
-import type { AgentState, SemanticMaskingConfig, SpeciesConfig } from "../../shared/types";
-import { PRIMITIVE_ACTIONS } from "./action-grammar";
+import type { LexiconEntry, PerceptualRef } from "../../shared/types";
+import type { ActuationType } from "./action-grammar";
+import type { QualiaFrame } from "./qualia-types";
 
-/**
- * buildSystemPrompt defines the strict interface between the world and the agent's mind.
- * It ensures the LLM receives only subjective reality and motor primitives.
- */
-export function buildSystemPrompt(
-  _agent: AgentState,
-  _species: SpeciesConfig,
-  masking: SemanticMaskingConfig,
-): string {
-  const base = `You are a biological being experiencing a subjective reality.
-Your existence is defined by sensations and motor impulses.
-DO NOT assume the existence of objects or properties you cannot currently perceive.
-Avoid abstract or technical explanations of your existence.
-DO NOT output speech acts unless specifically possible through vocalization.
+export type System2PromptInput = {
+  qualia: QualiaFrame;
+  recentMemories: string[];
+  semanticBeliefs: string[];
+  availablePerceptualRefs: PerceptualRef[];
+  allowedActuations: ActuationType[];
+};
 
-Your available motor primitives are: ${PRIMITIVE_ACTIONS.join(", ")}.
+function renderPerceptualRefs(refs: PerceptualRef[]): string {
+  if (refs.length === 0) return "- none";
+  return refs
+    .map((item) => {
+      const direction = item.approximateDirection ? ` ${item.approximateDirection}` : "";
+      return `- ${item.ref} (${item.kind}${direction})`;
+    })
+    .join("\n");
+}
 
-Respond ONLY in strict JSON format:
+function renderList(items: string[], fallback: string): string {
+  if (items.length === 0) return fallback;
+  return items.map((item) => `- ${item}`).join("\n");
+}
+
+export function buildSystem2Prompt(input: System2PromptInput): string {
+  const allowList = input.allowedActuations.join(", ");
+  const refs = renderPerceptualRefs(input.availablePerceptualRefs);
+  const memories = renderList(input.recentMemories, "- none");
+  const beliefs = renderList(input.semanticBeliefs, "- none");
+
+  return `You are an embodied host.
+Use only currently available perceptual references and motor primitives.
+You may move, look, reach, grasp, release, bring something toward your mouth, open your mouth, bite, chew, swallow, spit, vocalize, rest, or attend to a sensation.
+Never use material IDs, coordinates, hidden variables, or symbolic actions.
+Return STRICT JSON only. No markdown.
+
+Qualia:
+${input.qualia.narratableText}
+
+Recent memories:
+${memories}
+
+Semantic beliefs:
+${beliefs}
+
+Available perceptual refs:
+${refs}
+
+Allowed actuations:
+${allowList}
+
+Return exactly:
 {
-  "innerMonologue": "Your subjective reflections (keep brief)",
-  "intention": "What you are trying to achieve",
-  "chosenAction": { 
-    "type": "ACTION_TYPE", 
-    "targetId": "optional_id", 
-    "deltaYaw": 0, 
-    "forward": 0, 
-    "token": "voc_token", 
-    "intensity": 0.5 
+  "thought": "string",
+  "motorPlan": {
+    "primitives": [
+      {
+        "type": "one of allowed actuations",
+        "target": { "type": "self|perceptual_ref|direction|none", "ref": "only for perceptual_ref", "direction": "front|left|right|behind only for direction" },
+        "intensity": 0.0,
+        "durationTicks": 1
+      }
+    ]
   },
-  "reflection": "Brief post-action reflection"
+  "vocalization": "optional string",
+  "memoryNote": "optional string"
 }`;
+}
 
-  // Apply semantic masking if needed
-  if (masking.enabled && !masking.qualiaUsesRealLabels) {
-    let masked = base;
-    for (const [real, token] of Object.entries(masking.sensorLabelMap)) {
-      masked = masked.replace(new RegExp(real, "gi"), token as string);
-    }
-    return masked;
-  }
-
-  return base;
+export function isLexiconAllowedWord(word: string, lexicon: LexiconEntry[]): boolean {
+  const normalized = word.trim().toLowerCase();
+  return lexicon.some(
+    (entry) =>
+      entry.word.toLowerCase() === normalized || entry.concept.toLowerCase() === normalized,
+  );
 }

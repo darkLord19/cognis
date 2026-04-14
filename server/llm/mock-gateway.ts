@@ -7,9 +7,19 @@ export class MockLLMGateway implements LLMProvider {
     _options?: Record<string, unknown>,
   ): Promise<string> {
     // Deterministic response for testing
-    // Note: innerMonologue in the response is expected — System2 routes it to MerkleLogger.
-    // The mock returns a valid System2Output shape for integration testing.
-    return `{"innerMonologue": "...", "decision": { "type": "IDLE" }}`;
+    return JSON.stringify({
+      thought: "...",
+      motorPlan: {
+        primitives: [
+          {
+            type: "locomote_idle",
+            target: { type: "none" },
+            intensity: 0.2,
+            durationTicks: 1,
+          },
+        ],
+      },
+    });
   }
 
   public async embed(_text: string): Promise<number[]> {
