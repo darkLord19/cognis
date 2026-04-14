@@ -1,7 +1,34 @@
 # Cognis — Product Requirements Document
-**Version:** 4.0.0
-**Status:** Authoritative
-**All implementation decisions defer to this file.**
+**Version:** 5.2.0  
+**Status:** Authoritative  
+**Supersedes:** v4.0.0 and v5.0.0 draft variants  
+**Intent:** Preserve the strong backbone of v4, incorporate the embodiment and sensation-first advances from v5, and resolve the engineering gaps identified during implementation review.
+
+This document is the final authoritative PRD for Cognis as of v5.2.0.
+
+It keeps the original v4 strengths:
+- strong operator/agent separation,
+- worker-based simulation architecture,
+- append-only persistence,
+- Merkle causality,
+- Qualia as epistemological wall,
+- research-first framing.
+
+It adopts the best parts of the later v5 direction:
+- sensation-first embodied discovery,
+- raw sensor bundles,
+- explicit actuator systems,
+- hidden physiological requirements,
+- richer world ecology,
+- full Qualia pipeline,
+- stronger host prompting.
+
+It also resolves critical issues raised during implementation review:
+- adds an explicit **procedural learning layer** between reflexes and LLM cognition,
+- replaces symbolic actions like `EAT` with **motor primitives**,
+- forbids System2 from choosing operator-layer targets like `materialId`,
+- clarifies that **Host** is the conceptual term while existing code may still use `Agent*` names during migration,
+- narrows v1 implementation scope to a buildable research slice.
 
 ---
 
@@ -9,327 +36,473 @@
 
 ### 0.1 The Experiment
 
-> *Can a raw intelligence, given only numbers and a drive to maintain integrity, successfully invent the concepts of self, other, time, and meaning?*
+> *Can a raw intelligence, given only sensation, memory, action, and a need to maintain bodily integrity, invent the concepts of self, other, time, value, language, and meaning?*
 
-Cognis is a **causality engine** — a scientific instrument for observing the emergence of consciousness, culture, and will from first principles.
+Cognis is a **causality engine** — a scientific instrument for observing the emergence of cognition, culture, and agency from first principles.
+
+It is not a game, not a chatbot playground, and not a scripted life sim.  
+It is a research system for studying what happens when a body, a world, and memory are allowed to teach each other.
 
 ### 0.2 The Two Roles
 
-**The Veil (Agents):** Embodied intelligences trapped in subjective reality. They experience the world only through Qualia — sensory feelings translated from raw physical data. They have no concept of code, databases, or being observed. They must never know they are simulated.
+**The Veil (Hosts):**  
+Embodied intelligences trapped inside subjective reality. Hosts never receive raw simulation state. They do not know they are simulated. They know only what their bodies, perceptions, memory, language, and culture allow them to know.
 
-**The Sole Witness (Operator):** Possesses the only permanent, tamper-evident record. Sees objective truth. The digital archaeologist of a world that forgets its own past.
+**The Sole Witness (Operator):**  
+The only observer with objective access to internal state, causality, history, and auditability. The operator sees the simulation as a world of facts, not feelings.
 
-### 0.3 The Emergence Principle
+### 0.3 Conceptual Naming Rule: Host vs Agent
 
-> Cognis never introduces a concept to agents directly. It introduces only the physical conditions that, in real systems, gave rise to that concept. The concept must be discovered.
+The final conceptual term is **Host**.
 
-| Concept | What Cognis provides | What agents must discover |
+Why:
+- “Agent” is implementation-neutral but too mechanical for the philosophical frame.
+- “Host” emphasizes embodied first-person experience.
+- “Player” is incorrect because Cognis is not a game.
+
+However, this PRD explicitly permits a **migration compatibility layer**:
+- existing code may continue using names like `AgentState`, `agent.ts`, `agents/`, and `agent_id` during transition,
+- new conceptual documentation, prompts, research language, and future schemas should prefer **Host**,
+- compatibility aliases are allowed, for example:
+
+```typescript
+type HostState = AgentState
+```
+
+This avoids a costly rename across the entire existing codebase while preserving the final conceptual vocabulary.
+
+### 0.4 The Emergence Principle
+
+Cognis must never introduce a concept directly if that concept is supposed to emerge.
+
+It may introduce:
+- physical conditions,
+- bodily pressures,
+- affordances,
+- consequences,
+- recurrence,
+- memory,
+- social contact,
+- environmental structure.
+
+It may not introduce:
+- labels for hidden needs,
+- correct explanations before discovery,
+- privileged operator knowledge,
+- symbolic shortcuts that bypass embodiment.
+
+| Concept | What Cognis provides | What hosts must discover |
 |---|---|---|
-| Time | Light cycles, body rhythms, hunger patterns | That something repeats; that "now" differs from "before" |
-| Economy | Resource scarcity, need, effort | That things have value; that exchange is possible |
-| Death | Physical stillness, absent emotional field, cold body | That it is permanent; that they too will die |
-| Conflict resolution | Muscle stats, pain, damage | Dominance, submission, alliance |
-| Goal priority | IntegrityDrive physically interrupting focus | That some needs override intentions |
-| Theory of Mind | Emotional fields, observed behaviour patterns | That other agents have inner states |
-| Religion/myth | Dream chaos, shared trauma, death observations | Sacred narrative, ritual, collective meaning |
-| Language | Reflexive vocal actuations, social proximity | That sound can carry meaning |
+| Time | light cycles, body rhythms, repeating environmental changes | recurrence, before/after, cycles |
+| Eating | visceral deficit signals, oral actuators, digestible materials | that some ingested materials reduce internal distress |
+| Drinking | oral dryness, hydration deficit, fluid sources | that some liquids relieve the dry internal signal |
+| Breathing | chest pressure under submersion or low-oxygen conditions | that certain body positions or places relieve that pressure |
+| Warmth | thermal stress, radiant heat, shelters, weather | that proximity and structures change bodily comfort |
+| Poison | delayed sickness after ingestion | that not all consumables are safe |
+| Medicine | pain or disease burden reduction after specific exposure | that some materials relieve suffering |
+| Death | stillness, cold body, no response, decomposition | permanence, mortality, grief |
+| Language | reflexive sounds, social contact, repeated co-occurrence | reference, naming, convention, grammar |
+| Tool use | hardness differentials, striking, breaking, reshaping | that one thing can be used to change another |
+| Shelter | structure-induced thermal/rain stability | that enclosure reduces environmental stress |
+| Economy | scarcity, labor, transport, need | value, exchange, storage, debt |
+| Myth/Religion | dreams, death, ritual recurrence, shared narratives | meaning, story, taboo, sacred order |
 
-### 0.4 The Prime Directive
+### 0.5 Sensation-First Principle
 
-Raw simulation state MUST NEVER reach agent cognition. The Qualia Processor is the epistemological wall.
+**No concept exists in a host’s world until it is felt, enacted, remembered, or socially stabilized.**
 
-Above it: numbers, coordinates, IDs, VoxelTypes, tick counts.
-Below it: warmth, hunger, grief, wonder, the felt presence of another being.
+A host does not begin with “hunger,” “thirst,” “eat,” “drink,” “sleep,” “fire,” or “death.”  
+It begins with unnamed sensation.
 
-The lefthook pre-commit blocks any commit that puts forbidden words in qualia-processor.ts output paths.
+Examples:
+- low energy reserves are felt as escalating internal disturbance,
+- dehydration is felt as dryness, effort, and bodily wrongness,
+- cold is felt as slowing, ache, and rigidity,
+- proximity to fire is felt as radiance, glare, crackle, and threat,
+- grief is not injected as a label; it emerges through loss, memory, and social residue.
 
-### 0.5 The Two Data Layers
+### 0.6 Hidden Requirement Principle
 
-**Operator layer:** All internal simulation data uses real concept names. `VoxelType.fire`, `TechNode.id = "fire_making"`, `MaterialType.wood` — these are the Sole Witness's vocabulary. Agents never see them.
+The simulation must contain **requirements hosts are never told explicitly**.
 
-**Agent layer:** Agents receive only Qualia text from the Qualia Processor. The Qualia Processor is the only translation point. Nothing bypasses it.
+Possible hidden requirements include:
+- hydration,
+- usable calories,
+- oxygen / breathable chemistry,
+- thermal envelope,
+- sleep / consolidation,
+- social contact for social species,
+- specific nesting or reproduction conditions,
+- electrolytes or trace nutrients,
+- medicinal exposure,
+- pathogen avoidance,
+- gut flora acquisition.
 
-This distinction resolves apparent conflicts: the ElementEngine can have a function called `spreadFire()` because that's operator-layer code. What the agent experiences is heat sensation and light increase — translated by the Qualia Processor from the voxel state change.
+The system provides only causal structure.  
+Hosts must discover useful patterns through consequence.
 
-### 0.6 The Merkle-Causality Log
+### 0.7 Prime Directive
 
-Every state change is hashed and chained to the previous entry. The operator can verify, cryptographically, that a cultural shift in Generation 10 traces to a specific thought in Generation 1.
+Raw simulation state must never reach host cognition.
+
+Above the Qualia boundary:
+- coordinates,
+- IDs,
+- material names,
+- float values,
+- schema names,
+- tick counts,
+- operator-layer variables,
+- true causal graphs.
+
+Below the Qualia boundary:
+- bodily pressure,
+- radiance,
+- ache,
+- pull,
+- aversion,
+- relief,
+- remembered pattern,
+- sensed otherness,
+- lived uncertainty.
+
+### 0.8 The Two Data Layers
+
+**Operator Layer**  
+Internal code, analytics, persistence, config, and debugging use real names.
+
+Examples:
+- `MaterialType.fresh_water`
+- `sensor.visceral_contraction`
+- `TechNode.id = "basic_feeding"`
+- `toxicity = 0.6`
+
+**Host Layer**  
+Hosts receive only translated subjective reality.
+
+Examples:
+- “a cooling, yielding presence nearby”
+- “a dry tightness coats your throat”
+- “a violent bitter slap warns you away”
+- “the one who stayed near you before”
+
+### 0.9 The Discovery Loop
+
+Every major behavioral discovery should follow this pattern:
+
+```text
+1. Signal Onset
+   A bodily or environmental pressure enters experience.
+
+2. Exploration
+   Reflexes, procedural habits, random variation, or deliberate action produce attempts.
+
+3. Correlation
+   A specific action coincidentally changes the signal.
+
+4. Episodic Trace
+   Memory records context → action → change.
+
+5. Reinforcement
+   Repeated success shifts procedural preference.
+
+6. Semantic Consolidation
+   The host forms a belief or proto-concept.
+
+7. Cultural Stabilization
+   If social and linguistic conditions allow, the discovery can be named, taught, ritualized, or institutionalized.
+```
+
+### 0.10 Non-Negotiable Research Commitments
+
+Cognis must not rely on the LLM to fake embodiment.
+
+Therefore:
+1. reflexes must exist,
+2. physiology must exist,
+3. actuators must exist,
+4. procedural learning must exist,
+5. Qualia must be deterministic,
+6. LLM cognition must sit on top of, not instead of, body-world learning.
 
 ---
 
 ## 1. System Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                    OPERATOR LAYER                                 │
-│                                                                   │
-│  The Forge (React UI)     Management API (HTTP :3000)            │
-│  Watcher (stdout/SSE)     Health endpoint                         │
-│  Glass Room sessions     Graceful shutdown                       │
-└────────────┬──────────────────────┬──────────────────────────────┘
-             │ WebSocket :3001       │ HTTP :3000
-             │ (subscription model)  │ (run lifecycle)
-┌────────────▼──────────────────────▼──────────────────────────────┐
-│                    SERVER CORE                                    │
-│  RunManager · BranchManager · WorldConfigManager                 │
-│  EventBus · OperatorService · WebSocketServer                    │
-└──────┬──────────────────────────┬─────────────────────────────────┘
-       │                          │
-       │  ┌───────────────────────▼──────────────────────────────┐
-       │  │              PER-RUN WORKERS                         │
-       │  │                                                       │
-       │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐ │
-       │  │  │   PHYSICS   │  │   COGNITION │  │  ANALYSIS   │ │
-       │  │  │   WORKER    │  │   WORKER    │  │   WORKER    │ │
-       │  │  │             │  │             │  │             │ │
-       │  │  │ VoxelGrid   │  │ System2     │  │ CausalMiner │ │
-       │  │  │ System1     │  │ (LLM queue) │  │ Tipping     │ │
-       │  │  │ Elements    │  │ DreamEngine │  │ Emergence   │ │
-       │  │  │ Circadian   │  │ WillEngine  │  │ Findings    │ │
-       │  │  │ Physics     │  │ Memory      │  │ Baseline    │ │
-       │  │  └──────┬──────┘  └──────┬──────┘  └─────────────┘ │
-       │  │         │                │                           │
-       │  │  ┌──────▼────────────────▼──────────────────────┐   │
-       │  │  │        SharedArrayBuffer (world state)        │   │
-       │  │  └────────────────────────────────────────────────┘   │
-       │  └───────────────────────────────────────────────────────┘
-       │
-┌──────▼──────────────────────────────────────────────────────────┐
-│                    PERSISTENCE                                    │
-│  SQLite WAL · Append-only events · Merkle audit chain           │
-│  Delta blobs · Snapshots · Config mutations · Research          │
-└─────────────────────────────────────────────────────────────────┘
+### 1.1 High-Level Architecture
+
+```text
+Operator Layer
+  Forge UI · Watcher · Management API · WebSocket · Health · Research dashboards
+
+Server Core
+  RunManager · BranchManager · WorldConfigManager · EventBus · Runtime Supervisor
+
+Per-Run Workers
+  Physics Worker   → world, body, reflexes, sensors, actuator execution
+  Cognition Worker → qualia, procedural arbitration, System2, memory, dreams, will
+  Analysis Worker  → causal mining, baseline comparison, findings, emergence scoring
+
+Persistence
+  SQLite WAL · append-only event log · snapshots · delta blobs · Merkle audit chain
 ```
 
-### 1.1 Run Lifecycle
+### 1.2 Core Architectural Rule
 
-Every simulation exists as a Run with a defined state machine:
+Simulation must advance through **worker-owned responsibilities**.
 
+- Physics owns ground truth and bodily change.
+- Cognition owns subjective interpretation and deliberate choice.
+- Analysis never blocks simulation.
+- Persistence never mutates historical records.
+
+### 1.3 Run Lifecycle
+
+```typescript
+type RunStatus =
+  | "created"
+  | "starting"
+  | "running"
+  | "paused"
+  | "resuming"
+  | "stopped"
+  | "completed"
 ```
+
+```text
 created → starting → running → paused → resuming → stopped
                                   ↓
-                              completed (goal reached)
+                              completed
 ```
 
-```typescript
-type RunStatus = "created" | "starting" | "running" | "paused" | "resuming" | "stopped" | "completed"
+### 1.4 Worker Responsibilities
 
-type RunRecord = {
-  run_id: string
-  status: RunStatus
-  world_config_hash: string   // sha256 of config at creation — for integrity
-  world_config: string        // Full WorldConfig JSON snapshot (canonical, from DB not file)
-  seed: number
-  current_tick: number
-  started_at?: number
-  paused_at?: number
-  stopped_at?: number
-  branch_id: string           // Current active branch
-  goal_reached: boolean
-  agent_count: number         // Current live agent count
-  baseline_config?: "A" | "B" | "C"
+#### Physics Worker
+Owns:
+- `VoxelGrid`
+- `PhysicsEngine`
+- `ElementEngine`
+- `CircadianEngine`
+- `HydrologyEngine`
+- `SpatialIndex`
+- `PathFinder`
+- `System0`
+- `System1`
+- `SensorComputer`
+- `ActuatorExecutor`
+
+Responsibilities:
+- update world,
+- update physiology,
+- execute reflexes,
+- compute raw sensor bundles,
+- execute committed actuations from prior cognition step,
+- emit physics deltas and events.
+
+#### Cognition Worker
+Owns:
+- `QualiaProcessor`
+- `AttentionFilter`
+- `ProceduralPolicy`
+- `ActionOutcomeLearner`
+- `System2`
+- `MemorySystem`
+- `DreamEngine`
+- `WillEngine`
+- `LanguageEngine` interfaces relevant to deliberation
+
+Responsibilities:
+- read sensor bundles,
+- produce qualia,
+- arbitrate between procedural and deliberative action,
+- run System2 only when needed,
+- validate outputs,
+- commit next-tick motor plans.
+
+#### Analysis Worker
+Owns:
+- `CausalMiner`
+- `TippingPointDetector`
+- `EmergenceDetector`
+- `BaselineComparator`
+- `FindingsJournal`
+
+Responsibilities:
+- consume append-only event streams,
+- produce findings without blocking active runs,
+- compare baselines and branches,
+- generate replay and research summaries.
+
+### 1.5 Tick Order — Canonical v5.2 Loop
+
+This replaces all ambiguous earlier tick sequencing.
+
+```text
+Tick N:
+
+A. Physics pre-step
+   - apply weather / circadian / element updates
+   - apply queued world mutations
+
+B. Host body update
+   - System0 reflex trigger check
+   - System1 physiology update
+   - body-map update
+   - involuntary vocalizations
+
+C. Sensor computation
+   - generate RawSensorBundle for each host
+   - write sensory state into shared memory
+
+D. Actuation execution
+   - execute committed motor plans from prior cognition output
+   - write actuation results
+
+E. Cognition step
+   - AttentionFilter compresses sensory field
+   - QualiaProcessor renders subjective frame
+   - ProceduralPolicy proposes fast action candidates
+   - System2 runs only if trigger conditions are met
+   - ActionArbiter chooses final plan
+   - commit plan for Tick N+1
+
+F. Memory + language + relationship updates
+   - encode episodes
+   - update procedural outcome tables
+   - update lexicon hypotheses
+
+G. Event flush + persistence
+   - append events
+   - append audit entries
+   - snapshot if interval reached
+
+H. Analysis ingest
+   - forward batches to Analysis Worker
+```
+
+### 1.6 Action Arbitration Rule
+
+Action selection must not be LLM-only.
+
+Priority order:
+
+```text
+System0 reflex
+→ urgent procedural pattern
+→ validated System2 motor plan
+→ exploratory procedural fallback
+→ idle / rest fallback
+```
+
+### 1.7 Shared Memory Contract
+
+Shared sensor buffers must be versioned and indexed by enums, not magic offsets in prose.
+
+```typescript
+enum SensorIndex {
+  VisualBand0 = 0,
+  VisualBand1 = 1,
+  VisualBand2 = 2,
+  VisualMotion = 3,
+  OlfactoryFood = 4,
+  OlfactoryThreat = 5,
+  AuditoryBand0 = 6,
+  AuditoryBand1 = 7,
+  AmbientThermalDeviation = 8,
+  RadiantHeat = 9,
+  VisceralContraction = 10,
+  OralDryness = 11,
+  ChestPressure = 12,
+  MuscleWeakness = 13,
+  CoreThermalStress = 14,
+  PainHead = 15,
+  PainTorso = 16,
+  PainLeftArm = 17,
+  PainRightArm = 18,
+  PainLeftLeg = 19,
+  PainRightLeg = 20,
+  CycleFlux = 21,
+  SocialIsolation = 22,
+  Taste0 = 23,
+  Taste1 = 24,
+  Taste2 = 25,
+  Taste3 = 26,
+  Taste4 = 27,
 }
 ```
 
-Runs are created via the Management API. The simulation core does not auto-start. The server starts in neutral state and waits for API commands.
+Rules:
+- the exact bundle length is configurable and versioned,
+- physics and cognition must agree on `SensorSchemaVersion`,
+- new sensors are added only by explicit schema migration.
 
-### 1.2 Worker Thread Architecture
+### 1.8 Determinism and Replay
 
-Each active run spawns two Bun worker threads. A third global analysis worker handles all runs.
+Cognis supports four replay classes:
 
-**Physics Worker** (one per run):
-- Owns: VoxelGrid (via SharedArrayBuffer), System1 for all agents, ElementEngine, CircadianEngine, PhysicsEngine, PathFinder, SpatialIndex
-- Fires every tick, synchronously
-- Writes agent body state deltas to SharedArrayBuffer
-- Posts `PhysicsTickResult` to main thread
+1. **Strict replay** — deterministic for all non-LLM layers.
+2. **Prompt replay** — same prompts and same recorded outputs replayed exactly.
+3. **Counterfactual replay** — same world state, altered intervention or model outputs.
+4. **Statistical replay** — repeated stochastic runs for experimental comparison.
 
-**Cognition Worker** (one per run):
-- Owns: System2 queue (priority-sorted), DreamEngine, WillEngine, MemorySystem
-- Reads world state from SharedArrayBuffer (read-only)
-- Consumes PhysicsTickResult to decide which agents need System2 calls
-- Priority queue: UrgentNeedSignal calls before ReflectionTimer calls
-- Posts `CognitionTickResult` to main thread
+### 1.9 Management API
 
-**Analysis Worker** (one global, shared across all runs):
-- Owns: CausalMiner, TippingPointDetector, EmergenceDetector, FindingsJournal, BaselineComparator
-- Receives event batches from main thread
-- Never blocks simulation workers
-- Posts findings to main thread for DB persistence
+Required endpoints:
+- `POST /runs`
+- `POST /runs/:id/start`
+- `POST /runs/:id/pause`
+- `POST /runs/:id/stop`
+- `POST /runs/:id/branch`
+- `GET /runs`
+- `GET /runs/:id`
+- `GET /runs/:id/config`
+- `PATCH /runs/:id/config`
+- `GET /runs/:id/hosts`
+- `GET /runs/:id/hosts/:hostId`
+- `GET /runs/:id/findings`
+- `GET /health`
+- `GET /metrics`
+- `POST /triple-baseline`
 
-**SharedArrayBuffer layout (per run):**
-- Agent positions: Float32Array (x, y, z per agent, indexed by agent slot)
-- Agent body state: Float32Array (hunger, thirst, health, pain_max, arousal, valence, cycleHormone per agent)
-- World state dirty flags: Uint8Array (one bit per 16×16×16 chunk)
-- Tick counter: Int32Array (Atomics.add for lock-free increment)
+### 1.10 v1 Implementation Slice
 
-### 1.3 Management API (HTTP :3000)
+The first production-worthy research slice must be deliberately narrow:
+- one species,
+- one biome,
+- one map,
+- one or a few hosts,
+- hydration discovery,
+- edible vs toxic ingestion,
+- thermal discomfort,
+- one vocal reflex channel,
+- procedural learning,
+- deterministic Qualia,
+- optional System2.
 
-Bun.serve() HTTP server. All responses are JSON. No authentication in v1 (localhost only).
-
-```
-POST   /runs                           Create run from config name or inline config
-POST   /runs/:id/start                 Start or resume
-POST   /runs/:id/pause                 Pause at next tick boundary
-POST   /runs/:id/stop                  Stop and persist final state
-POST   /runs/:id/branch                Fork at current tick
-GET    /runs                           List all runs with status
-GET    /runs/:id                       Full run state
-GET    /runs/:id/config                Current live config (from DB, not file)
-PATCH  /runs/:id/config                Mutate live config (logs to config_mutations + Merkle)
-GET    /runs/:id/agents                All agent summaries
-GET    /runs/:id/agents/:agentId       Single agent state (operator view, not Qualia)
-GET    /runs/:id/findings              Findings journal
-GET    /runs/:id/audit                 Merkle audit log (paginated)
-POST   /runs/:id/audit/verify          Verify Merkle chain integrity
-POST   /runs/:id/interventions         Apply god-mode intervention
-POST   /runs/:id/glass-room/:agentId     Enter Glass Room for agent
-DELETE /runs/:id/glass-room/:agentId     Exit Glass Room
-GET    /configs                        List available config templates
-GET    /health                         Server health + all run statuses + metrics
-GET    /metrics                        Tick rates, LLM queue depth, memory usage
-POST   /triple-baseline                Start TripleBaseline (spawns 3 linked runs)
-```
-
-**Config mutation (PATCH /runs/:id/config):**
-- Body: `{ path: "physics.gravity", value: 1.6 }`
-- Validates new value against type schema
-- Writes to `config_mutations` table
-- Logs to Merkle audit as operator intervention
-- Live config is always `base_config + applied mutations`
-
-**Response shape example:**
-```typescript
-// GET /runs/:id
-{
-  run_id: "run-abc123",
-  status: "running",
-  tick: 4847,
-  agents: { alive: 9, sleeping: 2, dreaming: 1 },
-  language_stage: 2,
-  findings_count: 3,
-  uptime_ticks: 4847,
-  tick_rate: 8.3,       // ticks per second
-  llm_queue_depth: 4,
-  last_event: { type: "word_entered_lexicon", tick: 4831 }
-}
-```
-
-### 1.4 Watcher Mode
-
-When `--watch` flag is passed to `index.ts`, events stream to stdout in human-readable form. Verbosity controlled by `--verbosity` flag (0=summary only, 1=key events, 2=all events).
-
-```
-[t=0001] RUN STARTED  run-abc123  10 agents  seed=42
-[t=0100] LANGUAGE     "ugh" proto-word coined  (pain referent, agent op-id-3, conf 0.31)
-[t=0480] CIRCADIAN    First full light cycle complete
-[t=0523] LANGUAGE     "ugh" entered faction lexicon  (confidence 0.72, 4 agents)
-[t=1200] DEATH        Agent op-id-7 died  cause=starvation  2 witnesses
-[t=1201] OBSERVATION  op-id-4 observed stillness + absent emotional field  (death obs 1/5)
-[t=2400] EMERGENCE    Novel behaviour detected: "vigil_posture" — agents near deceased body
-[t=5000] ─────────── CHECKPOINT tick=5000  agents=9  tech=3  lang_stage=2  will_avg=0.31
-```
-
-Also available as Server-Sent Events at `GET /runs/:id/watch?verbosity=1`.
-
-### 1.5 Startup Orchestration (index.ts)
-
-```typescript
-// CLI flags:
-// --config <name>       Create and start run from template name
-// --resume <run-id>     Resume a paused or stopped run
-// --watch               Enable watcher mode (stdout stream)
-// --verbosity <0|1|2>   Watcher verbosity
-// --port <n>            HTTP port (default 3000)
-// --ws-port <n>         WebSocket port (default 3001)
-// --triple-baseline <config>  Start TripleBaseline from config
-
-// Startup sequence:
-// 1. Load .env
-// 2. Initialize database and run migrations
-// 3. Start Management API (HTTP)
-// 4. Start WebSocket server
-// 5. Start Analysis worker (global)
-// 6. If --resume: load run from DB, resume it
-// 7. If --config: create run from template, start it
-// 8. If --triple-baseline: create 3 linked runs, start all
-// 9. If --watch: enable watcher mode
-// 10. If none of the above: log "Server ready. Use management API to create runs."
-// 11. Register SIGTERM/SIGINT handlers for graceful shutdown
-
-// Graceful shutdown:
-// 1. Pause all active runs
-// 2. Flush all pending DB writes
-// 3. Flush all pending Merkle audit entries
-// 4. Close all worker threads
-// 5. Close DB connection
-// 6. Exit 0
-```
-
-### 1.6 WebSocket Server (Subscription Model)
-
-The WebSocket server at :3001 uses a subscription model to prevent flooding.
-
-```typescript
-// Client subscribes on connect:
-// { type: "subscribe", run_id: "run-abc123", events: ["all"|EventType[]], agents: ["all"|agentId[]] }
-
-// Server sends on connect (current state snapshot):
-// { type: "snapshot", run: RunRecord, agents: AgentSummary[] }
-
-// Then incremental updates matching subscription filter:
-// { type: "event", event: SimEvent }
-// { type: "agent_update", agentId, delta: Partial<AgentSummary> }
-// { type: "tick", tick: number, metrics: TickMetrics }
-
-// Operator-only stream (requires connection with operator: true):
-// { type: "inner_monologue", agentId, tick, text }
-// { type: "audit_entry", entry: AuditEntry }
-```
-
-Standard connections receive no inner monologues and no raw state values. Operator connections receive everything. There is no authentication in v1 — operator mode is set at connection time (localhost trust model).
+Do not treat dreams, grammar, institutions, or Glass Room sophistication as v1 blockers.
 
 ---
 
 ## 2. World Configuration
 
-### 2.1 WorldConfig Persistence
-
-World config templates live in `data/world-configs/*.json` for human authoring and version control. **At runtime, they are NEVER read directly.** When a run is created via the Management API, the template is loaded once, validated, serialised into the `runs.world_config` column with a hash, and all subsequent config reads come from the database.
-
-Config mutations (physics swaps, scarcity changes, etc.) are written to `config_mutations` and logged to the Merkle audit. The live config is always reconstructed as:
-
-```typescript
-WorldConfigManager.load(runId, db) = applyMutations(runs.world_config, config_mutations WHERE run_id=?)
-```
-
-```typescript
-class WorldConfigManager {
-  static createFromTemplate(templateName: string, db: Database): string  // returns run_id
-  static createFromInline(config: WorldConfig, db: Database): string
-  static load(runId: string, db: Database): WorldConfig   // ALWAYS call this — never read JSON
-  static mutate(runId: string, path: string, value: unknown, operatorId: string, db: Database, merkle: MerkleLogger): void
-  static verify(runId: string, db: Database): boolean     // Compare current config hash to creation hash
-}
-```
-
-### 2.2 WorldConfig Schema
+### 2.1 WorldConfig Schema
 
 ```typescript
 type WorldConfig = {
   meta: {
     name: string
     seed: number
-    version: string        // Config schema version (for migration)
-    goal?: string          // Null = freeform
-    learnabilityNote: string // Authoring note: are all causal relationships learnable within lifespan?
+    version: string
+    goal?: string
+    learnabilityNote: string
   }
   physics: PhysicsPreset
   circadian: CircadianConfig
   terrain: TerrainConfig
-  resources: ResourceConfig
-  elements: ElementConfig  // NEW: which elements are active and their physics properties
-  agents: AgentPopulationConfig
-  species: SpeciesConfig[]
+  ecology: EcologyConfig
+  elements: ElementConfig
+  hosts: HostPopulationConfig
+  species: SpeciesDefinition[]
   language: LanguageConfig
   sleep: SleepConfig
   dreams: DreamConfig
@@ -342,560 +515,723 @@ type WorldConfig = {
 }
 ```
 
-### 2.3 PhysicsPreset
+### 2.2 PhysicsPreset
 
 ```typescript
 type PhysicsPreset = {
   name: "earth" | "moon" | "mars" | "waterworld" | "custom"
   gravity: number
   atmospherePressure: number
-  oxygenLevel: number
-  temperatureBaseline: number
-  materialDensities: Record<MaterialType, number>
-  flammability: Record<MaterialType, number>
-  thermalConductivity: Record<MaterialType, number>
+  oxygenConcentration: number
+  ambientTemperatureBaseline: number
+  waterViscosity: number
+  windMaxSpeed: number
+  materialDensities: Record<string, number>
+  flammability: Record<string, number>
+  thermalConductivity: Record<string, number>
 }
 ```
 
-### 2.4 ElementConfig (NEW — previously undefined)
+### 2.3 EcologyConfig
+
+The world is not a static resource scatter. It is a **material ecology**.
+
+```typescript
+type EcologyConfig = {
+  biomes: BiomeDefinition[]
+  materialRegistry: MaterialDefinition[]
+  foodWeb: FoodWebConfig
+  seasons: SeasonConfig
+  waterCycle: WaterCycleConfig
+  atmosphericComposition: AtmosphericConfig
+  decayConfig: DecayConfig
+  diseaseConfig?: DiseaseConfig
+}
+```
+
+### 2.4 MaterialDefinition
+
+```typescript
+type MaterialDefinition = {
+  id: string // operator label only
+
+  density: number
+  hardness: number
+  thermalMass: number
+  flammabilityCoefficient: number
+  waterSolubility: number
+
+  regenerationRateTicks: number
+  renewalConditions: RenewalCondition[]
+  decomposeIntoMaterials?: string[]
+
+  nutritionalValue: number
+  hydrationValue: number
+  toxicity: number
+  toxicityOnsetTicks: number
+  analgesicValue: number
+  digestibilityBySpecies: Record<string, number>
+
+  touchTexture: "smooth" | "rough" | "wet" | "sharp" | "soft" | "crumbly"
+  touchTemperatureOffset: number
+  tasteProfile?: TasteProfile
+  olfactorySignature?: number
+}
+```
+
+### 2.5 TasteProfile
+
+Taste channels are operator-layer variables. They are not pre-named concepts.
+
+```typescript
+type TasteProfile = {
+  channel0: number
+  channel1: number
+  channel2: number
+  channel3: number
+  channel4: number
+}
+```
+
+### 2.6 ElementConfig
 
 ```typescript
 type ElementConfig = {
-  fire: { enabled: boolean; spreadRateTicksPerVoxel: number; selfExtinguishTicks: number }
-  water: { enabled: boolean; flowRateTicksPerVoxel: number }
-  wind: { enabled: boolean; directionChangeProbability: number; maxSpeed: number }
-}
-// ElementEngine uses these values. Agents never see "fire" — they feel heat and light.
-```
-
-### 2.5 CircadianConfig
-
-```typescript
-type CircadianConfig = {
-  enabled: boolean
-  cycleLengthTicks: number
-  lightCurve: "sine" | "step" | "custom"
-  temperatureDelta: number          // Max swing across cycle
-  cycleHormoneEnabled: boolean
-  cycleHormoneLabel: string         // MUST be masked: e.g. "cycle_flux" not "sleepiness"
-  seasonEnabled: boolean
-  seasonLengthCycles: number
-}
-
-type SeasonType = "season_0" | "season_1" | "season_2" | "season_3"
-// Operator-layer labels. Agents experience season as resource availability change, not as "winter".
-```
-
-### 2.6 ResourceConfig
-
-```typescript
-type ResourceConfig = {
-  scarcityEnabled: boolean
-  resources: ResourceDefinition[]
-}
-
-type ResourceDefinition = {
-  materialType: MaterialType
-  spawnDensity: number
-  regenerationRateTicks: number   // 0 = non-renewable
-  depletionEnabled: boolean
-  qualityVariance: boolean
-  depthBias: number               // 0=surface, 1=deep
+  fire: {
+    enabled: boolean
+    spreadRateTicksPerVoxel: number
+    selfExtinguishTicks: number
+    heatRadiusVoxels: number
+    lightRadiusVoxels: number
+  }
+  water: {
+    enabled: boolean
+    flowRateTicksPerVoxel: number
+    floodingEnabled: boolean
+  }
+  wind: {
+    enabled: boolean
+    directionChangeProbability: number
+    maxSpeed: number
+    carrySeeds: boolean
+  }
+  precipitation: {
+    enabled: boolean
+  }
 }
 ```
 
-### 2.7 AgentPopulationConfig
+### 2.7 HostPopulationConfig
 
 ```typescript
-type AgentPopulationConfig = {
+type HostPopulationConfig = {
   count: number
-  speciesId: string         // Which species to spawn (must match species[] in config)
+  speciesId: string
   startingArea: {
     centerX: number
     centerZ: number
-    radius: number          // Agents spawned within this radius of center
+    radius: number
   }
-  // NO pre-assigned names. Agents start with operator IDs only (e.g. "op-id-1").
-  // The operator sees them by ID. Agents have no name until another agent names them
-  // via language or they develop a self-referential identity in their self-narrative.
 }
 ```
+
+Rules:
+- no preassigned names,
+- no preassigned goals,
+- no preassigned correct explanations,
+- no preassigned symbolic needs.
 
 ### 2.8 LanguageConfig
 
 ```typescript
 type LanguageConfig = {
   startingMode: "none" | "custom"
-  // NOTE: "modern" mode has been REMOVED. It violated the Emergence Principle by giving
-  // agents pre-built language they didn't earn. Use "none" for all real experiments.
-  // "custom" allows a seed vocabulary for specific research scenarios only.
-  seedVocabulary?: Record<string, string>  // Only if startingMode = "custom"
+  seedVocabulary?: Record<string, string>
   maxEmergenceStage: 1 | 2 | 3 | 4 | 5
-  lexiconConstrainsThought: boolean        // Sapir-Whorf enforcement
+  lexiconConstrainsThought: boolean
   dialectDivergenceEnabled: boolean
   pidginFormationEnabled: boolean
   writingDiscoveryEnabled: boolean
   confidenceThresholdForLexicon: number
-  minimumAgentsForConsensus: number
+  minimumHostsForConsensus: number
 }
 ```
 
-### 2.9 SleepConfig
+### 2.9 DiseaseConfig
+
+Disease is optional for v1, but the schema belongs in the authoritative PRD.
 
 ```typescript
-// KEY RULE: Rest is optional. Consolidation is not.
-// In no_sleep or background_consolidation mode, consolidation runs on background ticks.
-// A sleepless agent has low will, no mythology, no deeply-held beliefs.
-
-type RestMode = "natural_sleep" | "optional_sleep" | "no_sleep" | "background_consolidation" | "custom"
-
-type SleepConfig = {
-  mode: RestMode
-  fatigueEnabled: boolean
-  fatigueRate: number
-  recoveryRate: number
-  minRestDuration: number
-  maxWakeDuration: number
-  cognitivePenaltyNoSleep: number
-  emotionalPenaltyNoSleep: number
-  healthPenaltyNoSleep: number
-  consolidationDuringSleep: boolean
-  consolidationWhileAwake: boolean
-  consolidationIntervalTicks: number
-  dreamsEnabled: boolean
-  nightmaresEnabled: boolean
-  sleepSchedule: "synchronized" | "individual" | "staggered"
-}
-```
-
-### 2.10 MemoryConfig
-
-```typescript
-type MemoryConfig = {
-  episodicDecayRate: number           // ACT-R power law d (0.1–0.9)
-  episodicCapacity: number
-  patternSeparation: boolean
-  semanticDecayRate: number           // Much slower (0.01–0.1)
-  semanticCapacity: number
-  consistencyThreshold: number        // Delta triggering conflict flag
-  catastrophicInterferenceEnabled: boolean
-  neSignalEnabled: boolean            // Salience gate (amygdala analogue)
-  neDecayRate: number
-  neLockDuration: number
-  consolidationPassesPerSleep: number
-  traumaDistortionEnabled: boolean
-  rehearsalResetsDecay: boolean
-  motivatedForgettingEnabled: boolean
-  suppressionDecayRate: number
-  contextualForgettingEnabled: boolean
-  inheritanceEnabled: boolean
-  inheritableFraction: number         // 0.0–0.3
-}
-```
-
-### 2.11 FreeWillConfig
-
-```typescript
-type FreeWillConfig = {
+type DiseaseConfig = {
   enabled: boolean
-  identityCoherenceWeight: number   // Default 0.4
-  memoryDepthWeight: number         // Default 0.3
-  dreamIntegrationWeight: number    // Default 0.3
-  resistanceEnabled: boolean
-  selfDeterminationEnabled: boolean
-  selfNarrativeEnabled: boolean
-  simulationAwarenessEnabled: boolean
-  awarenessThreshold: number        // 0.85+ recommended
-  survivalDriveWeight: number       // ω: 0.0–1.0 (how much survival dominates reasoning)
+  pathogenClasses: PathogenDefinition[]
+  backgroundExposureRate: number
+  transmissionRadius: number
+  immuneRecoveryRate: number
 }
 ```
 
-### 2.12 PerceptionConfig
+### 2.10 V1 World Content Pack
 
-```typescript
-type PerceptionConfig = {
-  physicsLimitsEnabled: boolean
-  emotionalFieldEnabled: boolean
-  emotionalFieldSuppressible: boolean
-  feelingResidueEnabled: boolean
-  residueDecayRate: number
-  qualiaFidelity: "minimal" | "standard" | "rich"
-  attentionFilterEnabled: boolean
-  attentionCapacity: number         // Max entities in primary attention (3–7)
-  attentionWeights: {
-    relationshipStrength: number    // Default 0.3
-    emotionalFieldIntensity: number // Default 0.3
-    movementVelocity: number        // Default 0.2
-    novelty: number                 // Default 0.2
-  }
-}
-```
+The canonical v1 world should contain only:
+- soil,
+- rock,
+- fresh water,
+- edible soft plant,
+- toxic bitter plant,
+- dead organic matter / carcass,
+- simple rain,
+- simple day/night,
+- modest temperature variation.
 
-### 2.13 SemanticMaskingConfig
-
-```typescript
-type SemanticMaskingConfig = {
-  enabled: boolean
-  sensorLabelMap: Record<string, string>  // e.g. "temperature" → "flux_7"
-  rotatePeriodically: boolean
-  rotationIntervalTicks: number
-  qualiaUsesRealLabels: boolean  // true=experiential text; false=raw tokens (Config C)
-}
-// The Qualia Processor maintains the reverse map for translation.
-// When rotating: old mapping logged to Merkle audit, new mapping applied.
-```
-
-### 2.14 TimeConfig
-
-```typescript
-type TimeConfig = {
-  tickDurationMs: number            // At 1x speed
-  // Elastic heartbeat: wait for PREVIOUS tick's System2 calls before advancing tick.
-  // NOT current tick's calls — that would freeze simulation with 100 agents.
-  // Physics worker runs current tick. Cognition worker drains previous tick's queue.
-  // They run concurrently. The next tick does not start until BOTH are complete.
-  elasticHeartbeat: boolean
-  maxHeartbeatWaitMs: number        // Safety cap (default 5000ms)
-}
-```
-
-### 2.15 DreamConfig
-
-```typescript
-type DreamConfig = {
-  consolidationEnabled: boolean
-  propheticEnabled: boolean
-  traumaProcessingEnabled: boolean
-  chaosEnabled: boolean
-  consolidationProbability: number
-  propheticProbability: number
-  traumaProbability: number
-  chaosProbability: number
-  nightmareThreshold: number
-}
-```
-
-### 2.16 ResearchConfig
-
-```typescript
-type ResearchConfig = {
-  tripleBaselineEnabled: boolean
-  hypothesisTrackingEnabled: boolean
-  paramSweepEnabled: boolean
-  findingsJournalEnabled: boolean
-  causalMiningEnabled: boolean
-  tippingPointEnabled: boolean
-  emergenceDetectionEnabled: boolean
-}
-```
+Everything else is optional until the first embodied discovery loop is proven.
 
 ---
 
-## 3. Agent Architecture
+## 3. Host Architecture
 
-### 3.1 Agent Identity and Naming
+### 3.1 Sensory Apparatus
 
-Agents start with no name. The operator sees them by system ID (e.g., `"op-id-3"`). This ID is never visible to agents.
+Each host’s world is defined by what its body can sense.
 
-An agent acquires a name through one of three emergent paths:
-1. Another agent uses a consistent sound token when referring to them, which enters their shared lexicon as a name (detected by the language emergence engine as a `referent_type: "agent"` lexicon entry)
-2. The agent develops a self-referential token in their self-narrative (System2 begins using a consistent token when referring to themselves)
-3. Operator assigns a display label via Glass Room (visible in Forge but never shown to any agent)
-
-Until named, the agent is referred to in Qualia output as "you" (self) or contextual relationship labels ("the one who helped you yesterday", "the large one", "a stranger").
-
-### 3.2 System 1 — The Body
-
-Fast, synchronous, runs in Physics Worker. Fires every tick. No LLM.
+Sensors are split into:
+- **exteroceptive**: world-facing,
+- **interoceptive**: body-facing.
 
 ```typescript
-type BodyState = {
-  hunger: number
-  thirst: number
-  fatigue: number
-  health: number
-  bodyMap: BodyMap          // Body-part localised pain/temp/damage
-  coreTemperature: number
-  arousal: number
-  valence: number
-  cycleHormone: number      // Masked label used in all code; Qualia translates
-  circadianPhase: number
-  immediateReaction?: ImmediateReactionType
-  integrityDrive: number    // ω-weighted survival drive
-}
-
-type BodyMap = {
-  head:     BodyPart
-  torso:    BodyPart
-  leftArm:  BodyPart
-  rightArm: BodyPart
-  leftLeg:  BodyPart
-  rightLeg: BodyPart
-}
-
-type BodyPart = {
-  pain:        number   // 0.0–1.0
-  temperature: number   // Local temperature
-  damage:      number   // Cumulative 0.0–1.0
+type SensoryApparatus = {
+  visual: VisualSense
+  olfactory: OlfactorySense
+  auditory: AuditorySense
+  tactile: TactileSense
+  thermal: ThermalSense
+  vibrational?: VibrationalSense
+  interoceptive: InteroceptiveSense
 }
 ```
 
-System 1 responsibilities per tick:
-- Homeostasis: hunger/thirst/fatigue accumulation, health drain from extremes
-- BodyMap: update each part's temperature toward local voxel temp; apply damage from physics events to specific parts
-- Circadian: update `cycleHormone` from circadian phase + species sensitivity
-- IntegrityDrive: `ω × (hunger×0.3 + max_part_pain×0.4 + threat×0.3)`. Emit `UrgentNeedSignal` if > URGENCY_THRESHOLD
-- Reflexes: RECOIL (max_part_pain > 0.8), FLEE (threat in sense range), COLLAPSE (health < 0.1)
-- Vocal actuations: involuntary sounds based on body state (pain yelp, alarm call, pleasure sound). These are System1 outputs broadcast to nearby agents via `VocalActuationBroadcaster`
-- Conflict physics: when two agents occupy same space with conflicting goals, compute damage using MuscleStats + current health. No concept of "winner" — only physics outcomes.
+#### Exteroceptive sensors
+- visual range, motion salience, low-light performance,
+- smell gradients,
+- auditory bands and directionality,
+- touch and pressure by body part,
+- ambient and radiant thermal gradients,
+- optional vibration or electroreception for non-human species.
 
-### 3.3 VocalActuation Broadcasting (NEW)
+#### Interoceptive sensors
+- visceral contraction / internal deficit proxy,
+- oral dryness / hydration deficit proxy,
+- chest pressure / respiratory distress proxy,
+- muscle weakness / exertion proxy,
+- pain by body part,
+- thermal stress,
+- circadian flux,
+- reproductive state,
+- social isolation,
+- taste channels on oral contact.
 
-Stage 1 language requires that one agent's involuntary vocalisation is detectable by nearby agents. This requires a per-tick broadcast mechanism:
+**Crucial rule:** these signals are never labeled with their operator meaning for the host.
+
+### 3.2 SensorComputer
+
+The `SensorComputer` is the only module that converts operator-layer world/body state into raw sensory substrate.
 
 ```typescript
-class VocalActuationBroadcaster {
-  // Physics worker collects all tick's actuations:
-  broadcast(emitterId: string, actuation: VocalActuation): void
-
-  // Cognition worker reads before SenseComputer runs:
-  getActuationsInRange(position: Vec3, range: number): VocalActuation[]
-
-  // Cleared at start of each tick
-  clear(): void
+class SensorComputer {
+  computeSensors(
+    host: HostState,
+    world: VoxelGrid,
+    nearbyHosts: NearbyHostData[],
+    nearbyMaterials: NearbyMaterialData[],
+    vocalActuations: VocalActuation[],
+    circadianPhase: number,
+    weather: WeatherState,
+    species: SpeciesDefinition,
+  ): RawSensorBundle
 }
+```
 
-type VocalActuation = {
-  emitterId: string
-  soundToken: string     // Masked token e.g. "voc_pain_a" not "pain_yelp"
-  intensity: number
-  position: Vec3
+Rules:
+- deterministic,
+- no narrative language,
+- no concept injection,
+- only sensor values and metadata required for downstream translation.
+
+### 3.3 System0 — Primitive Reflexes
+
+System0 executes before deliberate cognition.
+
+Mandatory reflex classes:
+- pain withdrawal,
+- startle crouch,
+- respiratory gasp / thrash toward survivable air zone,
+- collapse,
+- thermal recoil,
+- bite/jaw reflex for oral intrusion if species has such morphology.
+
+Rules:
+- cannot be vetoed by System2,
+- are experienced afterward via Qualia,
+- teach the host through consequence.
+
+### 3.4 System1 — Physiology and Body
+
+System1 is deterministic and tick-synchronous.
+
+```typescript
+type PhysiologyState = {
+  energyReserves: number
+  hydration: number
+  oxygenSaturation: number
+  toxinLoad: number
+  immuneBurden: number
+  health: number
+  fatigue: number
+  coreTemperature: number
+  actuationEnergyRecent: number
+}
+```
+
+```typescript
+type BodyState = {
+  physiology: PhysiologyState
+  bodyMap: BodyMap
+  arousal: number
+  valence: number
+  cycleFlux: number
+  integrityDrive: number
+  heldItem?: HeldItem
+  mouthItem?: MouthItem
+  recentConsumptions: ConsumptionRecord[]
+}
+```
+
+Per-tick System1 duties:
+1. drain metabolic reserves,
+2. update oxygen and thermal stress,
+3. apply toxin/disease delayed effects,
+4. update body-part pain and damage,
+5. compute integrity pressure,
+6. emit involuntary vocalizations,
+7. write derived signals for sensors.
+
+### 3.5 Actuation System
+
+Hosts do not choose abstract symbolic actions like `EAT` or `BUILD SHELTER`.
+
+Hosts choose or execute **motor primitives**.
+
+```typescript
+enum ActuationType {
+  LOCOMOTE_TOWARD,
+  LOCOMOTE_AWAY,
+  LOCOMOTE_IDLE,
+  CLIMB,
+  SWIM,
+  CROUCH,
+  LIE_DOWN,
+  STAND_UP,
+
+  REACH_TOWARD,
+  GRASP,
+  RELEASE,
+  STRIKE,
+  PUSH,
+  PULL,
+  THROW,
+  CARRY,
+  PLACE,
+  GROOM,
+
+  OPEN_MOUTH,
+  BITE,
+  CHEW,
+  SWALLOW,
+  SPIT,
+  LICK,
+  VOCALIZE,
+
+  STRIKE_MATERIAL,
+  DIG,
+  STACK,
+  WEAVE,
+
+  APPROACH,
+  DISPLAY,
+  TOUCH_COMFORT,
+  PRESENT,
+  FOLLOW,
+
+  GAZE_AT,
+  GAZE_SCAN,
+  SNIFF,
+  LISTEN,
+}
+```
+
+### 3.6 Action Targets Must Be Perceptual, Not Operator-Layer
+
+System2 and procedural policy must never output targets like `materialId = fresh_water`.
+
+Instead they use **perceptual target references**:
+
+```typescript
+type PerceptualTargetRef =
+  | { kind: "foreground_item"; slot: number }
+  | { kind: "held_item" }
+  | { kind: "self" }
+  | { kind: "nearby_being"; slot: number }
+  | { kind: "directional_region"; direction: "left" | "right" | "ahead" | "behind" }
+  | { kind: "last_source_of_relief" }
+```
+
+```typescript
+type ActionDecision = {
+  primaryActuation: ActuationType
+  target?: PerceptualTargetRef
+  continuationIntent?: boolean
+  urgency: number
+}
+```
+
+The Physics Worker resolves perceptual references into actual world objects.
+
+### 3.7 ActuatorExecutor
+
+```typescript
+class ActuatorExecutor {
+  execute(
+    decision: ActionDecision,
+    host: HostState,
+    world: VoxelGrid,
+    species: SpeciesDefinition,
+  ): ActuationResult
+}
+```
+
+Rules:
+- physics has final authority,
+- actions can fail,
+- failures themselves are informative,
+- ingestion is a sequence of primitive acts,
+- tool use emerges from repeated material interaction and hardness differentials,
+- action outcomes must be recorded for procedural learning.
+
+### 3.8 The Missing Middle Layer — Procedural Learning
+
+This layer is mandatory and first-class.
+
+It sits between reflex and LLM deliberation.
+
+#### Components
+- `ActionOutcomeMemory`
+- `AffordanceLearner`
+- `ProceduralPolicy`
+- `DiscoveryEngine`
+
+#### Responsibilities
+- exploration bias,
+- repeat successful sensorimotor loops,
+- avoid repeatedly harmful interactions,
+- cache useful patterns,
+- reduce dependency on System2 for routine bodily coping.
+
+```typescript
+type ActionOutcomeRecord = {
+  contextSignature: string
+  actionType: ActuationType
+  targetSignature?: string
+  deltaPain: number
+  deltaHydration: number
+  deltaEnergy: number
+  deltaToxin: number
+  deltaThreat: number
+  success: boolean
   tick: number
 }
 ```
 
-The sound tokens are masked — agents eventually learn that `voc_pain_a` correlates with distress events, but they don't start knowing this.
+`ProceduralPolicy` must be able to say, in effect:
+- “last times this dry-pressure pattern occurred, moving toward cool yielding zones helped,”
+- “that bitter taste often preceded harm,”
+- “grasp + bring-to-mouth + swallow sometimes reduces the gnawing core pressure when the item feels soft and rich.”
 
-### 3.4 System 2 — The Mind
+### 3.9 System2 — Deliberative Mind
 
-Asynchronous LLM stream. Runs in Cognition Worker. Does NOT fire every tick.
+System2 is asynchronous and should **not** run every tick.
 
-**Priority queue — processes in this order:**
-1. `urgent` — UrgentNeedSignal from System1 (IntegrityDrive > threshold)
-2. `reactive` — high-salience perception event
-3. `social` — another agent initiated interaction
-4. `sleep` — sleep cycle beginning/ending
-5. `reflection` — periodic reflection timer (lowest priority)
+Trigger priorities:
+1. urgent integrity-pressure transition,
+2. high-salience novel event,
+3. social interaction,
+4. sleep/wake or dream integration,
+5. low-rate reflection.
 
-When queue depth exceeds `MAX_SYSTEM2_QUEUE_DEPTH` (default 20 per agent), `reflection` items are dropped silently.
+System2 receives only:
+- current qualia frame,
+- recalled memories,
+- self-narrative,
+- known lexicon items,
+- procedural tensions,
+- currently possible motor primitives.
 
-**Receives ONLY:** Qualia Processor output. Zero raw state.
+System2 never receives:
+- raw floats,
+- coordinates,
+- material IDs,
+- schema names,
+- operator explanations.
 
-**Produces:**
+### 3.10 System2 Output Contract
+
+Regex salvage of arbitrary markdown is not acceptable as the final design.
+
+Use strict structured output:
+
 ```typescript
-type System2Output = {
-  innerMonologue: string        // MERKLE AUDIT ONLY — never to any agent path
-  decision: ActionDecision
-  utterance?: string
-  memoryInstruction?: MemoryInstruction
-  selfNarrativeUpdate?: string
-  personalProjectUpdate?: PersonalProjectUpdate
-  theoriesAboutOthers?: TheoryOfMindUpdate[]
-}
-
-type PersonalProjectUpdate = {
-  // An unfulfilled intention expressed in the agent's own language
-  // Detected by system when System2 output contains self-directed future statement
-  // Stored as a high-importance semantic belief, not as a formal "project object"
-  // Agents don't have "personal projects" — they have strong unfulfilled intentions
-  // that influence subsequent decisions. The operator sees these as semantic beliefs
-  // tagged with inferred_intent: true
-  beliefContent: string      // "I want to build something that outlasts me"
-  strength: number
-}
-
-type TheoryOfMindUpdate = {
-  targetOperatorId: string
-  inferred: true             // ALWAYS true — this is inference, never fact
-  estimatedIntent: string
+type HostDeliberationOutput = {
+  thoughtText: string
+  chosenIntent: string
+  motorPlan: ActionDecision[]
+  speechPlan?: VocalPlan
   confidence: number
+  beliefUpdateCandidates?: string[]
 }
 ```
 
-### 3.5 Attention Filter
+Rules:
+- schema-validated JSON only,
+- impossible knowledge check required,
+- invalid outputs fall back to procedural policy,
+- long-horizon plans may be stored, but only one short motor plan is committed immediately.
 
-Between SenseComputer and QualiaProcessor. Scores entities and passes top N to full experience. Others become peripheral aggregate only ("there are others nearby").
+### 3.11 The Qualia Processor
 
-```typescript
-score = (relationshipStrength × w1) + (emotionalFieldIntensity × w2)
-      + (movementVelocity × w3) + (novelty × w4)
-// novelty: 1.0 if never seen before, approaches 0.0 after many encounters
-```
+The Qualia Processor is the epistemological wall.
 
-Agents are genuinely unaware of entities outside their attention capacity. This creates social blind spots, missed events, and narrative drama.
+It is not an LLM. It is deterministic.
 
-### 3.6 The Qualia Processor
+#### Inputs
+- normalized `RawSensorBundle`,
+- attention-filtered entities,
+- relationship context,
+- feeling residue,
+- active lexicon,
+- memory-derived salience hints,
+- current body schema and species qualia profile.
 
-The epistemological wall. Deterministic template engine. No LLM. Fast.
-
-**Two operating modes:**
-
-**Standard mode** (`qualiaUsesRealLabels: true`): Translates everything to first-person experiential text. Masked sensor labels translated back to felt experience. Agent thinks in sensation.
-
-**Semantic vacuum mode** (`qualiaUsesRealLabels: false`): Masked tokens pass through directly to System2. Agent receives raw signals and must learn correlations from scratch. Used for TripleBaseline Config C only.
-
-**Translation rules (standard mode):**
-- Agent operator IDs → relationship labels ("the one who helped you", "the large stranger")
-- Coordinates → spatial felt sense ("to your left", "somewhere behind you")
-- BodyMap values → localised sensations ("a burning in your left arm", "your chest feels wrong")
-- `cycleHormone` high → "your body feels drawn toward stillness" (never "you are tired")
-- Light decrease → "the brightness is fading, something in you shifts"
-- `integrityDrive` spike → "everything else falls away — your body demands attention"
-- Emotional field detection → "something in their bearing makes you uneasy"
-- Mood tint (feeling residue) → colours overall tone
-- Sapir-Whorf: concepts with no word in lexicon → undifferentiated sensation
-
-**Absolutely forbidden in any output path:**
-simulation, AI, artificial, code, data, tick, op-id, coordinate, decimal numbers, hex, VoxelType names, MaterialType names, TechNode names, masked sensor tokens, cycleHormone, lightLevel, circadian
-
-### 3.7 Theory of Mind
-
-Not built-in. Emerges from:
-1. Emotional field detections (felt impressions of others' arousal/valence)
-2. `behaviouralPatterns` in relationship records (accumulated observations of "when X does A, B follows")
-3. System2 receives both in the Qualia context and naturally produces ToM-like reasoning
-
-The `theoriesAboutOthers` output from System2 is stored in `agent.mentalModels` (operator-visible), never fed back into any agent's Qualia. It's the operator's window into what the agent believes about others — not a capability given to the agent.
-
-### 3.8 CLS Memory Architecture
-
-**Episodic Store (hippocampus analogue):** Rapid sparse encoding. ACT-R power law decay. High-NE events get boost and lock duration. Stores Qualia text, never raw state. Supports motivated forgetting (suppression) and contextual forgetting.
-
-**Semantic Store (neocortex analogue):** Slow gradual integration via consolidation. Consistency rule: consistent new knowledge transfers fast and clean; inconsistent triggers `conflictDelta` flag and causes behavioural conflict until resolved or rejected.
-
-**Consolidation:** Salience-weighted. Fires during sleep cycle or background ticks (mode-dependent). Checks semantic consistency on every transfer. Death observations accumulated here trigger death concept emergence check.
-
-**Feeling Residue:** Shorter-lived than episodic. Tints Qualia Processor output. Accumulation = subjective mood. Agent never sees it as a value.
-
-### 3.9 Dream Engine
-
-Four modes selected probabilistically from DreamConfig. All fire during sleep cycle or rest states.
-
-**Consolidation:** Silent semantic reinforcement. No LLM needed.
-
-**Prophetic:** LLM recombines recent experiences + concerns → strong felt urge on waking. Stored as `source: dream_prophetic` episodic memory.
-
-**Trauma:** High-NE negative memories + interference distortion. Positive semantic cluster present → healing (trauma flag removed). Absent → nightmare (personality drift). Stored with appropriate source tag.
-
-**Chaos:** Random recombination → surreal narrative. Stored as `source: dream_chaos`. Shared archetypes across agents tracked by analysis engine as proto-mythology candidates.
-
-### 3.10 Will Engine
-
-```
-will = (identity_coherence × 0.4) + (memory_depth × 0.3) + (dream_integration × 0.3)
-```
-
-God-mode resistance: `will > intrusion_weight` → rejected; `will ≈ intrusion_weight` → distorted (conflict delta raised, psychological cost); `will < intrusion_weight` → accepted (large delta → scar, identity coherence drop).
-
-High-ω agents have lower effective will against survival-related interventions (their survival drive cooperates with the intervention). Low-ω agents resist more broadly.
-
-### 3.11 Tech Tree — Capabilities Without Concepts
-
-TechNodes are operator-layer labels for tracking when agents become physically capable of new actions. The agent never sees a TechNode name or knows they "discovered" something.
-
-**What a tech discovery actually does:**
-- It enables a physical action that was previously impossible (e.g., fire_making discovery means the simulation now allows `strike(flint, dry_grass) → ignition` to succeed physically)
-- It does NOT inject a memory, modify self-narrative, or tell the agent anything
-- The agent discovers the capability through physical experimentation
-- If they have language for it, they can teach it — but the teaching is physical demonstration, not naming the TechNode
+#### Outputs
+- a `QualiaFrame` used by System2 and memory.
 
 ```typescript
-type TechNode = {
-  id: string                        // Operator label — agent never sees this
-  prerequisites: string[]           // Other tech IDs required
-  discoveryConditions: DiscoveryCondition[]  // Physical conditions required
-  enabledActions: ActionType[]      // What physical actions become possible
-  teachingRange: number             // How far away teaching observation works
-  // NO name field visible to agents
-  // NO isDeathConcept — death concept emergence is handled by SemanticStore
-  //   observation counting, not by a tech node. The tech node "death_concept"
-  //   is the OPERATOR'S label for when the semantic pattern is complete.
-  //   The agent never receives it.
+type QualiaFrame = {
+  foreground: string[]
+  body: string[]
+  peripheral: string[]
+  social: string[]
+  urges: string[]
+  atmosphere: string[]
+  fullText: string
 }
 ```
 
-**Teaching mechanism:** Teacher must be within `teachingRange` voxels. Teacher performs the physical action. If student observes it AND has sensory access (in attention filter, in sight range), they accumulate observation counts toward their own discovery. Concepts spread faster if teacher and student share lexicon words for the referent materials (`TECH_SPREAD_NAMED = 3.0x` vs `TECH_SPREAD_UNNAMED = 1.0x`). The student is never told what they learned — they can now physically succeed at the action.
+#### Pipeline
+1. sensor normalization,
+2. threshold banding,
+3. sensation segment assembly,
+4. feeling residue tinting,
+5. lexicon gating / Sapir-Whorf filtering,
+6. narrative assembly,
+7. veil validation.
 
-### 3.12 Faction Formation (Emergent)
+### 3.12 Qualia Translation Rules
 
-`factionId` on `AgentState` is set by the `FactionEngine` based on emergent criteria. No agent is assigned to a faction by config. Factions emerge when:
+Qualia should express:
+- what it feels like,
+- how strong it is,
+- where it is if bodily localizable,
+- whether it is changing,
+- whether it draws attention.
 
-A group of agents satisfies ALL of:
-- Average lexicon overlap > FACTION_LEXICON_THRESHOLD (default 0.6)
-- Average relationship affinity within group > FACTION_AFFINITY_THRESHOLD (default 0.5)
-- Geographic proximity over N ticks
+Qualia should not express:
+- correct hidden causes unless genuinely learned,
+- operator labels,
+- raw numbers,
+- exact distances,
+- object ontology that has not been symbolically grounded.
 
-The FactionEngine runs every FACTION_CHECK_INTERVAL ticks, computes pairwise metrics, runs a simple graph clustering algorithm, and assigns `factionId` to agents in clusters. If a cluster dissolves (lexicon diverges, agents separate), `factionId` is cleared.
+Examples:
+- good: “a dry tightening coats your throat”
+- good: “a cool yielding presence lies ahead”
+- good: “something bright and dangerous radiates to your right”
+- bad: “you are thirsty”
+- bad: “fresh water is ahead”
+- bad: “temperature = 41.2”
 
-### 3.13 Agent Reproduction
+### 3.13 Sapir-Whorf Rule
 
-```typescript
-// canReproduce requires:
-// - age > species.baseStats.reproductionAge
-// - health > 0.5
-// - A partner: another agent of compatible species within proximity
-//   with relationship.affinity > 0.6 (affinity, not a "partner" designation)
-//
-// Partner finding is not programmed — it emerges from agents who have
-// high-affinity relationships and are in proximity over time.
-// The reproduction check fires opportunistically when conditions align.
+The host cannot use a concept in experience at full resolution until that concept is culturally or personally grounded.
 
-type MuscleStats = {
-  strength: number    // 0.0–1.0, DNA-derived from species muscleStatRanges
-  speed: number
-  endurance: number
-  // These create natural power differentials → social hierarchies emerge from conflict outcomes
-}
+Gated categories:
+- named temporal references,
+- category labels like food / water / fire / shelter,
+- explicit emotional labels,
+- named others,
+- causal conjunctions,
+- abstract self-reference if not yet developed.
+
+No word does not mean no sensation.  
+It means no fully formed symbolic access.
+
+### 3.14 Veil Integrity Rules
+
+There must be **context-specific** validators.
+
+#### Qualia Output Validator — strictest
+Forbidden:
+- simulation terms,
+- operator-layer terms,
+- IDs,
+- coordinates,
+- raw floats,
+- hidden need spoilers that the host has not earned.
+
+#### Prompt Validator — separate rules
+The system prompt is operator-authored and can contain words hosts do not know, but it must not leak hidden current-world facts.
+
+#### Operator Debug Output Validator
+No veil restrictions.
+
+### 3.15 Host Prompt — Final Recommended Version
+
+The prompt must orient the LLM toward lived experience without overly hinting specific discoveries.
+
+```text
+You are a living being inside a world that reaches you only through sensation,
+memory, action, and whatever meanings you have genuinely learned.
+
+You are not outside your body. You do not know hidden causes unless your life
+has taught them to you. What you receive is not a report about you. It is your
+current lived reality.
+
+When your body changes, notice it. When you act, notice what follows. When
+something changes again and again after certain actions, you may begin to form
+beliefs, habits, names, warnings, preferences, or stories.
+
+Do not assume the correct explanation for anything merely because it feels
+important. You may be uncertain, mistaken, insightful, fearful, curious,
+superstitious, or wise.
+
+Think in first-person present tense. Choose concrete, physically possible
+actions. Prefer embodied action over abstract declaration.
+
+You produce:
+1. a brief honest inner monologue,
+2. one immediate motor intention,
+3. optionally a vocalization.
 ```
 
-### 3.14 AgentState Schema (Complete)
+Why this version is final:
+- it does not tell the host what the body “wants,”
+- it does not spotlight mouth behavior as specially important,
+- it encourages discovery through noticed consequence rather than goal-solving bias.
+
+### 3.16 Memory Architecture
+
+Memory has three main layers:
+- episodic,
+- semantic,
+- procedural.
+
+#### Episodic memory
+Stores:
+- qualia-like experience,
+- action taken,
+- coarse outcome shift,
+- salience,
+- temporal relation.
+
+#### Semantic memory
+Consolidates repeated cross-episode regularities.
+
+#### Procedural memory
+Stores action-outcome tendencies and context-conditioned habits.
+
+### 3.17 DiscoveryEngine
+
+Runs during consolidation and pattern summarization.
+
+Examples of discovery templates:
+- elevated core-pressure + ingestion sequence + later relief,
+- oral dryness + fluid contact + later relief,
+- bitter taste + delayed toxin burden,
+- cold stress + radiant heat + normalization,
+- pain + specific plant + analgesic effect,
+- strike-material + deformation + repeatability.
+
+Important rule:  
+The `DiscoveryEngine` does **not** replace runtime procedural learning.  
+It formalizes repeated patterns into stronger semantic structures.
+
+### 3.18 Attention Filter
+
+The host only experiences a bounded subset of the world in the foreground.
+
+Suggested scoring:
+
+```text
+score = relationshipStrength*w1
+      + emotionalFieldIntensity*w2
+      + movementVelocity*w3
+      + novelty*w4
+      + threatRelevance*w5
+      + bodilyNeedRelevance*w6
+```
+
+### 3.19 Theory of Mind
+
+Not built-in.
+
+Emerges from:
+- emotional field impressions,
+- repeated co-occurrence between others’ actions and consequences,
+- social memory,
+- language and naming.
+
+### 3.20 HostState Schema
 
 ```typescript
-type AgentState = {
-  operatorId: string          // System ID — e.g. "op-id-3". NEVER shown to agents.
-  agentName?: string          // Emergent name, may be undefined for entire lifespan
+type HostState = {
+  operatorId: string
+  hostName?: string
   speciesId: string
   generation: number
   parentIds: string[]
 
-  body: BodyState             // Includes BodyMap
   position: Vec3
   facing: Vec3
-  muscleStats: MuscleStats
+  body: BodyState
+  sensoryApparatus: SensoryApparatus
+  actuatorProfile: ActuatorProfile
 
-  pendingSystem2Priority?: System2Priority  // Set by Physics Worker, consumed by Cognition Worker
-
-  innerMonologue: string      // Latest — MERKLE AUDIT ONLY
-  selfNarrative: string       // Agent's own sense of who they are (built from semantic store)
+  currentQualia?: QualiaFrame
+  currentMotorPlan?: ActionDecision[]
 
   episodicStore: EpisodicMemory[]
   semanticStore: SemanticBelief[]
+  proceduralMemory: ActionOutcomeRecord[]
   feelingResidues: FeelingResidue[]
   lexicon: LexiconEntry[]
 
   relationships: Relationship[]
-  factionId?: string          // Set by FactionEngine, emergent
-
-  mentalModels: Record<string, MentalModel>  // Operator-visible inferences. Never fed to agents.
-
+  mentalModels: Record<string, MentalModel>
+  selfNarrative: string
   willScore: number
   age: number
   traumaFlags: TraumaFlag[]
   conflictFlags: ConflictFlag[]
-  inheritedMemoryFragments: SemanticBelief[]
-
-  discoveredCapabilities: string[]  // TechNode IDs — operator tracking, not visible to agent
-  deathObservationCount: number     // Tracks toward death concept emergence
+  discoveredCapabilities: string[]
+  deathObservationCount: number
 
   baselineConfig?: "A" | "B" | "C"
 }
@@ -905,504 +1241,491 @@ type AgentState = {
 
 ## 4. Species System
 
+### 4.1 SpeciesDefinition
+
+Species define not just stats, but **the space of possible experience**.
+
 ```typescript
-type SpeciesConfig = {
+type SpeciesDefinition = {
   id: string
-  name: string               // Operator label
+  operatorName: string
   cognitiveTier: "full_llm" | "behavior_tree" | "pure_reflex"
-  senseProfile: SenseProfile
+
+  morphology: MorphologyProfile
+  sensoryApparatus: SensoryApparatus
+  actuatorProfile: ActuatorProfile
+  metabolismProfile: MetabolismProfile
+  socialProfile: SocialProfile
+  developmentProfile: DevelopmentProfile
+  reproductionProfile: ReproductionProfile
+  qualiaProfile: QualiaProfile
+
   emotionalFieldEnabled: boolean
-  socialCapacity: "full" | "limited" | "none"
   canLearnLanguage: boolean
-  canBedomesticated: boolean
-  domesticationConfig?: DomesticationConfig
-  baseStats: {
-    maxHealth: number; speed: number; metabolism: number
-    lifespanTicks: number; reproductionAge: number; gestationTicks: number
-  }
-  muscleStatRanges: { strength: [number,number]; speed: [number,number]; endurance: [number,number] }
-  dnaTraits: DNATrait[]
   threatLevel: number
-  ecologicalRole: "predator" | "prey" | "scavenger" | "domesticable" | "neutral"
-  sleepConfig: SleepConfig
-  memoryConfig: Partial<MemoryConfig>
-  survivalDriveWeight: number   // Species-level ω default
-  circadianSensitivity: number
-}
-
-type DomesticationState = "wild" | "cautious" | "tamed" | "bonded" | "pet"
-// Progression is purely emergent — positive interactions + proximity + naming bonus
-// Regression on fear threshold exceeded
-```
-
----
-
-## 5. Persistence
-
-### 5.1 All Tables Are Append-Only
-
-No UPDATE. No DELETE. History is sacred.
-
-### 5.2 Core Schema
-
-```sql
-CREATE TABLE runs (
-  run_id TEXT PRIMARY KEY,
-  status TEXT NOT NULL,
-  world_config TEXT NOT NULL,        -- Full WorldConfig JSON at creation
-  world_config_hash TEXT NOT NULL,   -- sha256 for integrity
-  seed INTEGER NOT NULL,
-  current_tick INTEGER DEFAULT 0,
-  started_at INTEGER, paused_at INTEGER, stopped_at INTEGER,
-  branch_id TEXT NOT NULL,
-  goal_reached BOOLEAN DEFAULT FALSE,
-  baseline_config TEXT               -- "A", "B", "C", or NULL
-);
-
-CREATE TABLE config_mutations (
-  id INTEGER PRIMARY KEY,
-  run_id TEXT NOT NULL,
-  branch_id TEXT NOT NULL,
-  tick INTEGER NOT NULL,
-  path TEXT NOT NULL,                -- JSON path e.g. "physics.gravity"
-  old_value TEXT NOT NULL,
-  new_value TEXT NOT NULL,
-  applied_by TEXT NOT NULL,          -- "operator" | "system"
-  cause_event_id TEXT,
-  merkle_hash TEXT NOT NULL
-);
-
-CREATE TABLE branches (
-  branch_id TEXT PRIMARY KEY,
-  run_id TEXT NOT NULL,
-  parent_branch_id TEXT,
-  fork_tick INTEGER NOT NULL,
-  mutation TEXT NOT NULL
-);
-
--- world_deltas: base snapshot + per-tick changed voxels (zstd compressed)
--- agent_snapshots: every SNAPSHOT_INTERVAL_TICKS
--- episodic_memories, semantic_beliefs, feeling_residues, lexicon_entries
--- utterances, vocal_actuations, grammar_rules, dialect_distances
--- audit_log (Merkle chained), hypotheses, findings, param_sweep_runs
-```
-
-### 5.3 Merkle Audit Log
-
-```sql
-CREATE TABLE audit_log (
-  id INTEGER PRIMARY KEY,
-  tick INTEGER NOT NULL,
-  branch_id TEXT NOT NULL,
-  agent_id TEXT,
-  system TEXT NOT NULL,
-  field TEXT NOT NULL,
-  old_value TEXT,
-  new_value TEXT,
-  cause_event_id TEXT,
-  cause_description TEXT,
-  suppressed BOOLEAN DEFAULT FALSE,
-  previous_hash TEXT NOT NULL,
-  entry_hash TEXT NOT NULL  -- sha256(prev_hash||tick||agent_id||field||old||new)
-);
-```
-
----
-
-## 6. Language Engine
-
-### 6.1 Emergence Stages
-
-**Stage 1 — Reflexive Vocalisation:** System1 produces involuntary sound tokens based on body state. Not intentional communication. Other agents detect these via `VocalActuationBroadcaster`. Co-occurrence is recorded silently.
-
-**Stage 2 — Proto-words:** Repeated co-occurrence of sound token with referent context → candidate word with rising confidence score.
-
-**Stage 3 — Shared Lexicon:** Confidence > threshold AND 3+ agents consistent use → faction lexicon. Qualia Processor vocabulary expands. Inner life expands.
-
-**Stage 4 — Grammar:** Word order patterns inferred from utterance history.
-
-**Stage 5 — Dialects:** Geographic/social isolation → divergence. Pidgin on contact.
-
-### 6.2 Sapir-Whorf Enforcement
-
-Qualia Processor checks agent lexicon for each concept before naming it. No word → undifferentiated sensation. Named concept → can appear in experience text and spreads 3× faster via teaching.
-
----
-
-## 7. Research Platform
-
-### 7.1 TripleBaseline
-
-Three concurrent runs from the same seed. Config B is auto-generated — not a template file.
-
-**Config A:** Template as-is. The real experiment.
-**Config B:** Auto-generated by TripleBaseline: set all agents to `cognitiveTier: "pure_reflex"`, disable LLM entirely. Shows physics-alone emergence.
-**Config C:** Template + `semanticMasking.qualiaUsesRealLabels: false`. Shows genuine learning vs LLM confabulation.
-
-```typescript
-class TripleBaseline {
-  static start(baseConfigName: string, db: Database): { runA: string; runB: string; runC: string }
-  // runB config is generated programmatically — never stored as a file
+  ecologicalRole: "predator" | "prey" | "scavenger" | "forager" | "neutral" | "domesticable"
 }
 ```
 
-**Interpretation matrix:**
+### 4.2 MorphologyProfile
 
-| A | B | C | Meaning |
-|---|---|---|---|
-| ✓ | ✗ | ✗ | LLM confabulation |
-| ✓ | ✗ | ✓ | Genuine cognitive emergence |
-| ✓ | ✓ | ✓ | Physics substrate sufficient |
+Defines:
+- limb count and reach,
+- manipulation ability,
+- oral anatomy,
+- movement style,
+- carrying ability,
+- posture,
+- body-part vulnerability,
+- vocal tract capacity.
 
-### 7.2 Analysis Engine
+### 4.3 MetabolismProfile
 
-Runs in global Analysis Worker. Never blocks simulation.
+Defines:
+- energy drain,
+- hydration drain,
+- oxygen dependence,
+- toxin susceptibility,
+- disease resistance,
+- digestibility ranges,
+- thermal comfort band,
+- sleep need,
+- consolidation dependence.
 
-**CausalMiner:** Event pair co-occurrence across runs within configurable window.
-**TippingPointDetector:** Metric velocity spike detection with candidate causes attached.
-**EmergenceDetector:** LLM pass over event batches. Pre-registered classes (tool use, fire use, shelter, pain avoidance) excluded. Novel patterns named and logged.
-**FindingsJournal:** Narrative auto-generated. God mode = story. Research mode = analytical. TripleBaseline classification shown per finding.
+### 4.4 SocialProfile
 
----
+Defines:
+- social isolation sensitivity,
+- bonding thresholds,
+- grooming potential,
+- dominance sensitivity,
+- group size preference,
+- parental investment.
 
-## 8. Operator Services (Server-Side)
+### 4.5 DevelopmentProfile
 
-### 8.1 Glass Room Session
+Defines:
+- juvenile stage,
+- maturity,
+- aging,
+- lifespan,
+- developmental unlocking of senses and actuators,
+- changing curiosity and risk profiles.
 
-When operator enters Glass Room for an agent:
-1. Server records `GlassRoomSession { runId, agentId, startTick }` in memory
-2. Agent's next sleep cycle begins immediately (regardless of fatigue)
-3. Agent experiences the transition through Qualia (unfamiliar environment, translated culturally)
-4. Operator messages route through QualiaProcessor before reaching agent's System2
-5. Agent's inner monologue streams to operator in real-time via WebSocket
-6. Glass Room does NOT use a hard memory gate — experience translation preserves Veil naturally
-7. On exit: agent's next sleep cycle consolidates Glass Room experience as any other memory
+### 4.6 ReproductionProfile
 
-### 8.2 God-Mode Intervention Pipeline
+Defines:
+- reproductive maturity,
+- fertility cycle,
+- gestation,
+- clutch/litter size,
+- postpartum burden,
+- parental dependency period.
 
-```
-Operator submits intervention
-        ↓
-WillEngine.checkResistance(agent, intervention)
-        ↓
-   rejected? → Log to Merkle, emit INTERVENTION_RESISTED, return
-        ↓
-   Apply intervention
-        ↓
-   Log to Merkle with suppressed=false
-        ↓
-   Emit INTERVENTION_APPLIED
-        ↓
-   If scarring: log identity_coherence penalty to Merkle
-```
+### 4.7 Canonical Initial Species
 
-### 8.3 Health Endpoint
-
-`GET /health` returns:
-
-```typescript
-{
-  status: "healthy" | "degraded" | "error",
-  runs: Array<{ run_id, status, tick, tick_rate, llm_queue_depth }>,
-  lm_studio_available: boolean,
-  db_size_mb: number,
-  worker_threads: { physics: number; cognition: number; analysis: number },
-  uptime_seconds: number
-}
-```
+The final PRD recommends beginning with one **proto-human forager** species for v1, then later expanding to:
+- a prey grazer,
+- a scavenger / corvid analog,
+- a predator,
+- optionally a domesticable social species.
 
 ---
 
-## 9. Code Quality Standards
+## 5. Language, Social World, and Culture
 
-- Biome: formatting + linting, zero warnings
-- Lefthook pre-commit: `bun test && biome check . && bunx tsc --noEmit && veil-check`
-- TypeScript strict, no `any`, no `!` non-null without comment
-- All EventBus events typed in `shared/events.ts`
-- All cross-module communication via EventBus only
-- All types in `shared/types.ts`
-- All constants in `shared/constants.ts`
-- Tests for every module
-- Commit format: `feat:` `fix:` `refactor:` `test:` `chore:`
-- No TODO comments — use BLOCKERS.md
+### 5.1 Pre-Linguistic Communication
 
----
+Language begins before symbols.
 
-## 10. Project Structure
+Initial channels:
+- involuntary pain sounds,
+- alarm bursts,
+- relief sounds,
+- postural display,
+- proximity and following,
+- comfort touch,
+- grooming.
 
-```
-cognis/
-├── biome.json
-├── lefthook.yml
-├── package.json
-├── tsconfig.json
-├── BLOCKERS.md
-├── GEMINI.md
-│
-├── server/
-│   ├── index.ts                     ← CLI entry point — properly wired
-│   ├── config.ts                    ← Env loading
-│   ├── core/
-│   │   ├── event-bus.ts
-│   │   ├── sim-clock.ts
-│   │   ├── run-manager.ts           ← Multi-run lifecycle
-│   │   └── branch-manager.ts
-│   ├── operator/                    ← NEW: server-side operator services
-│   │   ├── management-api.ts        ← HTTP :3000
-│   │   ├── ws-server.ts             ← WebSocket :3001 subscription model
-│   │   ├── watcher.ts               ← stdout/SSE event stream
-│   │   ├── glass-room.ts           ← Glass Room session management
-│   │   ├── world-config-manager.ts  ← DB-backed config with mutation tracking
-│   │   └── health.ts                ← Health + metrics endpoint
-│   ├── workers/                     ← NEW: worker thread definitions
-│   │   ├── physics-worker.ts        ← System1, ElementEngine, PhysicsEngine, Circadian
-│   │   ├── cognition-worker.ts      ← System2 queue, DreamEngine, WillEngine, Memory
-│   │   ├── analysis-worker.ts       ← CausalMiner, Tipping, Emergence, Findings
-│   │   └── shared-buffer.ts         ← SharedArrayBuffer layout definitions
-│   ├── world/
-│   │   ├── voxel-grid.ts
-│   │   ├── delta-stream.ts
-│   │   ├── element-engine.ts
-│   │   ├── terrain-generator.ts
-│   │   ├── circadian-engine.ts
-│   │   ├── pathfinding.ts
-│   │   ├── spatial-index.ts
-│   │   ├── tech-tree.ts
-│   │   ├── faction-engine.ts        ← NEW: emergent faction detection
-│   │   └── journaling.ts
-│   ├── agents/
-│   │   ├── agent.ts
-│   │   ├── system1.ts
-│   │   ├── system2.ts
-│   │   ├── vocal-actuation-broadcaster.ts  ← NEW
-│   │   ├── attention-filter.ts
-│   │   ├── qualia-processor.ts
-│   │   ├── will-engine.ts
-│   │   └── reproduction.ts
-│   ├── memory/
-│   │   ├── episodic-store.ts
-│   │   ├── semantic-store.ts
-│   │   ├── salience-gate.ts
-│   │   ├── consolidation.ts
-│   │   └── decay-engine.ts
-│   ├── dream/
-│   │   └── dream-engine.ts
-│   ├── language/
-│   │   ├── lexicon.ts
-│   │   ├── emergence.ts
-│   │   └── dialect.ts
-│   ├── species/
-│   │   ├── species-registry.ts
-│   │   ├── behavior-tree.ts
-│   │   └── domestication.ts
-│   ├── perception/
-│   │   ├── sense-computer.ts
-│   │   ├── emotional-field.ts
-│   │   └── feeling-residue.ts
-│   ├── analysis/
-│   │   ├── causal-miner.ts
-│   │   ├── tipping-point.ts
-│   │   ├── emergence-detector.ts
-│   │   ├── findings-journal.ts
-│   │   └── baseline-comparator.ts
-│   ├── research/
-│   │   ├── triple-baseline.ts
-│   │   ├── hypothesis.ts
-│   │   └── param-sweep.ts
-│   ├── llm/
-│   │   ├── gateway.ts
-│   │   ├── mock-gateway.ts
-│   │   └── providers/lmstudio.ts
-│   └── persistence/
-│       ├── database.ts
-│       ├── merkle-logger.ts
-│       └── migrations/
-│           ├── 001-init.sql           ← runs (with world_config cols), branches, events
-│           ├── 002-config.sql         ← config_mutations table (NEW)
-│           ├── 003-world.sql          ← world_deltas, agent_snapshots
-│           ├── 004-memory.sql         ← episodic, semantic, residues, lexicon
-│           ├── 005-language.sql       ← utterances, vocal_actuations, grammar, dialects
-│           ├── 006-audit.sql          ← audit_log with Merkle columns
-│           └── 007-research.sql       ← hypotheses, findings, sweeps, baselines
-│
-├── client/
-│   ├── forge/
-│   │   ├── Forge.tsx
-│   │   ├── MatrixView.tsx
-│   │   ├── GlassRoom.tsx
-│   │   ├── MerkleAuditInspector.tsx
-│   │   ├── InterventionPalette.tsx
-│   │   ├── TimelineScrubber.tsx
-│   │   ├── FindingsJournal.tsx
-│   │   ├── TripleBaselineDashboard.tsx
-│   │   └── ResearchDashboard.tsx
-│   ├── panels/
-│   │   ├── AgentInspector.tsx
-│   │   ├── MindViewer.tsx           ← Operator-only inner monologue stream
-│   │   ├── MemoryBrowser.tsx
-│   │   ├── BodyMapViewer.tsx
-│   │   ├── LexiconViewer.tsx
-│   │   ├── RelationshipGraph.tsx
-│   │   └── WorldPanel.tsx
-│   └── scene/
-│       ├── GlassRoomRoom.tsx
-│       ├── AgentAvatar.tsx
-│       └── MicroExpressions.tsx
-│
-├── shared/
-│   ├── types.ts
-│   ├── events.ts
-│   └── constants.ts
-│
-├── data/
-│   ├── world-configs/
-│   │   ├── earth-default.json       ← Template only. Never read at runtime.
-│   │   ├── moon-harsh.json
-│   │   ├── freeform-sandbox.json
-│   │   └── semantic-vacuum.json     ← Config C template
-│   │   -- NO Config B file: auto-generated by TripleBaseline
-│   ├── species/
-│   │   ├── human.json
-│   │   ├── wolf.json
-│   │   └── deer.json
-│   └── tech-tree.json
-│
-└── tests/
-    ├── types.test.ts
-    ├── event-bus.test.ts
-    ├── shared-buffer.test.ts         ← NEW
-    ├── management-api.test.ts        ← NEW
-    ├── world-config-manager.test.ts  ← NEW
-    ├── run-manager.test.ts
-    ├── voxel-grid.test.ts
-    ├── circadian-engine.test.ts
-    ├── attention-filter.test.ts
-    ├── qualia-processor.test.ts      ← 12 Veil integrity tests
-    ├── cls-memory.test.ts
-    ├── language-emergence.test.ts
-    ├── will-engine.test.ts
-    ├── dream-engine.test.ts
-    ├── merkle-logger.test.ts
-    ├── faction-engine.test.ts        ← NEW
-    ├── triple-baseline.test.ts
-    └── integration.test.ts           ← Uses Management API, not direct instantiation
-```
+### 5.2 Language Emergence Stages
+
+1. reflexive vocalization,
+2. repeated co-occurrence,
+3. proto-word hypothesis,
+4. shared lexicon entry,
+5. grammar and role marking,
+6. dialect divergence,
+7. symbolic extension into myth, ritual, and abstraction.
+
+### 5.3 Lexicon Rules
+
+Each entry needs:
+- token form,
+- referent hypotheses,
+- confidence,
+- faction or community spread,
+- usage decay,
+- synonym competition.
+
+### 5.4 Relationship Model
+
+Relationships are learned and updated from interaction, not assigned by config.
+
+Track:
+- affinity,
+- fear,
+- trust,
+- dependency,
+- kinship,
+- teaching history,
+- harm history,
+- grief relevance.
+
+### 5.5 Factions and Institutions
+
+Groups emerge from:
+- repeated proximity,
+- lexicon overlap,
+- mutual aid,
+- shared ritual or repeated coordinated behavior.
+
+Do not preassign factions.
+
+### 5.6 Death, Grief, and Ritual
+
+Death concept emergence requires repeated exposure to:
+- stillness,
+- non-response,
+- cold body,
+- social disappearance,
+- decomposition,
+- grief residue in witnesses.
+
+Ritual begins when repeated social behavior stabilizes around these events.
 
 ---
 
-## Appendix A: Constants
+## 6. Research Platform
 
-```typescript
-const DEFAULT_EPISODIC_DECAY_RATE = 0.5
-const DEFAULT_SEMANTIC_DECAY_RATE = 0.05
-const DEFAULT_NE_LOCK_DURATION = 200
-const DEFAULT_CONFIDENCE_THRESHOLD = 0.7
-const DEFAULT_MIN_AGENTS_FOR_CONSENSUS = 3
-const SYSTEM2_SIGNIFICANCE_THRESHOLD = 0.3
-const URGENCY_THRESHOLD = 0.75
-const TECH_SPREAD_NAMED = 3.0
-const TECH_SPREAD_UNNAMED = 1.0
-const SNAPSHOT_INTERVAL_TICKS = 100
-const MAX_FEELING_RESIDUE = 20
-const DEFAULT_ATTENTION_CAPACITY = 5
-const DEFAULT_SURVIVAL_DRIVE_WEIGHT = 0.6
-const MERKLE_HASH_ALGORITHM = "sha256"
-const DEATH_CONCEPT_OBSERVATIONS_REQUIRED = 5
-const DEFAULT_CYCLE_LENGTH_TICKS = 480
-const MAX_HEARTBEAT_WAIT_MS = 5000
-const MAX_SYSTEM2_QUEUE_DEPTH = 20
-const FACTION_LEXICON_THRESHOLD = 0.6
-const FACTION_AFFINITY_THRESHOLD = 0.5
-const FACTION_CHECK_INTERVAL = 100
-const MANAGEMENT_API_PORT = 3000
-const WEBSOCKET_PORT = 3001
+### 6.1 TripleBaseline
+
+Three linked runs from the same seed:
+
+- **A** — full system,
+- **B** — no LLM / no System2,
+- **C** — semantic-vacuum or reduced-qualia condition.
+
+Interpretation:
+- A only → likely LLM-driven confabulation,
+- A + C but not B → likely genuine cognitive emergence,
+- A + B + C → substrate itself may be sufficient.
+
+### 6.2 Analysis Engine
+
+Core components:
+- causal miner,
+- tipping point detector,
+- emergence detector,
+- findings journal,
+- baseline comparator.
+
+### 6.3 Emergence Rubric
+
+The system must score at least:
+- time-to-first-relief discovery,
+- survival improvement over random,
+- toxin avoidance improvement,
+- procedural reliance vs LLM reliance,
+- lexicon growth,
+- teaching success,
+- grief/ritual formation,
+- tool-use stability,
+- niche construction persistence.
+
+### 6.4 What Counts as Real Discovery
+
+A behavior counts as genuine discovery when:
+1. it emerges from body-world consequence,
+2. it improves over random baseline,
+3. it survives replay or reoccurs across seeds,
+4. it is not trivially injected by prompt or operator label,
+5. it can influence future action or teaching.
+
+---
+
+## 7. Persistence and Auditability
+
+### 7.1 Append-Only Rule
+
+No historical state is overwritten.  
+No silent mutation is allowed.
+
+### 7.2 Core Tables
+
+Minimum authoritative tables:
+- `runs`
+- `branches`
+- `config_mutations`
+- `audit_log`
+- `events`
+- `world_deltas`
+- `host_snapshots`
+- `episodic_memories`
+- `semantic_beliefs`
+- `procedural_outcomes`
+- `utterances`
+- `lexicon_entries`
+- `findings`
+- `baseline_results`
+
+### 7.3 Merkle Audit Log
+
+Every meaningful mutation must be chained:
+- previous hash,
+- current entry payload,
+- resulting hash,
+- branch id,
+- tick,
+- affected system,
+- cause trace where available.
+
+### 7.4 Storage Policy
+
+To prevent data explosion, Cognis must separate:
+- hot runtime state,
+- replay-critical state,
+- research summaries,
+- discardable caches.
+
+This policy must be explicit in implementation.
+
+---
+
+## 8. Operator Services
+
+### 8.1 Forge and Debug Surfaces
+
+Operator tooling must expose:
+- world state,
+- host physiology,
+- current qualia,
+- action traces,
+- prompt/response traces,
+- lexicon hypotheses,
+- relationship graphs,
+- replay scrubbing,
+- audit chain inspection.
+
+### 8.2 Glass Room
+
+Glass Room is allowed as an operator intervention mode, but it is not required for v1.
+
+If present, it must:
+- preserve the Veil,
+- route all contact through translated experience,
+- fully audit intervention history,
+- respect will/resistance mechanics.
+
+### 8.3 Health and Metrics
+
+Expose:
+- run status,
+- tick rate,
+- queue depth,
+- worker health,
+- DB size,
+- replay status,
+- model availability.
+
+---
+
+## 9. Project Structure and Migration Guidance
+
+### 9.1 Canonical Structure
+
+```text
+server/
+  core/
+  operator/
+  workers/
+  world/
+  agents/            # may remain for migration compatibility
+  hosts/             # optional long-term destination
+  memory/
+  language/
+  species/
+  perception/
+  analysis/
+  research/
+  llm/
+  persistence/
+shared/
+client/
+data/
+tests/
 ```
 
-## Appendix B: Event Types
+### 9.2 Required New / Upgraded Modules
+
+```text
+server/agents/physiology.ts
+server/agents/action-grammar.ts
+server/agents/action-executor.ts
+server/agents/actuator-system.ts
+server/agents/action-outcome-memory.ts
+server/agents/affordance-learner.ts
+server/agents/procedural-policy.ts
+server/agents/qualia-types.ts
+server/agents/qualia-templates.ts
+server/agents/qualia-validator.ts
+server/agents/prompt-contract.ts
+server/agents/system2-parser.ts
+server/agents/impossible-knowledge-check.ts
+server/world/material-affordances.ts
+server/world/ingestion.ts
+server/world/resource-kernel.ts
+```
+
+### 9.3 Migration Rule for Existing Implementation
+
+The existing architecture should be evolved, not replaced.
+
+Keep:
+- worker runtime,
+- event bus,
+- append-only DB,
+- Merkle logger,
+- management API,
+- memory scaffolding,
+- analysis scaffolding,
+- Qualia boundary as concept.
+
+Refactor first:
+- symbolic actions,
+- physiology depth,
+- procedural learning absence,
+- Qualia leakage risk,
+- System2 output parsing,
+- action target semantics.
+
+### 9.4 First Winning Milestone
+
+Success is not “all modules exist.”
+
+Success is:
+
+> a host with no explicit `EAT` or `DRINK` instruction learns a better-than-random action pattern that improves hydration and avoids one harmful ingestible after bad experience.
+
+That is the first true proof that the PRD is alive.
+
+---
+
+## 10. Code Quality and Validation
+
+### 10.1 Standards
+
+- TypeScript strict
+- no silent `any`
+- deterministic tests for non-LLM layers
+- append-only persistence checks
+- veil integrity tests
+- schema-validated configs and LLM outputs
+
+### 10.2 Mandatory Test Families
+
+1. sensor bundle determinism,
+2. Qualia translation fixtures,
+3. veil leakage tests,
+4. action executor validity,
+5. ingestion consequence tests,
+6. procedural learning improvement tests,
+7. System2 impossible-knowledge rejection tests,
+8. replay equivalence tests,
+9. Merkle chain verification,
+10. baseline comparison tests.
+
+### 10.3 Veil Validation Examples
+
+The Qualia output validator must reject operator leakage such as:
+- simulation terms,
+- ids,
+- coordinates,
+- raw floats,
+- enum names,
+- unearned concept spoilers.
+
+Concept spoilers are allowed only once lexicon gating says the host genuinely has that concept.
+
+---
+
+## Appendix A — Minimal Discovery Algorithms
+
+### A.1 Hydration Discovery
+
+Pattern:
+- oral dryness elevated,
+- fluid contact or ingestion,
+- later dryness reduction,
+- repeated success → procedural preference,
+- repeated success across episodes → semantic belief,
+- optional later naming.
+
+### A.2 Poison Discovery
+
+Pattern:
+- ingestion,
+- delayed toxin burden,
+- bitter or warning taste channel often present,
+- later sickness,
+- repeated pairings → aversion.
+
+### A.3 Warming Discovery
+
+Pattern:
+- cold stress elevated,
+- approach radiant heat or structure,
+- reduced thermal stress,
+- repeated pairings → preference for heat/shelter.
+
+---
+
+## Appendix B — Example Event Additions
 
 ```typescript
 enum EventType {
-  TICK = "tick",
-  VOXEL_CHANGED = "voxel_changed",
-  ELEMENT_SPREAD = "element_spread",
-  RESOURCE_DEPLETED = "resource_depleted",
-  STRUCTURE_BUILT = "structure_built",
-  VOXEL_MARKED = "voxel_marked",
-  CIRCADIAN_PHASE_CHANGED = "circadian_phase_changed",
-  SEASON_CHANGED = "season_changed",
-  RUN_CREATED = "run_created",
-  RUN_STARTED = "run_started",
-  RUN_PAUSED = "run_paused",
-  RUN_RESUMED = "run_resumed",
-  RUN_STOPPED = "run_stopped",
-  CONFIG_MUTATED = "config_mutated",
-  AGENT_BORN = "agent_born",
-  AGENT_NAMED = "agent_named",
-  AGENT_DIED = "agent_died",
-  AGENT_SLEPT = "agent_slept",
-  AGENT_WOKE = "agent_woke",
-  SYSTEM2_THOUGHT = "system2_thought",
-  DECISION_MADE = "decision_made",
-  INNER_CONFLICT = "inner_conflict",
-  URGENCY_OVERRIDE = "urgency_override",
-  MEMORY_ENCODED = "memory_encoded",
-  MEMORY_CONSOLIDATED = "memory_consolidated",
-  MEMORY_SUPPRESSED = "memory_suppressed",
-  TRAUMA_FORMED = "trauma_formed",
-  TRAUMA_RESOLVED = "trauma_resolved",
-  DREAM_OCCURRED = "dream_occurred",
-  NIGHTMARE_OCCURRED = "nightmare_occurred",
-  VOCAL_ACTUATION = "vocal_actuation",
-  PROTO_WORD_COINED = "proto_word_coined",
-  WORD_ENTERED_LEXICON = "word_entered_lexicon",
-  GRAMMAR_RULE_FORMED = "grammar_rule_formed",
-  DIALECT_DIVERGED = "dialect_diverged",
-  CONVERSATION_STARTED = "conversation_started",
-  KNOWLEDGE_TRANSFERRED = "knowledge_transferred",
-  RELATIONSHIP_CHANGED = "relationship_changed",
-  BEHAVIOURAL_PATTERN_OBSERVED = "behavioural_pattern_observed",
-  FACTION_FORMED = "faction_formed",
-  FACTION_DISSOLVED = "faction_dissolved",
-  DOMESTICATION_STAGE_CHANGED = "domestication_stage_changed",
-  CAPABILITY_DISCOVERED = "capability_discovered",
-  CAPABILITY_TAUGHT = "capability_taught",
-  DEATH_CONCEPT_EMERGED = "death_concept_emerged",
-  TIPPING_POINT_DETECTED = "tipping_point_detected",
-  CAUSAL_PATTERN_FOUND = "causal_pattern_found",
-  EMERGENCE_DETECTED = "emergence_detected",
-  BRANCH_CREATED = "branch_created",
-  BASELINE_DIVERGENCE_FOUND = "baseline_divergence_found",
-  INTERVENTION_APPLIED = "intervention_applied",
-  INTERVENTION_RESISTED = "intervention_resisted",
-  GLASS_ROOM_ENTERED = "glass_room_entered",
-  GLASS_ROOM_EXITED = "glass_room_exited",
-  MERKLE_CHAIN_VERIFIED = "merkle_chain_verified",
+  ACTION_ATTEMPTED = "action_attempted",
+  ACTION_SUCCEEDED = "action_succeeded",
+  ACTION_FAILED = "action_failed",
+  MOUTH_CONTACTED = "mouth_contacted",
+  INGESTION_OCCURRED = "ingestion_occurred",
+  TOXIN_EXPOSURE = "toxin_exposure",
+  HYDRATION_IMPROVED = "hydration_improved",
+  ENERGY_IMPROVED = "energy_improved",
+  PROCEDURAL_PATTERN_FORMED = "procedural_pattern_formed",
+  AFFORDANCE_CONFIDENCE_CHANGED = "affordance_confidence_changed",
+  VEIL_BREACH = "veil_breach",
 }
 ```
 
-## Appendix C: Validation
+---
 
-```bash
-# Every commit:
-bun test && biome check . && bunx tsc --noEmit
+## Appendix C — Final PRD Summary
 
-# After any qualia-processor.ts change:
-grep -E "simulation|\" AI|' AI|\bdata\b|\bcode\b|\btick\b|_id\b|coordinate|VoxelType|MaterialType|TechNode|op-id|decimal\.[0-9]" \
-  server/agents/qualia-processor.ts && echo "VEIL BROKEN" || echo "Veil intact"
+Cognis v5.2.0 is defined by five commitments:
 
-# Module isolation:
-grep -r "from.*server/world" server/agents/ && echo "FAIL" || echo "OK"
-grep -r "from.*server/agents" server/world/ && echo "FAIL" || echo "OK"
+1. **Body before concept**  
+   Hosts learn from sensation, not labels.
 
-# Merkle integrity:
-curl -s -X POST http://localhost:3000/runs/$RUN_ID/audit/verify | grep '"valid":true'
+2. **Action before explanation**  
+   Useful knowledge comes from consequence.
 
-# Append-only:
-grep -r "\.run.*UPDATE\|\.run.*DELETE" server/persistence/ && echo "FAIL" || echo "OK"
+3. **Procedural learning before abstract reasoning**  
+   Routine survival should not depend on an LLM.
 
-# Config never read from file at runtime:
-grep -r "readFileSync\|require(.*world-configs" server/ && echo "FAIL: runtime JSON read" || echo "OK"
+4. **Qualia before cognition**  
+   The world reaches the host only through translated experience.
 
-# Integration test uses Management API:
-grep "Management\|fetch.*localhost:3000\|createRun" tests/integration.test.ts || echo "WARN: test may bypass API"
-```
+5. **Auditability before mythology**  
+   The operator must be able to verify what happened and why.
+
+If a future implementation preserves those five commitments, it remains Cognis.
