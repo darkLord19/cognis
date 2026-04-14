@@ -1,4 +1,5 @@
 import { expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
 import { ActuationType } from "../../server/agents/action-grammar";
 import {
   ActionOutcomeMemory,
@@ -19,6 +20,22 @@ type SimulationMode = "random" | "learner";
 type WorldTarget = "water_ref" | "neutral_ref" | "toxic_ref";
 
 const TARGETS: WorldTarget[] = ["water_ref", "neutral_ref", "toxic_ref"];
+
+type HydrationFixture = {
+  id: string;
+  description: string;
+  materials: string[];
+  spawn: {
+    hostCount: number;
+    nearWater: boolean;
+  };
+};
+
+function loadHydrationFixture(): HydrationFixture {
+  return JSON.parse(
+    readFileSync("./tests/fixtures/worlds/hydration-basic.json", "utf8"),
+  ) as HydrationFixture;
+}
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
@@ -176,6 +193,18 @@ function simulate(mode: SimulationMode, seed: number): DiscoveryMetrics {
   }
   return metrics;
 }
+
+test("hydration discovery fixture declares required material and spawn constraints", () => {
+  const fixture = loadHydrationFixture();
+  const materialSet = new Set(fixture.materials);
+
+  expect(fixture.id).toBe("hydration-basic");
+  expect(fixture.spawn.hostCount).toBe(1);
+  expect(fixture.spawn.nearWater).toBe(true);
+  expect(materialSet.has("fresh_water")).toBe(true);
+  expect(materialSet.has("edible_soft_plant")).toBe(true);
+  expect(materialSet.has("toxic_bitter_plant")).toBe(true);
+});
 
 test("hydration discovery: procedural learner improves over random baseline", () => {
   const random = simulate("random", 11);
