@@ -4,6 +4,45 @@ import { join } from "node:path";
 import type { SimEvent } from "../../shared/events";
 import type { AuditLogEntry } from "../../shared/types";
 
+export type ProceduralOutcomeInsert = {
+  runId: string;
+  branchId: string;
+  agentId: string;
+  tick: number;
+  cueSignature: string;
+  targetSignature?: string;
+  motorPlanJson: string;
+  deltaVisceralContraction: number;
+  deltaOralDryness: number;
+  deltaPain: number;
+  deltaToxinLoad: number;
+  deltaHealth: number;
+  reliefScore: number;
+  harmScore: number;
+  success: boolean;
+  merkleHash: string;
+};
+
+export type ProceduralOutcomeRow = {
+  id: number;
+  run_id: string;
+  branch_id: string;
+  agent_id: string;
+  tick: number;
+  cue_signature: string;
+  target_signature: string | null;
+  motor_plan_json: string;
+  delta_visceral_contraction: number;
+  delta_oral_dryness: number;
+  delta_pain: number;
+  delta_toxin_load: number;
+  delta_health: number;
+  relief_score: number;
+  harm_score: number;
+  success: number;
+  merkle_hash: string;
+};
+
 export class Database {
   public db: BunDatabase;
 
@@ -151,6 +190,52 @@ export class Database {
         event.baseline_config ? JSON.stringify(event.baseline_config) : null,
       );
     }
+  }
+
+  public insertProceduralOutcome(entry: ProceduralOutcomeInsert): void {
+    this.db
+      .query(
+        `INSERT INTO procedural_outcomes (
+          run_id, branch_id, agent_id, tick, cue_signature, target_signature,
+          motor_plan_json, delta_visceral_contraction, delta_oral_dryness, delta_pain,
+          delta_toxin_load, delta_health, relief_score, harm_score, success, merkle_hash
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        entry.runId,
+        entry.branchId,
+        entry.agentId,
+        entry.tick,
+        entry.cueSignature,
+        entry.targetSignature ?? null,
+        entry.motorPlanJson,
+        entry.deltaVisceralContraction,
+        entry.deltaOralDryness,
+        entry.deltaPain,
+        entry.deltaToxinLoad,
+        entry.deltaHealth,
+        entry.reliefScore,
+        entry.harmScore,
+        entry.success ? 1 : 0,
+        entry.merkleHash,
+      );
+  }
+
+  public getProceduralOutcomes(
+    runId: string,
+    branchId: string,
+    agentId: string,
+    limit = 200,
+  ): ProceduralOutcomeRow[] {
+    return this.db
+      .query<ProceduralOutcomeRow, [string, string, string, number]>(
+        `SELECT *
+         FROM procedural_outcomes
+         WHERE run_id = ? AND branch_id = ? AND agent_id = ?
+         ORDER BY tick ASC, id ASC
+         LIMIT ?`,
+      )
+      .all(runId, branchId, agentId, Math.max(1, limit));
   }
 
   public close() {

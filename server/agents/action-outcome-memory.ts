@@ -1,4 +1,5 @@
 import type { ActionOutcomeRecord as LegacyActionOutcomeRecord } from "../../shared/types";
+import { db } from "../persistence/database";
 import type { ActuationType, MotorPlan } from "./action-grammar";
 
 export type OutcomeSignature = {
@@ -20,6 +21,11 @@ export type ActionOutcomeRecord = {
   targetRef?: string;
   outcome: OutcomeSignature;
   success: boolean;
+};
+
+type PersistenceContext = {
+  runId: string;
+  branchId: string;
 };
 
 function fromLegacy(record: LegacyActionOutcomeRecord): ActionOutcomeRecord {
@@ -70,6 +76,32 @@ function fromLegacy(record: LegacyActionOutcomeRecord): ActionOutcomeRecord {
 export class ActionOutcomeMemory {
   private records: ActionOutcomeRecord[] = [];
   private readonly MAX_RECORDS = 2000;
+  constructor(private persistence?: PersistenceContext) {}
+
+  private persist(record: ActionOutcomeRecord): void {
+    if (!this.persistence) {
+      return;
+    }
+
+    db.insertProceduralOutcome({
+      runId: this.persistence.runId,
+      branchId: this.persistence.branchId,
+      agentId: record.agentId,
+      tick: record.tick,
+      cueSignature: record.cueSignature,
+      ...(record.targetRef ? { targetSignature: record.targetRef } : {}),
+      motorPlanJson: JSON.stringify(record.motorPlan),
+      deltaVisceralContraction: record.outcome.deltaVisceralContraction,
+      deltaOralDryness: record.outcome.deltaOralDryness,
+      deltaPain: record.outcome.deltaPain,
+      deltaToxinLoad: record.outcome.deltaToxinLoad,
+      deltaHealth: record.outcome.deltaHealth,
+      reliefScore: record.outcome.reliefScore,
+      harmScore: record.outcome.harmScore,
+      success: record.success,
+      merkleHash: db.getLastAuditHash(this.persistence.branchId),
+    });
+  }
 
   public record(record: ActionOutcomeRecord | LegacyActionOutcomeRecord): void {
     const normalized = "cueSignature" in record ? record : fromLegacy(record);
@@ -77,6 +109,7 @@ export class ActionOutcomeMemory {
     if (this.records.length > this.MAX_RECORDS) {
       this.records.shift();
     }
+    this.persist(normalized);
   }
 
   public findSimilar(cueSignature: string, limit: number): ActionOutcomeRecord[] {

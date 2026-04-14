@@ -113,7 +113,7 @@ export class Orchestrator {
     this.agents.push(agent);
 
     // Initialize learning layer for this agent
-    const memory = new ActionOutcomeMemory();
+    const memory = new ActionOutcomeMemory({ runId: this.runId, branchId: this.branchId });
     const learner = new AffordanceLearner(memory);
     const policy = new ProceduralPolicy(learner);
     this.agentLearning.set(agent.id, { memory, learner, policy });

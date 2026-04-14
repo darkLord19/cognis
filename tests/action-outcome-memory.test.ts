@@ -4,6 +4,7 @@ import {
   ActionOutcomeMemory,
   type ActionOutcomeRecord,
 } from "../server/agents/action-outcome-memory";
+import { db } from "../server/persistence/database";
 
 function record(tick: number, cueSignature: string): ActionOutcomeRecord {
   return {
@@ -49,4 +50,25 @@ test("ActionOutcomeMemory: records and finds similar cues with limit", () => {
   expect(found.length).toBe(2);
   expect(found[0]?.tick).toBe(3);
   expect(found[1]?.tick).toBe(4);
+});
+
+test("ActionOutcomeMemory: persists records into procedural_outcomes when context is configured", () => {
+  const runId = `test-run-${Date.now()}`;
+  const branchId = "main";
+  const agentId = "agent-persist-1";
+  const entry = { ...record(7, "cue-persist"), agentId };
+
+  const memory = new ActionOutcomeMemory({ runId, branchId });
+  memory.record(entry);
+
+  const row = db.db
+    .query<{ count: number; merkle_hash: string }, [string, string, string, string]>(
+      `SELECT COUNT(*) AS count, MAX(merkle_hash) AS merkle_hash
+       FROM procedural_outcomes
+       WHERE run_id = ? AND branch_id = ? AND agent_id = ? AND cue_signature = ?`,
+    )
+    .get(runId, branchId, agentId, "cue-persist");
+
+  expect(row?.count ?? 0).toBe(1);
+  expect((row?.merkle_hash?.length ?? 0) > 0).toBe(true);
 });
