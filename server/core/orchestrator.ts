@@ -8,12 +8,13 @@ import type { SimEvent } from "../../shared/events";
 import { EventType } from "../../shared/events";
 import type { AgentState, PrimitiveAction, VocalActuation, WorldConfig } from "../../shared/types";
 import { ActionExecutor } from "../agents/action-executor";
-import { PRIMITIVE_ACTIONS } from "../agents/action-grammar";
+import { type MotorPlan, PRIMITIVE_ACTIONS } from "../agents/action-grammar";
 import { ActionOutcomeMemory } from "../agents/action-outcome-memory";
 import { AffordanceLearner } from "../agents/affordance-learner";
 import { AttentionFilter } from "../agents/attention-filter";
 import { ProceduralPolicy } from "../agents/procedural-policy";
 import { QualiaProcessor } from "../agents/qualia-processor";
+import { System0 } from "../agents/system0";
 import { System1 } from "../agents/system1";
 import type { System2 } from "../agents/system2";
 import { EmergenceDetector } from "../analysis/emergence-detector";
@@ -53,6 +54,7 @@ export class Orchestrator {
   private spatialIndex: SpatialIndex = new SpatialIndex();
   private techTree: TechTree;
   private system2: System2;
+  private system0: System0;
   private actionExecutor: ActionExecutor;
   private ingestionSystem: IngestionSystem;
   private agentLearning = new Map<
@@ -81,6 +83,7 @@ export class Orchestrator {
   ) {
     this.techTree = new TechTree(eventBus);
     this.system2 = system2;
+    this.system0 = new System0();
     this.actionExecutor = new ActionExecutor(eventBus);
     this.ingestionSystem = new IngestionSystem(eventBus);
   }
@@ -99,6 +102,10 @@ export class Orchestrator {
 
   private applyAction(agent: AgentState, action: PrimitiveAction, tick: number): void {
     this.actionExecutor.execute(agent, action, tick, this.runId, this.branchId);
+  }
+
+  private applyMotorPlan(agent: AgentState, plan: MotorPlan, tick: number): void {
+    this.actionExecutor.executeMotorPlan(agent, plan, tick, this.runId, this.branchId);
   }
 
   public async tick(): Promise<void> {
@@ -126,6 +133,29 @@ export class Orchestrator {
     const pendingSystem2: Promise<void>[] = [];
 
     for (const agent of this.agents) {
+      const reflexResults = this.system0.execute({
+        agent,
+        tick,
+      });
+      for (const reflex of reflexResults) {
+        if (!reflex.fired) continue;
+        this.eventBus.emit({
+          event_id: crypto.randomUUID(),
+          run_id: this.runId,
+          branch_id: this.branchId,
+          tick,
+          type: EventType.REFLEX_FIRED,
+          agent_id: agent.id,
+          payload: {
+            reflexId: reflex.id,
+            intensity: reflex.intensity,
+          },
+        });
+      }
+      const reflexPlan = reflexResults.find(
+        (result) => result.fired && result.motorPlan,
+      )?.motorPlan;
+
       // 4a. System1
       const localX = Math.floor(agent.position.x);
       const localY = Math.floor(agent.position.y);
@@ -189,6 +219,22 @@ export class Orchestrator {
 
       if (shouldDie) {
         deadAgentIds.push(agent.id);
+        continue;
+      }
+
+      if (reflexPlan) {
+        this.applyMotorPlan(agent, reflexPlan, tick);
+        const reflexVocal = System1.checkVocalActuation(agent, tick);
+        if (reflexVocal) {
+          this.vocalActuations.push(reflexVocal);
+          VocalActuationBroadcaster.broadcast(
+            reflexVocal,
+            this.branchId,
+            this.runId,
+            this.eventBus,
+          );
+        }
+        totalDecisions++;
         continue;
       }
 
