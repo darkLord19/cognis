@@ -46,6 +46,15 @@ test("RunService creates a persisted run and records append-only created state",
   expect(latest?.tick).toBe(0);
 });
 
+test("RunService creates a persisted run from v5 hydration sandbox template", () => {
+  const created = service.createRun({ config: "v5-hydration-sandbox", seed: 5203 });
+  const latest = RunStateStore.getLatest(created.id);
+
+  expect(created.status).toBe("created");
+  expect(latest?.status).toBe("created");
+  expect(service.listConfigTemplates().includes("v5-hydration-sandbox")).toBe(true);
+});
+
 test("RunService starts, pauses, resumes, and stops a shared runtime", () => {
   const created = service.createRun({ config: "earth-default", seed: 4242 });
 

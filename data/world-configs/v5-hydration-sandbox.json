@@ -1,0 +1,240 @@
+{
+  "meta": {
+    "name": "V5 Hydration Sandbox",
+    "seed": 5202,
+    "version": "5.2",
+    "goal": "Discover hydration relief and avoid harmful ingestion through experience",
+    "learnabilityNote": "Single-host embodied learning sandbox with hydrating, edible, and toxic affordance loops."
+  },
+  "physics": {
+    "name": "earth",
+    "gravity": 9.8,
+    "atmospherePressure": 1.0,
+    "oxygenLevel": 0.21,
+    "temperatureBaseline": 16.0,
+    "materialDensities": {
+      "stone": 2.5,
+      "dirt": 1.2,
+      "wood": 0.6,
+      "water": 1.0,
+      "ore": 5.0,
+      "food": 0.5,
+      "air": 0.001,
+      "fire": 0,
+      "biomass": 0.95,
+      "waste": 1.1
+    },
+    "flammability": {
+      "wood": 0.8,
+      "fire": 0,
+      "stone": 0,
+      "dirt": 0,
+      "water": 0,
+      "ore": 0,
+      "food": 0.3,
+      "air": 0,
+      "biomass": 0.1,
+      "waste": 0
+    },
+    "thermalConductivity": {
+      "stone": 0.5,
+      "water": 0.6,
+      "wood": 0.1,
+      "dirt": 0.3,
+      "ore": 0.9,
+      "food": 0.1,
+      "air": 0.02,
+      "fire": 1.0,
+      "biomass": 0.15,
+      "waste": 0.12
+    }
+  },
+  "circadian": {
+    "enabled": true,
+    "cycleLengthTicks": 360,
+    "lightCurve": "sine",
+    "temperatureDelta": 6.0,
+    "cycleHormoneEnabled": true,
+    "cycleHormoneLabel": "cycle_flux",
+    "seasonEnabled": false,
+    "seasonLengthCycles": 30
+  },
+  "terrain": {
+    "width": 96,
+    "depth": 96,
+    "height": 32,
+    "seed": 5202,
+    "waterLevel": 0.34,
+    "biomes": ["plains", "forest"]
+  },
+  "resources": {
+    "scarcityEnabled": false,
+    "resources": [
+      {
+        "type": "water",
+        "spawnDensity": 14,
+        "regenerationRateTicks": 0,
+        "depletionEnabled": false,
+        "qualityVariance": false,
+        "depthBias": 0
+      },
+      {
+        "type": "food",
+        "spawnDensity": 22,
+        "regenerationRateTicks": 450,
+        "depletionEnabled": true,
+        "qualityVariance": true,
+        "depthBias": 0
+      },
+      {
+        "type": "biomass",
+        "spawnDensity": 18,
+        "regenerationRateTicks": 650,
+        "depletionEnabled": true,
+        "qualityVariance": true,
+        "depthBias": 0.1
+      },
+      {
+        "type": "wood",
+        "spawnDensity": 10,
+        "regenerationRateTicks": 900,
+        "depletionEnabled": true,
+        "qualityVariance": false,
+        "depthBias": 0
+      },
+      {
+        "type": "stone",
+        "spawnDensity": 12,
+        "regenerationRateTicks": 0,
+        "depletionEnabled": false,
+        "qualityVariance": false,
+        "depthBias": 0.5
+      }
+    ]
+  },
+  "agents": {
+    "count": 1,
+    "speciesId": "proto-human-forager",
+    "startingArea": { "centerX": 44, "centerZ": 44, "radius": 8 }
+  },
+  "species": [{ "$ref": "data/species/proto-human-forager.json" }],
+  "language": {
+    "startingMode": "none",
+    "maxEmergenceStage": 2,
+    "lexiconConstrainsThought": true,
+    "dialectDivergenceEnabled": false,
+    "pidginFormationEnabled": false,
+    "writingDiscoveryEnabled": false,
+    "confidenceThresholdForLexicon": 0.75,
+    "minimumAgentsForConsensus": 1
+  },
+  "sleep": {
+    "mode": "natural_sleep",
+    "fatigueEnabled": true,
+    "fatigueRate": 0.06,
+    "recoveryRate": 0.12,
+    "minRestDuration": 30,
+    "maxWakeDuration": 220,
+    "cognitivePenaltyNoSleep": 0.2,
+    "emotionalPenaltyNoSleep": 0.15,
+    "healthPenaltyNoSleep": 0.08,
+    "consolidationDuringSleep": true,
+    "consolidationWhileAwake": false,
+    "consolidationIntervalTicks": 0,
+    "dreamsEnabled": false,
+    "nightmaresEnabled": false,
+    "sleepSchedule": "individual"
+  },
+  "dreams": {
+    "consolidationEnabled": false,
+    "propheticEnabled": false,
+    "traumaProcessingEnabled": true,
+    "chaosEnabled": false,
+    "consolidationProbability": 0,
+    "propheticProbability": 0,
+    "traumaProbability": 0.1,
+    "chaosProbability": 0,
+    "nightmareThreshold": 0.9
+  },
+  "memory": {
+    "episodicDecayRate": 0.45,
+    "episodicCapacity": 800,
+    "patternSeparation": true,
+    "semanticDecayRate": 0.06,
+    "semanticCapacity": 2200,
+    "consistencyThreshold": 0.3,
+    "catastrophicInterferenceEnabled": true,
+    "neSignalEnabled": true,
+    "neDecayRate": 0.12,
+    "neLockDuration": 120,
+    "consolidationPassesPerSleep": 2,
+    "traumaDistortionEnabled": true,
+    "rehearsalResetsDecay": true,
+    "motivatedForgettingEnabled": true,
+    "suppressionDecayRate": 0.8,
+    "contextualForgettingEnabled": true,
+    "inheritanceEnabled": false,
+    "inheritableFraction": 0
+  },
+  "freeWill": {
+    "enabled": true,
+    "willScoreEnabled": true,
+    "identityCoherenceWeight": 0.4,
+    "memoryDepthWeight": 0.3,
+    "dreamIntegrationWeight": 0.3,
+    "resistanceEnabled": true,
+    "selfDeterminationEnabled": true,
+    "selfNarrativeEnabled": true,
+    "simulationAwarenessEnabled": false,
+    "awarenessThreshold": 0.95,
+    "survivalDriveWeight": 0.9
+  },
+  "perception": {
+    "physicsLimitsEnabled": true,
+    "emotionalFieldEnabled": true,
+    "emotionalFieldSuppressible": true,
+    "feelingResidueEnabled": true,
+    "residueDecayRate": 0.12,
+    "qualiaFidelity": "standard",
+    "attentionFilterEnabled": true,
+    "attentionCapacity": 4,
+    "attentionWeights": {
+      "relationshipStrength": 0,
+      "emotionalFieldIntensity": 0.35,
+      "movementVelocity": 0.2,
+      "novelty": 0.6
+    }
+  },
+  "elements": {
+    "fire": { "enabled": false, "spreadRateTicksPerVoxel": 3, "selfExtinguishTicks": 200 },
+    "water": { "enabled": true, "flowRateTicksPerVoxel": 2 },
+    "wind": { "enabled": false, "directionChangeProbability": 0, "maxSpeed": 0 }
+  },
+  "semanticMasking": {
+    "enabled": true,
+    "sensorLabelMap": {
+      "hydration": "signal_13",
+      "energy": "signal_12",
+      "pain": "signal_18",
+      "toxin": "signal_16"
+    },
+    "rotatePeriodically": false,
+    "rotationIntervalTicks": 1000,
+    "qualiaUsesRealLabels": false
+  },
+  "research": {
+    "tripleBaselineEnabled": true,
+    "hypothesisTrackingEnabled": true,
+    "paramSweepEnabled": false,
+    "findingsJournalEnabled": true,
+    "causalMiningEnabled": true,
+    "tippingPointEnabled": true,
+    "emergenceDetectionEnabled": true
+  },
+  "time": {
+    "elasticHeartbeat": false,
+    "maxHeartbeatWaitMs": 5000,
+    "tickDurationMs": 100,
+    "multiWorkerEnabled": false
+  }
+}

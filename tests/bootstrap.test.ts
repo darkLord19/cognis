@@ -105,3 +105,49 @@ test("bootstrapSimulation: restarting against existing state does not fail on du
   bootstrapSimulation(config, deps);
   expect(() => bootstrapSimulation(config, deps)).not.toThrow();
 });
+
+test("bootstrapSimulation: respects startingArea and keeps spawn positions in bounds", () => {
+  const config = {
+    meta: { name: "spawn-area-test", seed: 789 },
+    agents: { count: 6, speciesId: "human", startingArea: { centerX: 5, centerZ: 6, radius: 2 } },
+    terrain: { width: 12, height: 10, depth: 12, seed: 789, waterLevel: 0.2, biomes: ["plains"] },
+    physics: { gravity: 0.1, temperatureBaseline: 15 },
+    perception: { residueDecayRate: 0.1 },
+    memory: { decayRate: 0.1 },
+    species: [
+      {
+        id: "human",
+        name: "Human",
+        baseStats: { maxHealth: 100 },
+        muscleStatRanges: { strength: [1, 2], speed: [1, 2], endurance: [1, 2] },
+      },
+    ],
+  } as unknown as WorldConfig;
+  const deps = {
+    eventBus: new EventBus(),
+    clock: new SimClock(),
+    gateway: {} as LLMGateway,
+    speciesRegistry: new SpeciesRegistry(),
+    database: db,
+    runSupervisor: new RunSupervisor(),
+  };
+
+  const boot = bootstrapSimulation(config, deps);
+  expect(boot.agents.length).toBe(6);
+  const startingArea = config.agents.startingArea;
+  if (!startingArea) {
+    throw new Error("startingArea missing");
+  }
+
+  for (const agent of boot.agents) {
+    expect(agent.position.x).toBeGreaterThanOrEqual(0);
+    expect(agent.position.x).toBeLessThan(config.terrain.width);
+    expect(agent.position.z).toBeGreaterThanOrEqual(0);
+    expect(agent.position.z).toBeLessThan(config.terrain.depth);
+
+    const dx = agent.position.x - startingArea.centerX;
+    const dz = agent.position.z - startingArea.centerZ;
+    const radialDistance = Math.sqrt(dx * dx + dz * dz);
+    expect(radialDistance).toBeLessThanOrEqual(startingArea.radius + 1);
+  }
+});

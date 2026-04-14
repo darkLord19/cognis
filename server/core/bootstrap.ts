@@ -85,6 +85,34 @@ function createAgent(
   const labelPrefix = species.name.toLowerCase();
   const baselineTemperature = config.physics.temperatureBaseline ?? 15;
 
+  const spawnArea = config.agents.startingArea;
+  const fallbackX = index % 8;
+  const fallbackZ = Math.floor(index / 8);
+  const spawnX = spawnArea
+    ? Math.max(
+        0,
+        Math.min(
+          config.terrain.width - 1,
+          Math.round(
+            spawnArea.centerX +
+              Math.cos(index * 1.618) * Math.min(spawnArea.radius, 3 + (index % 3)),
+          ),
+        ),
+      )
+    : fallbackX;
+  const spawnZ = spawnArea
+    ? Math.max(
+        0,
+        Math.min(
+          config.terrain.depth - 1,
+          Math.round(
+            spawnArea.centerZ +
+              Math.sin(index * 1.618) * Math.min(spawnArea.radius, 3 + (index % 3)),
+          ),
+        ),
+      )
+    : fallbackZ;
+
   return {
     id: `${species.id}-${index + 1}`,
     speciesId: species.id,
@@ -108,7 +136,7 @@ function createAgent(
       immediateReaction: "NONE",
       integrityDrive: 0,
     },
-    position: { x: index % 8, y: 8, z: Math.floor(index / 8) },
+    position: { x: spawnX, y: Math.min(8, config.terrain.height - 1), z: spawnZ },
     facing: { x: 1, y: 0, z: 0 },
     muscleStats: {
       strength: midpoint(species.muscleStatRanges.strength),
