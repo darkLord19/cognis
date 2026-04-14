@@ -1,0 +1,58 @@
+{
+  "id": "proto-human-forager",
+  "operatorName": "Proto Human Forager",
+  "cognitiveTier": "full_llm",
+  "sensory": {
+    "visionRange": 30,
+    "auditionRange": 55,
+    "olfactionRange": 20,
+    "empathicRange": 12,
+    "tasteAcuity": 0.7
+  },
+  "actuators": {
+    "canWalk": true,
+    "canGrasp": true,
+    "hasMouth": true,
+    "hasJaw": true,
+    "canVocalize": true,
+    "maxReachVoxels": 2,
+    "maxCarryMass": 25,
+    "biteForce": 0.6,
+    "movementSpeed": 1.1,
+    "staminaCostMultiplier": 1
+  },
+  "metabolism": {
+    "energyDrainPerTick": 0.0018,
+    "hydrationDrainPerTick": 0.0022,
+    "oxygenRecoveryPerTick": 0.03,
+    "toxinDecayPerTick": 0.005,
+    "fatigueRecoveryPerTick": 0.03,
+    "starvationDamageThreshold": 0.15,
+    "dehydrationDamageThreshold": 0.2,
+    "toxinDamageThreshold": 0.3,
+    "hypoxiaDamageThreshold": 0.35,
+    "optimalCoreTemperature": 37,
+    "coldTolerance": 8,
+    "heatTolerance": 10
+  },
+  "behavioralBiases": {
+    "curiosityBaseline": 0.6,
+    "fearResponseThreshold": 0.45,
+    "socialPull": 0.65,
+    "oralExplorationBias": 0.55,
+    "noveltyApproachBias": 0.6
+  },
+  "qualiaProfile": {
+    "painSensitivityByPart": {
+      "head": 1,
+      "torso": 1,
+      "leftArm": 0.9,
+      "rightArm": 0.9,
+      "leftLeg": 0.85,
+      "rightLeg": 0.85
+    },
+    "tasteAcuity": 0.75,
+    "bitterAversionStrength": 0.7,
+    "thermalComfortBand": [17, 27]
+  }
+}
