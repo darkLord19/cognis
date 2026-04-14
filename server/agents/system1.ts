@@ -26,7 +26,7 @@ import type {
   VocalActuation,
   WorldConfig,
 } from "../../shared/types";
-import { calculateNextPhysiology } from "./physiology";
+import { getDefaultPhysiologyParams, updatePhysiology } from "./physiology";
 
 function clamp01(value: number): number {
   return Math.max(0, Math.min(1, value));
@@ -66,17 +66,44 @@ export const System1 = {
     const body = agent.body;
 
     // 1. Latent Physiology Update
-    const nextPhys = calculateNextPhysiology(body);
+    const nextPhys = updatePhysiology({
+      physiology: body.physiology ?? {
+        energyReserves: body.energy,
+        hydration: body.hydration,
+        oxygenSaturation: body.oxygenation,
+        toxinLoad: body.toxinLoad,
+        immuneBurden: body.inflammation,
+        health: body.health,
+        fatigue: body.fatigue,
+        coreTemperature: body.coreTemperature,
+        actuationEnergyRecent: 0,
+        energy: body.energy,
+        oxygenation: body.oxygenation,
+        inflammation: body.inflammation,
+        painLoad: body.painLoad,
+      },
+      params: getDefaultPhysiologyParams(),
+      ambientTemperature: AMBIENT_TEMPERATURE,
+      submerged: context?.localMaterial === "water",
+      actuationCost: agent.currentAction?.type === "MOVE" ? 0.5 : 0,
+    });
     const delta: BodyStateDelta = {
+      physiology: nextPhys,
       energy: nextPhys.energyReserves,
       hydration: nextPhys.hydration,
+      oxygenation: nextPhys.oxygenSaturation,
       fatigue: nextPhys.fatigue,
       health: nextPhys.health,
       toxinLoad: nextPhys.toxinLoad,
+      coreTemperature: nextPhys.coreTemperature,
       inflammation: nextPhys.immuneBurden,
+      painLoad: nextPhys.painLoad ?? body.painLoad ?? 0,
+      hunger: 1 - nextPhys.energyReserves,
+      thirst: 1 - nextPhys.hydration,
     };
 
-    if (delta.health === 0 && (body.health ?? 1) > 0) {
+    if ((delta.health ?? 1) <= 0.001 && (body.health ?? 1) > 0) {
+      delta.health = 0;
       delta.shouldDie = true;
     }
 
