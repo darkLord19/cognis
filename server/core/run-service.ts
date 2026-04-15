@@ -1,7 +1,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BranchNode, WorldConfig } from "../../shared/types";
-import type { ActionOutcomeRecord } from "../agents/action-outcome-memory";
+import { ActionOutcomeMemory, type ActionOutcomeRecord } from "../agents/action-outcome-memory";
+import { AffordanceLearner, type LearnedAffordance } from "../agents/affordance-learner";
 import type { LLMGateway } from "../llm/gateway";
 import type { Database } from "../persistence/database";
 import { MerkleLogger } from "../persistence/merkle-logger";
@@ -365,6 +366,29 @@ export class RunService {
     }
 
     const rows = this.deps.database.getProceduralOutcomes(runId, branchId, agentId, limit);
+    return this.toActionOutcomeRecords(rows);
+  }
+
+  public getProceduralAffordances(
+    runId: string,
+    agentId: string,
+    branchId = "main",
+    limit = 200,
+  ): LearnedAffordance[] {
+    const runtime = this.deps.runSupervisor.getRuntime(runId);
+    if (runtime?.orchestrator) {
+      return runtime.orchestrator.getProceduralMemory(agentId);
+    }
+
+    const memory = new ActionOutcomeMemory();
+    const learner = new AffordanceLearner(memory);
+    learner.replay(this.getProceduralOutcomes(runId, agentId, branchId, limit));
+    return learner.getAllAffordances();
+  }
+
+  private toActionOutcomeRecords(
+    rows: ReturnType<Database["getProceduralOutcomes"]>,
+  ): ActionOutcomeRecord[] {
     return rows
       .map((row) => {
         try {

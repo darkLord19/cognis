@@ -313,6 +313,9 @@ test("management api returns persisted procedural outcomes for inactive runs", a
   expect(memoryResponse.status).toBe(200);
   expect(Array.isArray(memory.affordances)).toBe(true);
   expect(Array.isArray(memory.outcomes)).toBe(true);
+  expect((memory.affordances as Array<{ cueSignature?: string }>)[0]?.cueSignature).toBe(
+    "dryness-high",
+  );
   expect((memory.outcomes as Array<{ cueSignature?: string }>)[0]?.cueSignature).toBe(
     "dryness-high",
   );
