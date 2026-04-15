@@ -160,4 +160,9 @@ test("websocket server includes operator-only streams for authenticated subscrip
 
   expect(sent.some((message) => message.type === "inner_monologue")).toBe(true);
   expect(sent.some((message) => message.type === "audit_entry")).toBe(true);
+  const debugMessage = sent.find((message) => message.type === "agent_debug");
+  expect(debugMessage).toBeDefined();
+  expect(
+    Array.isArray((debugMessage as { proceduralOutcomes?: unknown[] }).proceduralOutcomes),
+  ).toBe(true);
 });

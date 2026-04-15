@@ -149,6 +149,14 @@ export class Orchestrator {
     return learning ? learning.learner.getAllAffordances() : [];
   }
 
+  public getProceduralOutcomes(agentId: string, limit = 200) {
+    const learning = this.agentLearning.get(agentId);
+    if (!learning) {
+      return [];
+    }
+    return learning.memory.getAll().slice(-Math.max(1, limit));
+  }
+
   private applyAction(agent: AgentState, action: PrimitiveAction, tick: number): void {
     const translated = legacyAdapter.translate(action.type, tick, Boolean(agent.body.mouthItem));
     if (translated) {

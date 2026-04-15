@@ -288,7 +288,10 @@ export function createManagementApiHandler(deps: ApiDependencies) {
       if (!runtime?.orchestrator) {
         return jsonResponse({ error: "Run not active" }, 404);
       }
-      return jsonResponse({ affordances: runtime.orchestrator.getProceduralMemory(agentId) });
+      return jsonResponse({
+        affordances: runtime.orchestrator.getProceduralMemory(agentId),
+        outcomes: runtime.orchestrator.getProceduralOutcomes(agentId, 200),
+      });
     }
 
     const findingsMatch = path.match(/^\/runs\/([^/]+)\/findings$/);

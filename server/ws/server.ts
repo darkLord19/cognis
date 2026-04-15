@@ -209,10 +209,12 @@ export class WebSocketServer {
             type: "agent_debug",
             runId,
             agentId: event.agent_id,
-            sensors: runtime.orchestrator.getLatestSensorBundle(event.agent_id),
-            qualia: runtime.orchestrator.getLatestQualia(event.agent_id),
-            actionTrace: runtime.orchestrator.getActionTrace(event.agent_id, 20),
-            proceduralMemory: runtime.orchestrator.getProceduralMemory(event.agent_id),
+            sensors: runtime.orchestrator.getLatestSensorBundle?.(event.agent_id) ?? null,
+            qualia: runtime.orchestrator.getLatestQualia?.(event.agent_id) ?? null,
+            actionTrace: runtime.orchestrator.getActionTrace?.(event.agent_id, 20) ?? [],
+            proceduralMemory: runtime.orchestrator.getProceduralMemory?.(event.agent_id) ?? [],
+            proceduralOutcomes:
+              runtime.orchestrator.getProceduralOutcomes?.(event.agent_id, 50) ?? [],
           }),
         );
       }

@@ -251,6 +251,7 @@ test("management api exposes agent debug surfaces for v5.2", async () => {
   const memory = await readJson(memoryResponse);
   expect(memoryResponse.status).toBe(200);
   expect(Array.isArray(memory.affordances)).toBe(true);
+  expect(Array.isArray(memory.outcomes)).toBe(true);
 });
 
 test("management api creates branches and exposes a watcher stream", async () => {
