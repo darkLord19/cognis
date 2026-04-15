@@ -285,12 +285,13 @@ export function createManagementApiHandler(deps: ApiDependencies) {
       const runId = requirePathParam(proceduralMemoryMatch[1]);
       const agentId = requirePathParam(proceduralMemoryMatch[2]);
       const runtime = deps.runService.getRuntime(runId);
-      if (!runtime?.orchestrator) {
-        return jsonResponse({ error: "Run not active" }, 404);
+      const summary = deps.runService.getRunSummary(runId);
+      if (!summary) {
+        return jsonResponse({ error: "Run not found" }, 404);
       }
       return jsonResponse({
-        affordances: runtime.orchestrator.getProceduralMemory(agentId),
-        outcomes: runtime.orchestrator.getProceduralOutcomes(agentId, 200),
+        affordances: runtime?.orchestrator?.getProceduralMemory(agentId) ?? [],
+        outcomes: deps.runService.getProceduralOutcomes(runId, agentId, "main", 200),
       });
     }
 

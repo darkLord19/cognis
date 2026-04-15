@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { BranchNode, WorldConfig } from "../../shared/types";
+import type { ActionOutcomeRecord } from "../agents/action-outcome-memory";
 import type { LLMGateway } from "../llm/gateway";
 import type { Database } from "../persistence/database";
 import { MerkleLogger } from "../persistence/merkle-logger";
@@ -350,6 +351,50 @@ export class RunService {
 
   public getRuntime(runId: string): RunRuntime | undefined {
     return this.deps.runSupervisor.getRuntime(runId);
+  }
+
+  public getProceduralOutcomes(
+    runId: string,
+    agentId: string,
+    branchId = "main",
+    limit = 200,
+  ): ActionOutcomeRecord[] {
+    const runtime = this.deps.runSupervisor.getRuntime(runId);
+    if (runtime?.orchestrator) {
+      return runtime.orchestrator.getProceduralOutcomes(agentId, limit);
+    }
+
+    const rows = this.deps.database.getProceduralOutcomes(runId, branchId, agentId, limit);
+    return rows
+      .map((row) => {
+        try {
+          const parsedPlan = JSON.parse(row.motor_plan_json) as ActionOutcomeRecord["motorPlan"];
+          const record: ActionOutcomeRecord = {
+            agentId: row.agent_id,
+            tick: row.tick,
+            cueSignature: row.cue_signature,
+            motorPlan: parsedPlan,
+            outcome: {
+              deltaVisceralContraction: row.delta_visceral_contraction,
+              deltaOralDryness: row.delta_oral_dryness,
+              deltaPain: row.delta_pain,
+              deltaToxinLoad: row.delta_toxin_load,
+              deltaHealth: row.delta_health,
+              deltaArousal: 0,
+              reliefScore: row.relief_score,
+              harmScore: row.harm_score,
+            },
+            success: row.success === 1,
+          };
+          if (row.target_signature) {
+            record.targetRef = row.target_signature;
+          }
+          return record;
+        } catch {
+          return null;
+        }
+      })
+      .filter((record): record is ActionOutcomeRecord => Boolean(record));
   }
 
   private requireRuntime(runId: string): RunRuntime {
