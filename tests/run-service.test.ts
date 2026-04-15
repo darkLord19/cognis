@@ -19,6 +19,7 @@ beforeEach(() => {
   db.db.exec("DELETE FROM audit_log");
   db.db.exec("DELETE FROM branches");
   db.db.exec("DELETE FROM run_config_snapshots");
+  db.db.exec("DELETE FROM procedural_outcomes");
   db.db.exec("DELETE FROM runs");
   db.db.exec("PRAGMA foreign_keys = ON;");
 
@@ -107,4 +108,56 @@ test("RunService persists emitted events to the events table", async () => {
     .get(created.id)?.count;
 
   expect(count ?? 0).toBeGreaterThan(0);
+});
+
+test("RunService reconstructs procedural affordances from persisted outcomes when run is inactive", () => {
+  const created = service.createRun({ config: "earth-default", seed: 9876 });
+  const agentId = "human-1";
+
+  db.db
+    .query(
+      `INSERT INTO procedural_outcomes (
+        run_id, branch_id, agent_id, tick, cue_signature, target_signature, motor_plan_json,
+        delta_visceral_contraction, delta_oral_dryness, delta_pain, delta_toxin_load,
+        delta_health, relief_score, harm_score, success, merkle_hash
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      created.id,
+      "main",
+      agentId,
+      44,
+      "dryness-replay",
+      "foreground_0",
+      JSON.stringify({
+        source: "procedural",
+        primitives: [
+          {
+            type: "lick",
+            target: { type: "perceptual_ref", ref: "foreground_0" },
+            intensity: 0.7,
+            durationTicks: 1,
+          },
+        ],
+        urgency: 0.7,
+        createdAtTick: 44,
+      }),
+      -0.15,
+      -0.3,
+      0,
+      0,
+      0.02,
+      0.4,
+      0.02,
+      1,
+      db.getLastAuditHash("main"),
+    );
+
+  const outcomes = service.getProceduralOutcomes(created.id, agentId, "main", 50);
+  const affordances = service.getProceduralAffordances(created.id, agentId, "main", 50);
+
+  expect(outcomes.length).toBe(1);
+  expect(outcomes[0]?.cueSignature).toBe("dryness-replay");
+  expect(affordances.length).toBe(1);
+  expect(affordances[0]?.cueSignature).toBe("dryness-replay");
 });
