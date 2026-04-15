@@ -321,6 +321,74 @@ test("management api returns persisted procedural outcomes for inactive runs", a
   );
 });
 
+test("management api returns replayed affordances after run restart", async () => {
+  const created = service.createRun({ config: "earth-default", seed: 910 });
+  service.startRun(created.id);
+  const firstRuntime = supervisor.getRuntime(created.id);
+  const agentId = firstRuntime?.agents[0]?.id;
+  expect(agentId).toBeDefined();
+  if (!agentId) {
+    throw new Error("agent missing");
+  }
+
+  db.db
+    .query(
+      `INSERT INTO procedural_outcomes (
+        run_id, branch_id, agent_id, tick, cue_signature, target_signature, motor_plan_json,
+        delta_visceral_contraction, delta_oral_dryness, delta_pain, delta_toxin_load,
+        delta_health, relief_score, harm_score, success, merkle_hash
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    )
+    .run(
+      created.id,
+      "main",
+      agentId,
+      21,
+      "restart-dryness",
+      "foreground_0",
+      JSON.stringify({
+        source: "procedural",
+        primitives: [
+          {
+            type: "lick",
+            target: { type: "perceptual_ref", ref: "foreground_0" },
+            intensity: 0.7,
+            durationTicks: 1,
+          },
+        ],
+        urgency: 0.7,
+        createdAtTick: 21,
+      }),
+      -0.15,
+      -0.3,
+      0,
+      0,
+      0.02,
+      0.35,
+      0.03,
+      1,
+      db.getLastAuditHash("main"),
+    );
+
+  service.stopRun(created.id);
+  service.startRun(created.id);
+
+  const memoryResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/agents/${agentId}/procedural-memory`),
+  );
+  const memory = await readJson(memoryResponse);
+
+  expect(memoryResponse.status).toBe(200);
+  expect(Array.isArray(memory.affordances)).toBe(true);
+  expect((memory.affordances as Array<{ cueSignature?: string }>)[0]?.cueSignature).toBe(
+    "restart-dryness",
+  );
+  expect(Array.isArray(memory.outcomes)).toBe(true);
+  expect((memory.outcomes as Array<{ cueSignature?: string }>)[0]?.cueSignature).toBe(
+    "restart-dryness",
+  );
+});
+
 test("management api creates branches and exposes a watcher stream", async () => {
   const created = service.createRun({ config: "earth-default", seed: 81 });
   service.startRun(created.id);
