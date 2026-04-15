@@ -99,3 +99,20 @@ test("ActionOutcomeMemory: hydrates persisted outcomes for replay without duplic
 
   expect(persistedCount?.count ?? 0).toBe(1);
 });
+
+test("ActionOutcomeMemory: hydrate is idempotent across repeated calls", () => {
+  const runId = `test-run-hydrate-repeat-${Date.now()}`;
+  const branchId = "main";
+  const agentId = "agent-hydrate-repeat-1";
+  const entry = { ...record(10, "cue-hydrate-repeat"), agentId };
+
+  const writer = new ActionOutcomeMemory({ runId, branchId });
+  writer.record(entry);
+
+  const reader = new ActionOutcomeMemory({ runId, branchId });
+  reader.hydrate(agentId, 10);
+  reader.hydrate(agentId, 10);
+
+  const similar = reader.findSimilar("cue-hydrate-repeat", 10);
+  expect(similar.length).toBe(1);
+});

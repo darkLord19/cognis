@@ -28,6 +28,18 @@ type PersistenceContext = {
   branchId: string;
 };
 
+function recordSignature(record: ActionOutcomeRecord): string {
+  const firstPrimitive = record.motorPlan.primitives[0];
+  return [
+    record.agentId,
+    record.tick,
+    record.cueSignature,
+    record.targetRef ?? "",
+    firstPrimitive?.type ?? "",
+    firstPrimitive?.target.type ?? "",
+  ].join("::");
+}
+
 function fromLegacy(record: LegacyActionOutcomeRecord): ActionOutcomeRecord {
   const reliefScore = Math.max(0, record.deltaHydration) + Math.max(0, record.deltaEnergy);
   const harmScore =
@@ -169,7 +181,13 @@ export class ActionOutcomeMemory {
       })
       .filter((record): record is ActionOutcomeRecord => Boolean(record));
 
+    const seen = new Set(this.records.map((record) => recordSignature(record)));
     for (const record of records) {
+      const signature = recordSignature(record);
+      if (seen.has(signature)) {
+        continue;
+      }
+      seen.add(signature);
       this.remember(record, { persist: false });
     }
 
