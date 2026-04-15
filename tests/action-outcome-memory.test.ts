@@ -72,3 +72,30 @@ test("ActionOutcomeMemory: persists records into procedural_outcomes when contex
   expect(row?.count ?? 0).toBe(1);
   expect((row?.merkle_hash?.length ?? 0) > 0).toBe(true);
 });
+
+test("ActionOutcomeMemory: hydrates persisted outcomes for replay without duplicating rows", () => {
+  const runId = `test-run-hydrate-${Date.now()}`;
+  const branchId = "main";
+  const agentId = "agent-hydrate-1";
+  const entry = { ...record(9, "cue-hydrate"), agentId };
+
+  const writer = new ActionOutcomeMemory({ runId, branchId });
+  writer.record(entry);
+
+  const reader = new ActionOutcomeMemory({ runId, branchId });
+  const hydrated = reader.hydrate(agentId, 10);
+
+  expect(hydrated.length).toBe(1);
+  expect(hydrated[0]?.cueSignature).toBe("cue-hydrate");
+  expect(reader.findSimilar("cue-hydrate", 5).length).toBe(1);
+
+  const persistedCount = db.db
+    .query<{ count: number }, [string, string, string]>(
+      `SELECT COUNT(*) AS count
+       FROM procedural_outcomes
+       WHERE run_id = ? AND branch_id = ? AND agent_id = ?`,
+    )
+    .get(runId, branchId, agentId);
+
+  expect(persistedCount?.count ?? 0).toBe(1);
+});

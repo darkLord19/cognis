@@ -58,7 +58,10 @@ export class AffordanceLearner {
 
   constructor(private memory: ActionOutcomeMemory) {}
 
-  public updateFromOutcome(record: ActionOutcomeRecord): LearnedAffordance | null {
+  private applyOutcome(
+    record: ActionOutcomeRecord,
+    options: { remember?: boolean } = { remember: true },
+  ): LearnedAffordance | null {
     const primary = record.motorPlan.primitives[0];
     if (!primary) return null;
 
@@ -92,8 +95,24 @@ export class AffordanceLearner {
     };
 
     this.affordances.set(key, next);
-    this.memory.record(record);
+    if (options.remember !== false) {
+      this.memory.record(record);
+    }
     return next;
+  }
+
+  public updateFromOutcome(record: ActionOutcomeRecord): LearnedAffordance | null {
+    return this.applyOutcome(record, { remember: true });
+  }
+
+  public replay(records: ActionOutcomeRecord[]): number {
+    let applied = 0;
+    for (const record of records) {
+      if (this.applyOutcome(record, { remember: false })) {
+        applied++;
+      }
+    }
+    return applied;
   }
 
   public getCandidates(cueSignature: string): LearnedAffordance[] {

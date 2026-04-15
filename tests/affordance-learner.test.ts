@@ -54,3 +54,16 @@ test("AffordanceLearner: confidence rises for repeated relieving outcomes", () =
   expect(candidates.length).toBeGreaterThan(0);
   expect(candidates[0]?.motorPrimitiveType).toBe(ActuationType.LICK);
 });
+
+test("AffordanceLearner: replay restores affordance confidence from persisted outcomes", () => {
+  const memory = new ActionOutcomeMemory();
+  const learner = new AffordanceLearner(memory);
+  const history = [makeOutcome(0.65, 0.05, 3), makeOutcome(0.7, 0.05, 4)];
+
+  const applied = learner.replay(history);
+  const candidates = learner.getCandidates("dry_core_with_presence");
+
+  expect(applied).toBe(2);
+  expect(candidates.length).toBeGreaterThan(0);
+  expect((candidates[0]?.confidence ?? 0) > 0.3).toBe(true);
+});

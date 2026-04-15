@@ -103,13 +103,77 @@ export class ActionOutcomeMemory {
     });
   }
 
-  public record(record: ActionOutcomeRecord | LegacyActionOutcomeRecord): void {
-    const normalized = "cueSignature" in record ? record : fromLegacy(record);
-    this.records.push(normalized);
+  private append(record: ActionOutcomeRecord): void {
+    this.records.push(record);
     if (this.records.length > this.MAX_RECORDS) {
       this.records.shift();
     }
-    this.persist(normalized);
+  }
+
+  public remember(
+    record: ActionOutcomeRecord | LegacyActionOutcomeRecord,
+    options: { persist?: boolean } = { persist: true },
+  ): void {
+    const normalized = "cueSignature" in record ? record : fromLegacy(record);
+    this.append(normalized);
+    if (options.persist !== false) {
+      this.persist(normalized);
+    }
+  }
+
+  public record(record: ActionOutcomeRecord | LegacyActionOutcomeRecord): void {
+    this.remember(record, { persist: true });
+  }
+
+  public hydrate(agentId: string, limit = 400): ActionOutcomeRecord[] {
+    if (!this.persistence) {
+      return [];
+    }
+
+    const rows = db.getProceduralOutcomes(
+      this.persistence.runId,
+      this.persistence.branchId,
+      agentId,
+      limit,
+    );
+    const records = rows
+      .map((row) => {
+        let motorPlan: MotorPlan | null = null;
+        try {
+          motorPlan = JSON.parse(row.motor_plan_json) as MotorPlan;
+        } catch {
+          return null;
+        }
+
+        const normalized: ActionOutcomeRecord = {
+          agentId: row.agent_id,
+          tick: row.tick,
+          cueSignature: row.cue_signature,
+          motorPlan,
+          outcome: {
+            deltaVisceralContraction: row.delta_visceral_contraction,
+            deltaOralDryness: row.delta_oral_dryness,
+            deltaPain: row.delta_pain,
+            deltaToxinLoad: row.delta_toxin_load,
+            deltaHealth: row.delta_health,
+            deltaArousal: 0,
+            reliefScore: row.relief_score,
+            harmScore: row.harm_score,
+          },
+          success: row.success === 1,
+        };
+        if (row.target_signature) {
+          normalized.targetRef = row.target_signature;
+        }
+        return normalized;
+      })
+      .filter((record): record is ActionOutcomeRecord => Boolean(record));
+
+    for (const record of records) {
+      this.remember(record, { persist: false });
+    }
+
+    return records;
   }
 
   public findSimilar(cueSignature: string, limit: number): ActionOutcomeRecord[] {
