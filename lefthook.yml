@@ -8,13 +8,7 @@ pre-commit:
     test:
       run: bun test
     veil:
-      run: >
-        [ -f server/agents/qualia-processor.ts ] || exit 0;
-        grep -n "simulation\|\" AI\|' AI\|agent_id\|coordinate\|Forge\|operator" server/agents/qualia-processor.ts | grep -v "^.*\/\/" | grep -v "import " | grep -v "type " && echo "VEIL BROKEN" && exit 1 || exit 0
-    veil-templates:
-      run: >
-        [ -f server/agents/qualia-processor.ts ] || exit 0;
-        grep -n "lightLevel\|cycleHormone\|tick\|circadian\|_id\b" server/agents/qualia-processor.ts | grep "QUALIA_TEMPLATES\|pickTemplate\|parts\.push\|text =" && echo "VEIL BROKEN — forbidden term in output template" && exit 1 || exit 0
+      run: bun run scripts/veil-check.ts
     no-symbolic-actions:
       run: bun run scripts/no-symbolic-actions.ts
     append-only:

@@ -8,7 +8,7 @@
     "web": "vite",
     "server": "bun run index.ts",
     "test": "bun test",
-    "test:v5": "bun test tests/*v5*.test.ts tests/integration/hydration-discovery.test.ts",
+    "test:v5": "bun test tests/*v5*.test.ts tests/integration/hydration-discovery.test.ts tests/integration/toxic-avoidance.test.ts tests/veil-regression.test.ts tests/replay-equivalence.test.ts tests/no-symbolic-actions.test.ts tests/sensor-computer.test.ts tests/action-executor.test.ts tests/ingestion.test.ts tests/impossible-knowledge-check.test.ts",
     "lint": "biome check .",
     "typecheck": "bunx tsc --noEmit",
     "veil-check": "bun run scripts/veil-check.ts",
