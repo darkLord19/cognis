@@ -288,9 +288,12 @@ export function createManagementApiHandler(deps: ApiDependencies) {
       if (!summary) {
         return jsonResponse({ error: "Run not found" }, 404);
       }
+      const rawLimit = Number(url.searchParams.get("limit") ?? "200");
+      const limit =
+        Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(1000, Math.floor(rawLimit)) : 200;
       return jsonResponse({
-        affordances: deps.runService.getProceduralAffordances(runId, agentId, "main", 200),
-        outcomes: deps.runService.getProceduralOutcomes(runId, agentId, "main", 200),
+        affordances: deps.runService.getProceduralAffordances(runId, agentId, "main", limit),
+        outcomes: deps.runService.getProceduralOutcomes(runId, agentId, "main", limit),
       });
     }
 

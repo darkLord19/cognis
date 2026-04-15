@@ -389,6 +389,98 @@ test("management api returns replayed affordances after run restart", async () =
   );
 });
 
+test("management api procedural-memory respects limit query parameter", async () => {
+  const created = service.createRun({ config: "earth-default", seed: 911 });
+  service.startRun(created.id);
+  const runtime = supervisor.getRuntime(created.id);
+  const agentId = runtime?.agents[0]?.id;
+  expect(agentId).toBeDefined();
+  if (!agentId) {
+    throw new Error("agent missing");
+  }
+
+  const insertOutcome = db.db.query(
+    `INSERT INTO procedural_outcomes (
+      run_id, branch_id, agent_id, tick, cue_signature, target_signature, motor_plan_json,
+      delta_visceral_contraction, delta_oral_dryness, delta_pain, delta_toxin_load,
+      delta_health, relief_score, harm_score, success, merkle_hash
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  );
+
+  insertOutcome.run(
+    created.id,
+    "main",
+    agentId,
+    31,
+    "limit-a",
+    "foreground_0",
+    JSON.stringify({
+      source: "procedural",
+      primitives: [
+        {
+          type: "lick",
+          target: { type: "perceptual_ref", ref: "foreground_0" },
+          intensity: 0.6,
+          durationTicks: 1,
+        },
+      ],
+      urgency: 0.7,
+      createdAtTick: 31,
+    }),
+    -0.1,
+    -0.2,
+    0,
+    0,
+    0.01,
+    0.3,
+    0.02,
+    1,
+    db.getLastAuditHash("main"),
+  );
+  insertOutcome.run(
+    created.id,
+    "main",
+    agentId,
+    32,
+    "limit-b",
+    "foreground_1",
+    JSON.stringify({
+      source: "procedural",
+      primitives: [
+        {
+          type: "lick",
+          target: { type: "perceptual_ref", ref: "foreground_1" },
+          intensity: 0.6,
+          durationTicks: 1,
+        },
+      ],
+      urgency: 0.7,
+      createdAtTick: 32,
+    }),
+    -0.12,
+    -0.22,
+    0,
+    0,
+    0.01,
+    0.32,
+    0.02,
+    1,
+    db.getLastAuditHash("main"),
+  );
+
+  service.stopRun(created.id);
+
+  const memoryResponse = await handler(
+    new Request(`http://localhost/runs/${created.id}/agents/${agentId}/procedural-memory?limit=1`),
+  );
+  const memory = await readJson(memoryResponse);
+
+  expect(memoryResponse.status).toBe(200);
+  expect((memory.outcomes as unknown[]).length).toBe(1);
+  expect((memory.affordances as unknown[]).length).toBe(1);
+  expect((memory.outcomes as Array<{ cueSignature?: string }>)[0]?.cueSignature).toBe("limit-a");
+});
+
 test("management api creates branches and exposes a watcher stream", async () => {
   const created = service.createRun({ config: "earth-default", seed: 81 });
   service.startRun(created.id);

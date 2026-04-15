@@ -360,12 +360,13 @@ export class RunService {
     branchId = "main",
     limit = 200,
   ): ActionOutcomeRecord[] {
+    const cappedLimit = Math.max(1, limit);
     const runtime = this.deps.runSupervisor.getRuntime(runId);
     if (runtime?.orchestrator) {
-      return runtime.orchestrator.getProceduralOutcomes(agentId, limit);
+      return runtime.orchestrator.getProceduralOutcomes(agentId, cappedLimit);
     }
 
-    const rows = this.deps.database.getProceduralOutcomes(runId, branchId, agentId, limit);
+    const rows = this.deps.database.getProceduralOutcomes(runId, branchId, agentId, cappedLimit);
     return this.toActionOutcomeRecords(rows);
   }
 
@@ -375,15 +376,16 @@ export class RunService {
     branchId = "main",
     limit = 200,
   ): LearnedAffordance[] {
+    const cappedLimit = Math.max(1, limit);
     const runtime = this.deps.runSupervisor.getRuntime(runId);
     if (runtime?.orchestrator) {
-      return runtime.orchestrator.getProceduralMemory(agentId);
+      return runtime.orchestrator.getProceduralMemory(agentId).slice(0, cappedLimit);
     }
 
     const memory = new ActionOutcomeMemory();
     const learner = new AffordanceLearner(memory);
-    learner.replay(this.getProceduralOutcomes(runId, agentId, branchId, limit));
-    return learner.getAllAffordances();
+    learner.replay(this.getProceduralOutcomes(runId, agentId, branchId, cappedLimit));
+    return learner.getAllAffordances().slice(0, cappedLimit);
   }
 
   private toActionOutcomeRecords(
